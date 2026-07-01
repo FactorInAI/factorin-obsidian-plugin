@@ -15,10 +15,10 @@ export default function filterSettings(
 		translate: Translate<FilterSettingTranslations>;
 		saveSettings: () => Promise<void>;
 		app: App;
+		settings: Settings;
 	},
-	settings: Settings,
 ) {
-	const { saveSettings, translate } = ctx;
+	const { saveSettings, translate, settings } = ctx;
 	new Setting(el).setName(translate('filterRules')).setHeading();
 
 	new Setting(el)

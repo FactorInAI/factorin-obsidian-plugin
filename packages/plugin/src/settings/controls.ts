@@ -25,10 +25,10 @@ export default function ControlsSettings(
 	ctx: {
 		translate: Translate<ControlsSettingTranslations>;
 		saveSettings: () => Promise<void>;
+		settings: Settings;
 	},
-	settings: Settings,
 ) {
-	const { translate, saveSettings } = ctx;
+	const { translate, saveSettings, settings } = ctx;
 	const invalidValue = translate('invalidValue');
 	new Setting(el).setName(translate('controls')).setHeading();
 

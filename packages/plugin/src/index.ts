@@ -11,6 +11,7 @@ import Bootstrap from './modules/Bootstrap';
 import EventBus from './modules/EventBus';
 import Extensibility from './modules/Extensibility';
 import I18n from './modules/I18n';
+import ModulesModal from './modules/ModulesModal';
 import Observability from './modules/Observability';
 import ProgressModal from './modules/ProgressModal';
 import Registrar from './modules/Registrar';
@@ -35,6 +36,7 @@ const internalModules = [
 	Observability,
 	Scheduler,
 	ProgressModal,
+	ModulesModal,
 	Bootstrap,
 ] as const;
 

@@ -24,3 +24,4 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 - Sentence case for UI text.
 - All Obsidian API mocks go `packages/shared/src/obsidian-mock.ts`.
 - Use inline Tailwind CSS for common styling, only use semantic CSS for animations and complex compositions.
+- When any function or class needs to use `Context` as argument, prefer plain object structural typing instead of direct `Context` type.

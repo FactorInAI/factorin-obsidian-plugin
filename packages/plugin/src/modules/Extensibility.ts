@@ -8,8 +8,8 @@ import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
 import { toErrorMessage } from './Sync';
 
-type ModuleMeta = {
-	id: string;
+export type ModuleMeta = {
+	name: string;
 	version: string;
 	description: string;
 	main: string; // Download link
@@ -29,8 +29,8 @@ const MODULE_EXTENSION = '.js';
 export default class Extensibility {
 	private readonly moduleDir: string;
 	private readonly sourceCache = new Map<string, ModuleSourceSchema>(); // URL -> content
-	private readonly discoveredModules = new Map<string, string>(); // ID -> version
-	private readonly loadedModules = new Map<string, ModuleCtor>(); // ID -> ctor
+	private readonly discoveredModules = new Map<string, string>(); // Name -> version
+	private readonly loadedModules = new Map<string, ModuleCtor>(); // Name -> ctor
 	private autoUpdateTimeout?: number;
 
 	declare readonly settings: {
@@ -201,7 +201,7 @@ export default class Extensibility {
 					try {
 						const content = await requestUrl(url).json;
 						if (isValidSource(content)) {
-							content.forEach((meta) => (meta.id = meta.id.normalize('NFC')));
+							content.forEach((meta) => (meta.name = meta.name.normalize('NFC')));
 							this.sourceCache.set(url, content);
 							return content;
 						}
@@ -217,10 +217,10 @@ export default class Extensibility {
 		).flat();
 		const modules = new Map<string, ModuleMeta>();
 		contents.forEach((meta) => {
-			const { id, version } = meta;
-			const existingModule = modules.get(id);
+			const { name, version } = meta;
+			const existingModule = modules.get(name);
 			if (existingModule && compareVersions(existingModule.version, version) === 1) return;
-			modules.set(id, meta);
+			modules.set(name, meta);
 		});
 		const moduleList = [...modules.values()];
 		dispatch(
@@ -233,11 +233,11 @@ export default class Extensibility {
 	private readonly updateModules = async () => {
 		const { execute, factory, operations } = this.createOperationFactory();
 		const { dispatch, isIdle } = this.ctx;
-		(await this.fetchSources()).forEach(({ id, version, main }) => {
-			const existingVersion = this.discoveredModules.get(id);
+		(await this.fetchSources()).forEach(({ name, version, main }) => {
+			const existingVersion = this.discoveredModules.get(name);
 			if (!existingVersion) return;
 			if (compareVersions(version, existingVersion) === 1)
-				factory.download(id, version, main);
+				factory.download(name, version, main);
 		});
 		if (!operations.length) return;
 		await untilTrue(isIdle);
@@ -275,7 +275,7 @@ export default class Extensibility {
 }
 
 // 1 = a > b
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
 	const pa = a.split('.').map(Number);
 	const pb = b.split('.').map(Number);
 	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -293,7 +293,7 @@ function isValidSource(d: unknown): d is ModuleSourceSchema {
 		d.every(
 			(i) =>
 				i &&
-				['id', 'version', 'description', 'main'].every((k) => typeof i[k] === 'string'),
+				['name', 'version', 'description', 'main'].every((k) => typeof i[k] === 'string'),
 		)
 	);
 }

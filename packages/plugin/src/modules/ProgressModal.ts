@@ -1,7 +1,7 @@
 import type { Events, Translations } from '@';
 import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
-import { Modal, Setting } from 'obsidian';
+import { Modal, Setting, ProgressBarComponent } from 'obsidian';
 import { computed, hook } from 'synthkernel';
 import type { BaseTask, RemoveLocal, TaskNames } from '@/sync';
 import type { Progress } from '@/types';
@@ -258,15 +258,8 @@ export default class ProgressModal extends Modal {
 		const progressStats = progressTextContainer.createDiv({
 			cls: 'text-3 text-[var(--text-muted)] ml-auto whitespace-nowrap ml-2',
 		});
-		const progressBarContainer = progressSection.createDiv({
-			cls: 'relative h-5 bg-[var(--background-secondary)] rounded overflow-hidden border border-[var(--background-modifier-border)]',
-		});
-		const progressBar = progressBarContainer.createDiv({
-			cls: 'absolute h-full bg-[var(--interactive-accent)] w-0 transition-width',
-		});
-		this.description = container.createEl('p', {
-			cls: 'whitespace-pre-line hidden mt-2 mb-0',
-		});
+		const progressBar = new ProgressBarComponent(progressSection);
+		this.description = container.createEl('p', { cls: 'whitespace-pre-line hidden my-0' });
 		this.detailContainer = container.createDiv({
 			cls: 'max-h-[50vh] overflow-y-auto rounded-lg border border-[var(--background-modifier-border)] bg-[var(--background-secondary)] p-2 hidden',
 		});
@@ -277,7 +270,7 @@ export default class ProgressModal extends Modal {
 					if (completed !== undefined && total !== undefined)
 						progressStats.setText(`${completed}/${total} ${this.t('completed')}`);
 					if (current !== undefined) currentItem.setText(current);
-					if (percent !== undefined) progressBar.style.width = `${percent}%`;
+					if (percent !== undefined) progressBar.setValue(percent);
 				},
 				{ immediate: true },
 			),

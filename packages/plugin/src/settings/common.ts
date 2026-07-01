@@ -45,11 +45,17 @@ export default function commonSettings(
 		rerenderSettingTab: () => void;
 		startScheduledSync: () => void;
 		stopScheduledSync: () => void;
+		settings: Settings;
 	},
-	settings: Settings,
 ) {
-	const { translate, saveSettings, rerenderSettingTab, startScheduledSync, stopScheduledSync } =
-		ctx;
+	const {
+		translate,
+		saveSettings,
+		rerenderSettingTab,
+		startScheduledSync,
+		stopScheduledSync,
+		settings,
+	} = ctx;
 	const invalidValue = translate('invalidValue');
 
 	new Setting(el).setName(translate('common')).setHeading();
