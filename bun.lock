@@ -44,7 +44,7 @@
         "node-diff3": "^3.2.1",
         "postcss-merge-rules": "^8.0.1",
         "solid-js": "^1.9.13",
-        "synthkernel": "./synthkernel.tgz",
+        "synthkernel": "^0.1.0",
         "uni-kv": "../../uni-kv.tgz",
         "unocss": "66.7.2",
         "unplugin-solid": "^1.0.0",
@@ -601,7 +601,7 @@
 
     "style-mod": ["style-mod@4.1.3", "", {}, "sha512-i/n8VsZydrugj3Iuzll8+x/00GH2vnYsk1eomD8QiRrSAeW6ItbCQDtfXCeJHd0iwiNagqjQkvpvREEPtW3IoQ=="],
 
-    "synthkernel": ["synthkernel@./synthkernel.tgz", {}, "sha512-TGw6SrekeU/HTTvtbiZX59bhaufOKvFsPwPTpTXsy/eBNvBltpwjLuQ628APLVjDGWaTyZlbAGHy7YWtISeNyw=="],
+    "synthkernel": ["synthkernel@0.1.0", "", {}, "sha512-TlWHdO9mpbDCcd3GfYZyQdrhUW41qyk33h8rMFdj48+rdcoyYzXLTraffIoKDUjFqD+J0hDiAFLjMpxrWR5dhg=="],
 
     "tinyexec": ["tinyexec@1.2.4", "", {}, "sha512-SHf/r48b7vOrjve9PxJo3MN5v5yuyjHvdUcrQffT3WXMUfnGmHDVbC4k3sHJaJTgZCwpUplIaAo5ANtMyp3YHg=="],
 

@@ -52,9 +52,9 @@ const pluginConfig = defineConfig({
 	format: 'cjs',
 	inputOptions: {
 		resolve: {
-			alias: {
-				'solid-js/web': 'solid-js/web/dist/web.js',
-			},
+			aliasFields: [['browser']],
+			conditionNames: ['browser'],
+			mainFields: ['browser', 'module', 'main'],
 		},
 	},
 	outDir: 'dist',

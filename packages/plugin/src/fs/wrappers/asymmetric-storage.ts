@@ -108,16 +108,21 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 
 	async move(oldKey: string, newKey: string) {
 		const bothFolder = isFolderKey(oldKey) && isFolderKey(newKey);
+		const moveAnchor = () => {
+			const oldAnchor = this.ensureAnchor(oldKey);
+			this.deleteMapping(oldKey, oldAnchor);
+			this.registerMapping(newKey, oldAnchor);
+		};
 		const flattenedOldKey = this.flattenKey(oldKey);
 		const flattenedNewKey = bothFolder
 			? this.flattenFolderKey(newKey, this.ensureAnchor(oldKey))
 			: this.flattenKey(newKey);
-		if (flattenedOldKey === flattenedNewKey) return;
+		if (flattenedOldKey === flattenedNewKey) {
+			if (bothFolder) moveAnchor();
+			return;
+		}
 		await this.original.move(flattenedOldKey, flattenedNewKey);
-		if (!bothFolder) return;
-		const oldAnchor = this.ensureAnchor(oldKey);
-		this.deleteMapping(oldKey, oldAnchor);
-		this.registerMapping(newKey, oldAnchor);
+		if (bothFolder) moveAnchor();
 	}
 
 	async mkdir(key: string, recursive?: boolean) {

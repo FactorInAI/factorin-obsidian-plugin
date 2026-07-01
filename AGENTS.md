@@ -23,3 +23,4 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 - For mobile compatibility, Node.js API prohibited.
 - Sentence case for UI text.
 - All Obsidian API mocks go `packages/shared/src/obsidian-mock.ts`.
+- Use inline Tailwind CSS for common styling, only use semantic CSS for animations and complex compositions.

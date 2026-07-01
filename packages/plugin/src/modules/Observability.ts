@@ -165,14 +165,15 @@ export default class Observability {
 
 	readonly start = () => {
 		this.setupCommands();
-		const startIcon = this.ctx.addRibbonIcon('refresh-ccw', this.t('startSync'), () =>
-			this.ctx.requestSync('manual'),
-		);
-		const stopIcon = this.ctx.addRibbonIcon('square', this.t('stopSync'), () =>
-			this.ctx.dispatch('syncCanceled'),
+		const { requestSync, dispatch, isIdle, addRibbonIcon } = this.ctx;
+		const startIcon = addRibbonIcon('refresh-ccw', this.t('startSync'), () => {
+			if (isIdle()) requestSync('manual');
+		});
+		const stopIcon = addRibbonIcon('square', this.t('stopSync'), () =>
+			dispatch('syncCanceled'),
 		);
 		this.cleanupCallbacks.push(
-			this.ctx.isIdle.subscribe(
+			isIdle.subscribe(
 				(idle) => {
 					if (idle) {
 						startIcon.removeAttribute('aria-disabled');
@@ -269,7 +270,7 @@ export default class Observability {
 }
 
 export function roundPercent(completed: number, total: number) {
-	return Math.round((completed / total || 1) * 10_000) / 100;
+	return Math.round((completed / (total || 1)) * 10_000) / 100;
 }
 
 async function exportLogs(log: string, app: App) {

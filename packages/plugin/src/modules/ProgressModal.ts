@@ -2,11 +2,10 @@ import type { Events, Translations } from '@';
 import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
 import { Modal, Setting } from 'obsidian';
-import { computed } from 'synthkernel';
-import type { FileTreeSelectionController } from '@/components/fileTree';
+import { computed, hook } from 'synthkernel';
 import type { BaseTask, RemoveLocal, TaskNames } from '@/sync';
 import type { Progress } from '@/types';
-import { mount as mountFileTree } from '@/components/fileTree';
+import mountFileTree from '@/components/file-tree';
 import renderFailedTasks from '@/components/render-failed-tasks';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
@@ -20,10 +19,10 @@ export type DeleteConfirmReturn = {
 };
 
 export default class ProgressModal extends Modal {
-	private readonly modalCleanupCallbacks: Array<() => void> = [];
 	private readonly moduleCleanupCallbacks: Array<() => void> = [];
 	private readonly t: Translate<Translations>;
 	private opening = false;
+	private readonly modalCleanupCallbacks = hook();
 	private readonly dispatch: Dispatch<Events>;
 	private description?: HTMLParagraphElement;
 	private detailContainer?: HTMLDivElement;
@@ -66,38 +65,45 @@ export default class ProgressModal extends Modal {
 				this.showDetails();
 			}),
 			ctx.on('requestConfirmDelete', (tasks) => {
-				if (!this.opening) this.open();
-				let controller: FileTreeSelectionController;
-				const unmount = mountFileTree(this.detailContainer as HTMLDivElement, {
-					controllerRef: (ctlr) => (controller = ctlr),
+				let shouldClose = false;
+				if (!this.opening) {
+					this.open();
+					shouldClose = true;
+				}
+				const { unmount, getState } = mountFileTree(
+					this.detailContainer as HTMLDivElement,
 					tasks,
-				});
+				);
+				const cleanupUnmount = this.modalCleanupCallbacks.subscribe(unmount);
 				this.description?.setText(this.t('confirmDeleteDescription'));
 				this.showDetails();
 				this.renderConfirmCancel(() => {
-					const { selectedTasks, unselectedTasks } = controller.getSnapshot();
+					const { selected, deselected } = getState();
 					this.hideDetails();
 					unmount();
+					cleanupUnmount();
 					this.dispatch('deleteConfirmed', {
-						delete: selectedTasks as Array<RemoveLocal>,
-						reupload: unselectedTasks as Array<RemoveLocal>,
+						delete: selected as Array<RemoveLocal>,
+						reupload: deselected as Array<RemoveLocal>,
 					});
+					if (shouldClose) this.close();
 				});
 			}),
 			ctx.on('requestConfirmTasks', (tasks) => {
 				if (!this.opening) this.open();
-				let controller: FileTreeSelectionController;
-				const unmount = mountFileTree(this.detailContainer as HTMLDivElement, {
-					controllerRef: (ctlr) => (controller = ctlr),
+				const { unmount, getState } = mountFileTree(
+					this.detailContainer as HTMLDivElement,
 					tasks,
-				});
+				);
+				const cleanupUnmount = this.modalCleanupCallbacks.subscribe(unmount);
 				this.description?.setText(this.t('confirmTasksDescription'));
 				this.showDetails();
 				this.renderConfirmCancel(() => {
-					const { selectedTasks } = controller.getSnapshot();
+					const { selected } = getState();
 					this.hideDetails();
 					unmount();
-					this.dispatch('tasksConfirmed', selectedTasks);
+					cleanupUnmount();
+					this.dispatch('tasksConfirmed', selected);
 				});
 			}),
 		);
@@ -116,6 +122,7 @@ export default class ProgressModal extends Modal {
 		confirmTasksDescription: string;
 		hide: string;
 		confirm: string;
+		cancel: string;
 		done: string;
 		stopSync: string;
 	} & Record<TaskNames | SyncStage, string>;
@@ -126,29 +133,38 @@ export default class ProgressModal extends Modal {
 		const setting = new Setting(this.contentEl);
 		this.controls = setting.settingEl;
 		setting
-			.addButton((button) => button.setButtonText(this.t('hide')).onClick(() => this.close()))
 			.addButton((button) => {
 				button
 					.setButtonText(this.t('stopSync'))
-					.setDestructive()
+					.setWarning()
 					.onClick(() => this.dispatch('syncCanceled'));
-			});
+			})
+			.addButton((button) =>
+				button.setButtonText(this.t('hide')).onClick(() => this.close()),
+			);
 	};
 	private readonly renderConfirmCancel = (confirmCallback: () => void) => {
 		if (!this.opening) return;
 		this.controls?.remove();
 		const setting = new Setting(this.contentEl);
 		this.controls = setting.settingEl;
+		const cleanup = this.modalCleanupCallbacks.subscribe(() => this.dispatch('syncCanceled'));
 		setting
-			.addButton((button) =>
-				button.setButtonText(this.t('confirm')).setCta().onClick(confirmCallback),
-			)
 			.addButton((button) => {
 				button
-					.setButtonText(this.t('stopSync'))
-					.setDestructive()
-					.onClick(() => this.dispatch('syncCanceled'));
-			});
+					.setButtonText(this.t('cancel'))
+					.setWarning()
+					.onClick(() => this.close());
+			})
+			.addButton((button) =>
+				button
+					.setButtonText(this.t('confirm'))
+					.setCta()
+					.onClick(() => {
+						cleanup();
+						confirmCallback();
+					}),
+			);
 	};
 	private readonly renderDone = () => {
 		if (!this.opening) return;
@@ -241,7 +257,7 @@ export default class ProgressModal extends Modal {
 			cls: 'text-3 text-[var(--text-muted)] ml-auto whitespace-nowrap ml-2',
 		});
 		const progressBarContainer = progressSection.createDiv({
-			cls: 'relative h-5 bg-[var(--background-secondary)] rounded overflow-hidden',
+			cls: 'relative h-5 bg-[var(--background-secondary)] rounded overflow-hidden border border-[var(--background-modifier-border)]',
 		});
 		const progressBar = progressBarContainer.createDiv({
 			cls: 'absolute h-full bg-[var(--interactive-accent)] w-0 transition-width',
@@ -250,10 +266,10 @@ export default class ProgressModal extends Modal {
 			cls: 'whitespace-pre-line hidden mt-2 mb-0',
 		});
 		this.detailContainer = container.createDiv({
-			cls: 'sync-engine-detail-container hidden',
+			cls: 'max-h-[50vh] overflow-y-auto rounded-lg border border-[var(--background-modifier-border)] bg-[var(--background-secondary)] p-2 hidden',
 		});
 
-		this.modalCleanupCallbacks.push(
+		this.modalCleanupCallbacks.subscribe(
 			progress.subscribe(
 				({ completed, current, percent, total }) => {
 					if (completed !== undefined && total !== undefined)
@@ -263,8 +279,8 @@ export default class ProgressModal extends Modal {
 				},
 				{ immediate: true },
 			),
-			() => progress.dispose(),
 		);
+		this.modalCleanupCallbacks.subscribe(progress.dispose);
 		this.opening = true;
 	}
 
@@ -282,7 +298,8 @@ export default class ProgressModal extends Modal {
 		this.description = undefined;
 		this.detailContainer = undefined;
 		this.controls = undefined;
-		this.cleanup(this.modalCleanupCallbacks);
+		this.modalCleanupCallbacks();
+		this.modalCleanupCallbacks.clear();
 	}
 
 	dispose() {

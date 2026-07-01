@@ -124,9 +124,9 @@ export default class Sync {
 		let failedCount = 0;
 		let tasks: Array<BaseTask>;
 		const isCancelled = () => cancelled;
+		const unsub = this.on('syncCanceled', () => (cancelled = true));
 		try {
 			this.dispatch('syncStarted', { isCancelled, trigger });
-			this.on('syncCanceled', () => (cancelled = true));
 
 			const { record, localFs, remoteFs } = await this.ctx.initializeSync();
 			const traverseRemote = async () => {
@@ -148,14 +148,16 @@ export default class Sync {
 				return await traverseRemote();
 			};
 			const [localList, remoteList] = await Promise.all([localFs.list('/'), getRemoteList()]);
+			if (cancelled) throw syncCancelledError;
 			const records = await record.getRecords();
 			const localStats = this.postProcess(localList);
 			const remoteStats = this.postProcess(remoteList);
 			this.dispatch(
 				'log',
-				`Local ${localStats.size} items, remote ${remoteStats.size} items, record ${records.size} items.`,
+				`Local ${localStats.size} item(s), remote ${remoteStats.size} item(s), record ${records.size} item(s).`,
 			);
 
+			if (cancelled) throw syncCancelledError;
 			const taskFactory = createTaskFactory(
 				{ localFs, record, remoteFs },
 				this.ctx.translate,
@@ -172,7 +174,7 @@ export default class Sync {
 				this.dispatch('syncTerminated', { result: 'noop' });
 				return;
 			}
-			this.dispatch('log', `Planning finished with ${tasks.length} tasks.`);
+			this.dispatch('log', `Planning finished with ${tasks.length} task(s).`);
 
 			const [nonDisplayableTasks, displayableTasks] = partition(
 				tasks,
@@ -183,7 +185,7 @@ export default class Sync {
 				this.settings.confirmTasksInSync &&
 				displayableTasks.length !== 0
 			) {
-				const confirmResult = await this.confirmTasks(tasks);
+				const confirmResult = await this.confirmTasks(displayableTasks);
 				tasks = [...nonDisplayableTasks, ...confirmResult];
 			}
 
@@ -197,14 +199,15 @@ export default class Sync {
 				this.settings.confirmDeleteInAutoSync &&
 				removeLocalTasks.length !== 0
 			) {
-				const confirmResult = await this.confirmDeletion(removeLocalTasks);
+				const { delete: deleted, reupload } = await this.confirmDeletion(removeLocalTasks);
 				tasks = [
-					...confirmResult.delete,
-					...(await this.convertDeleteToUpload(confirmResult.reupload, localFs)),
+					...deleted,
+					...(await this.convertDeleteToUpload(reupload, localFs)),
 					...otherTasks,
 				];
 			}
 
+			if (cancelled) throw syncCancelledError;
 			this.dispatch('executionStarted', tasks);
 			await Promise.all(
 				tasks.map(async (task) => {
@@ -232,6 +235,8 @@ export default class Sync {
 			if (cancelled) this.dispatch('syncTerminated', { result: 'cancelled' });
 			else
 				this.dispatch('syncTerminated', { error: toErrorMessage(error), result: 'failed' });
+		} finally {
+			unsub();
 		}
 	};
 

@@ -4,6 +4,7 @@ const en: Translations = {
 	addRecord: 'Add record',
 	awaitingConfirmation: 'Awaiting confirmation',
 	bidirectional: 'Bidirectional',
+	cancel: 'Cancel',
 	cancelled: 'Cancelled',
 	completed: 'Completed',
 	completedNoop: 'Already synced',
