@@ -215,7 +215,9 @@ export default class ProgressModal extends Modal {
 					const { completed, current, total } = this.ctx.executionProgress();
 					return {
 						completed,
-						current: current ? `${this.t(current.name)} ${current.key}` : undefined,
+						current: current
+							? `${this.t(current.name)} ${current.key}`
+							: this.t('executing'),
 						percent: roundPercent(completed, total),
 						total,
 					};
@@ -290,7 +292,10 @@ export default class ProgressModal extends Modal {
 
 	root = {
 		hideProgress: this.close.bind(this),
-		showProgress: this.open.bind(this),
+		showProgress: () => {
+			this.open();
+			this.renderHideStop();
+		},
 	};
 
 	onClose() {

@@ -1,181 +1,190 @@
+import type { Settings } from '@';
 import { Setting } from 'obsidian';
-import t from '@/i18n-old';
+import type { Translate } from '@/modules/I18n';
 import { ConflictStrategy, UnmergeableStrategy } from '@/types';
-import { UserInputType, generateSettingEntry } from './generate-setting-entry';
-import BaseSettings from './settings.base';
+import { generateSettingEntry } from './generate-entry';
 
-export default class CommonSettings extends BaseSettings {
-	display() {
-		this.containerEl.empty();
-		new Setting(this.containerEl).setName(t('settings.sections.common')).setHeading();
+export type CommonSettingTranslations = {
+	common: string;
+	conflictStrategy: string;
+	conflictStrategyDescription: string;
+	diffMatchPatch: string;
+	latestTimestamp: string;
+	keepLocal: string;
+	keepRemote: string;
+	skip: string;
+	unmergeableStrategy: string;
+	unmergeableStrategyDescription: string;
+	useGitStyle: string;
+	useGitStyleDescription: string;
+	noticeStatusOnMobile: string;
+	noticeStatusOnMobileDescription: string;
+	confirmTasksInSync: string;
+	confirmTasksInSyncDescription: string;
+	confirmDeleteInAutoSync: string;
+	confirmDeleteInAutoSyncDescription: string;
+	realtimeSyncFastMode: string;
+	realtimeSyncFastModeDescription: string;
+	realtimeSync: string;
+	realtimeSyncDescription: string;
+	realtimeSyncPlaceholder: string;
+	startupSync: string;
+	startupSyncDescription: string;
+	startupSyncPlaceholder: string;
+	scheduledSync: string;
+	scheduledSyncDescription: string;
+	scheduledSyncPlaceholder: string;
+	invalidValue: string;
+};
 
-		new Setting(this.containerEl)
-			.setName(t('settings.conflictStrategy.name'))
-			.setDesc(t('settings.conflictStrategy.desc'))
+export default function commonSettings(
+	el: HTMLElement,
+	ctx: {
+		translate: Translate<CommonSettingTranslations>;
+		saveSettings: () => Promise<void>;
+		rerenderSettingTab: () => void;
+		startScheduledSync: () => void;
+		stopScheduledSync: () => void;
+	},
+	settings: Settings,
+) {
+	const { translate, saveSettings, rerenderSettingTab, startScheduledSync, stopScheduledSync } =
+		ctx;
+	const invalidValue = translate('invalidValue');
+
+	new Setting(el).setName(translate('common')).setHeading();
+
+	new Setting(el)
+		.setName(translate('conflictStrategy'))
+		.setDesc(translate('conflictStrategyDescription'))
+		.addDropdown((dropdown) =>
+			dropdown
+				.addOption(ConflictStrategy.DiffMatchPatch, translate('diffMatchPatch'))
+				.addOption(ConflictStrategy.LatestTimeStamp, translate('latestTimestamp'))
+				.addOption(ConflictStrategy.KeepLocal, translate('keepLocal'))
+				.addOption(ConflictStrategy.KeepRemote, translate('keepRemote'))
+				.addOption(ConflictStrategy.Skip, translate('skip'))
+				.setValue(settings.conflictStrategy)
+				.onChange((value) => {
+					const nextValue = value as ConflictStrategy;
+					const originalValue = settings.conflictStrategy;
+					if (nextValue === originalValue) return;
+					settings.conflictStrategy = nextValue;
+					void saveSettings();
+					if (
+						(originalValue === ConflictStrategy.DiffMatchPatch) !==
+						(nextValue === ConflictStrategy.DiffMatchPatch)
+					)
+						rerenderSettingTab();
+				}),
+		);
+
+	if (settings.conflictStrategy === ConflictStrategy.DiffMatchPatch)
+		new Setting(el)
+			.setName(translate('unmergeableStrategy'))
+			.setDesc(translate('unmergeableStrategyDescription'))
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption(
-						ConflictStrategy.DiffMatchPatch,
-						t('settings.conflictStrategy.diffMatchPatch'),
-					)
-					.addOption(
-						ConflictStrategy.LatestTimeStamp,
-						t('settings.conflictStrategy.latestTimestamp'),
-					)
-					.addOption(ConflictStrategy.KeepLocal, t('settings.conflictStrategy.keepLocal'))
-					.addOption(
-						ConflictStrategy.KeepRemote,
-						t('settings.conflictStrategy.keepRemote'),
-					)
-					.addOption(ConflictStrategy.Skip, t('settings.conflictStrategy.skip'))
-					.setValue(this.plugin.settings.conflictStrategy)
+					.addOption(UnmergeableStrategy.LatestTimeStamp, translate('latestTimestamp'))
+					.addOption(UnmergeableStrategy.KeepLocal, translate('keepLocal'))
+					.addOption(UnmergeableStrategy.KeepRemote, translate('keepRemote'))
+					.addOption(UnmergeableStrategy.Skip, translate('skip'))
+					.setValue(settings.unmergeableStrategy)
 					.onChange((value) => {
-						const originalValue = this.plugin.settings.conflictStrategy;
-						const newValue = value as ConflictStrategy;
-						if (newValue !== originalValue) {
-							this.plugin.settings.conflictStrategy = newValue;
-							void this.plugin.saveSettings();
-							if (
-								(originalValue === ConflictStrategy.DiffMatchPatch) !==
-								(newValue === ConflictStrategy.DiffMatchPatch)
-							)
-								this.display();
-						}
+						settings.unmergeableStrategy = value as UnmergeableStrategy;
+						void saveSettings();
 					}),
 			);
 
-		if (this.plugin.settings.conflictStrategy === ConflictStrategy.DiffMatchPatch)
-			new Setting(this.containerEl)
-				.setName(t('settings.unmergeableStrategy.name'))
-				.setDesc(t('settings.unmergeableStrategy.desc'))
-				.addDropdown((dropdown) =>
-					dropdown
-						.addOption(
-							UnmergeableStrategy.LatestTimeStamp,
-							t('settings.conflictStrategy.latestTimestamp'),
-						)
-						.addOption(
-							UnmergeableStrategy.KeepLocal,
-							t('settings.conflictStrategy.keepLocal'),
-						)
-						.addOption(
-							UnmergeableStrategy.KeepRemote,
-							t('settings.conflictStrategy.keepRemote'),
-						)
-						.addOption(UnmergeableStrategy.Skip, t('settings.conflictStrategy.skip'))
-						.setValue(this.plugin.settings.unmergeableStrategy)
-						.onChange((value) => {
-							this.plugin.settings.unmergeableStrategy = value as UnmergeableStrategy;
-							void this.plugin.saveSettings();
-						}),
-				);
+	new Setting(el)
+		.setName(translate('useGitStyle'))
+		.setDesc(translate('useGitStyleDescription'))
+		.addToggle((toggle) =>
+			toggle.setValue(settings.useGitStyle).onChange((value) => {
+				settings.useGitStyle = value;
+				void saveSettings();
+			}),
+		);
 
-		new Setting(this.containerEl)
-			.setName(t('settings.useGitStyle.name'))
-			.setDesc(t('settings.useGitStyle.desc'))
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.useGitStyle).onChange((value) => {
-					this.plugin.settings.useGitStyle = value;
-					void this.plugin.saveSettings();
-				}),
-			);
+	new Setting(el)
+		.setName(translate('noticeStatusOnMobile'))
+		.setDesc(translate('noticeStatusOnMobileDescription'))
+		.addToggle((toggle) =>
+			toggle.setValue(settings.noticeStatusOnMobile).onChange((value) => {
+				settings.noticeStatusOnMobile = value;
+				void saveSettings();
+			}),
+		);
 
-		new Setting(this.containerEl)
-			.setName(t('settings.showSyncStatusInNotificationOnMobile.name'))
-			.setDesc(t('settings.showSyncStatusInNotificationOnMobile.desc'))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showSyncStatusInNotificationOnMobile)
-					.onChange((value) => {
-						this.plugin.settings.showSyncStatusInNotificationOnMobile = value;
-						this.plugin.observabilityService.syncMobileNoticeWithSettings();
-						void this.plugin.saveSettings();
-					}),
-			);
+	new Setting(el)
+		.setName(translate('confirmTasksInSync'))
+		.setDesc(translate('confirmTasksInSyncDescription'))
+		.addToggle((toggle) =>
+			toggle.setValue(settings.confirmTasksInSync).onChange((value) => {
+				settings.confirmTasksInSync = value;
+				void saveSettings();
+			}),
+		);
 
-		new Setting(this.containerEl)
-			.setName(t('settings.confirmBeforeSync.name'))
-			.setDesc(t('settings.confirmBeforeSync.desc'))
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.confirmBeforeSync).onChange((value) => {
-					this.plugin.settings.confirmBeforeSync = value;
-					void this.plugin.saveSettings();
-				}),
-			);
+	new Setting(el)
+		.setName(translate('confirmDeleteInAutoSync'))
+		.setDesc(translate('confirmDeleteInAutoSyncDescription'))
+		.addToggle((toggle) =>
+			toggle.setValue(settings.confirmDeleteInAutoSync).onChange((value) => {
+				settings.confirmDeleteInAutoSync = value;
+				void saveSettings();
+			}),
+		);
 
-		new Setting(this.containerEl)
-			.setName(t('settings.confirmBeforeDeleteInAutoSync.name'))
-			.setDesc(t('settings.confirmBeforeDeleteInAutoSync.desc'))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.confirmBeforeDeleteInAutoSync)
-					.onChange((value) => {
-						this.plugin.settings.confirmBeforeDeleteInAutoSync = value;
-						void this.plugin.saveSettings();
-					}),
-			);
+	new Setting(el)
+		.setName(translate('realtimeSyncFastMode'))
+		.setDesc(translate('realtimeSyncFastModeDescription'))
+		.addToggle((toggle) =>
+			toggle.setValue(settings.realtimeSyncFastMode).onChange((value) => {
+				settings.realtimeSyncFastMode = value;
+				void saveSettings();
+			}),
+		);
 
-		new Setting(this.containerEl)
-			.setName(t('settings.fastRealtimeSync.name'))
-			.setDesc(t('settings.fastRealtimeSync.desc'))
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.fastRealtimeSync).onChange((value) => {
-					this.plugin.settings.fastRealtimeSync = value;
-					void this.plugin.saveSettings();
-				}),
-			);
+	generateSettingEntry({
+		container: el,
+		desc: translate('realtimeSyncDescription'),
+		field: settings.realtimeSync,
+		invalidValue,
+		name: translate('realtimeSync'),
+		placeholder: translate('realtimeSyncPlaceholder'),
+		saveSettings,
+		type: 'time',
+	});
 
-		new Setting(this.containerEl)
-			.setName(t('settings.exhaustiveRemoteTraversal.name'))
-			.setDesc(t('settings.exhaustiveRemoteTraversal.desc'))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.exhaustiveRemoteTraversal)
-					.onChange((value) => {
-						this.plugin.settings.exhaustiveRemoteTraversal = value;
-						void this.plugin.saveSettings();
-					}),
-			);
+	generateSettingEntry({
+		container: el,
+		desc: translate('startupSyncDescription'),
+		field: settings.startupSync,
+		invalidValue,
+		name: translate('startupSync'),
+		placeholder: translate('startupSyncPlaceholder'),
+		saveSettings,
+		type: 'time',
+	});
 
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.realtimeSync.desc'),
-			field: this.plugin.settings.realtimeSync,
-			name: t('settings.realtimeSync.name'),
-			placeholder: t('settings.realtimeSync.placeholder'),
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.Time,
-		});
-
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.startupSync.desc'),
-			field: this.plugin.settings.startupSync,
-			name: t('settings.startupSync.name'),
-			placeholder: t('settings.startupSync.placeholder'),
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.Time,
-		});
-
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.scheduledSync.desc'),
-			field: this.plugin.settings.scheduledSync,
-			name: t('settings.scheduledSync.name'),
-			onChange: () => {
-				const service = this.plugin.syncSchedulerService;
-				service.stopScheduledSync();
-				service.startScheduledSync();
-			},
-			onToggle: (enabled) => {
-				const service = this.plugin.syncSchedulerService;
-				if (enabled) service.startScheduledSync();
-				else service.stopScheduledSync();
-			},
-			placeholder: t('settings.scheduledSync.placeholder'),
-			rejectZero: true,
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.Time,
-		});
-	}
+	generateSettingEntry({
+		container: el,
+		desc: translate('scheduledSyncDescription'),
+		field: settings.scheduledSync,
+		invalidValue,
+		name: translate('scheduledSync'),
+		onChange: () => {
+			stopScheduledSync();
+			startScheduledSync();
+		},
+		onToggle: (enabled) => {
+			if (enabled) startScheduledSync();
+			else stopScheduledSync();
+		},
+		placeholder: translate('scheduledSyncPlaceholder'),
+		rejectZero: true,
+		saveSettings,
+		type: 'time',
+	});
 }

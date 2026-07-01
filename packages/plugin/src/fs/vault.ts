@@ -34,7 +34,7 @@ async function removeVaultFileIfExists(vault: Vault, path: string): Promise<void
 }
 
 function getTempPath(): string {
-	return `.trash/sync-engine-temp/${crypto.randomUUID()}.part`;
+	return `.trash/${crypto.randomUUID()}.part`;
 }
 
 function getTrashOption(vault: Vault): 'local' | undefined {
@@ -69,9 +69,7 @@ class VaultFs implements RootLocalFs {
 		const nativePath = toVaultPath(key);
 		const tempPath = getTempPath();
 		await ensureKeyDir(this.vault, dirname(key));
-
 		const reader = value.getReader();
-
 		try {
 			while (true) {
 				const result = await reader.read();

@@ -15,7 +15,6 @@ import Observability from './modules/Observability';
 import ProgressModal from './modules/ProgressModal';
 import Registrar from './modules/Registrar';
 import Scheduler from './modules/Scheduler';
-import SettingsModule from './modules/Settings';
 import Sync from './modules/Sync';
 
 function createGlobMatchOptions(expr: string) {
@@ -30,7 +29,6 @@ function createGlobMatchOptions(expr: string) {
 const internalModules = [
 	EventBus,
 	Extensibility,
-	SettingsModule,
 	Registrar,
 	I18n,
 	Sync,

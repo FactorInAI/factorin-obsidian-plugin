@@ -70,7 +70,7 @@ export default class Observability {
 		startNonInteractiveSync: string;
 		stopSync: string;
 		showProgress: string;
-		exportLogs: string;
+		exportLogsToFile: string;
 		exportLogsFailed: string;
 	};
 
@@ -252,7 +252,7 @@ export default class Observability {
 				},
 				icon: 'scroll-text',
 				id: 'export-logs',
-				name: this.t('exportLogs'),
+				name: this.t('exportLogsToFile'),
 			},
 		].forEach((command) => this.ctx.addCommand(command));
 
@@ -273,7 +273,7 @@ export function roundPercent(completed: number, total: number) {
 	return Math.round((completed / (total || 1)) * 10_000) / 100;
 }
 
-async function exportLogs(log: string, app: App) {
+export async function exportLogs(log: string, app: App) {
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const fileName = `${timestamp}.md`;
 	const dirPath = 'Sync Engine Logs';

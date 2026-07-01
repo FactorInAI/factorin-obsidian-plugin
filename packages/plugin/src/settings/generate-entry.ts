@@ -1,8 +1,6 @@
-import type WebDAVSyncPlugin from '@';
 import type { TextComponent } from 'obsidian';
 import { Notice, Setting } from 'obsidian';
-import type { TogglableValue, Settings } from '@/types';
-import t from '@/i18n-old';
+import type { TogglableValue } from '@/types';
 import { formatFileSize, formatTime, parseFileSize, parseTime } from '@/utils/unit-converter';
 
 export type InputType = 'number' | 'time' | 'fileSize';
@@ -20,17 +18,19 @@ export function generateSettingEntry({
 	rejectZero,
 	onChange,
 	onToggle,
+	invalidValue,
 }: {
 	container: HTMLElement;
 	name: string;
 	desc: string;
 	placeholder: string;
 	field: TogglableValue;
-	type: UserInputType;
+	type: InputType;
 	saveSettings: () => Promise<void>;
 	rejectZero?: boolean;
 	onChange?: (value: number) => void;
 	onToggle?: (value: boolean) => void;
+	invalidValue: string;
 }) {
 	new Setting(container)
 		.setClass('sync-engine-togglable-value')
@@ -48,7 +48,7 @@ export function generateSettingEntry({
 					(rejectZero && value === 0)
 				) {
 					text.inputEl.value = format(field.value, type);
-					new Notice(t('settings.invalidValue'));
+					new Notice(invalidValue);
 					return;
 				}
 				if (value !== field.value) {
@@ -71,58 +71,57 @@ export function generateSettingEntry({
 		});
 }
 
-export function handleInput<T extends keyof Settings>({
+export function handleInput<T, K extends string>({
 	text,
-	plugin,
-	field,
+	save,
 	processValue,
-	stringify = (value: Settings[T]) =>
-		typeof value === 'string'
-			? value
-			: typeof value === 'boolean' || typeof value === 'number'
-				? value.toString()
-				: '',
+	stringify = (value: T) => String(value),
+	key,
+	settingsObject,
+	invalidValue,
 }: {
 	text: TextComponent;
-	plugin: WebDAVSyncPlugin;
-	field: T;
-	processValue: (value: string) => Settings[T] | false;
-	stringify?: (value: Settings[T]) => string;
+	save: () => Promise<void>;
+	processValue: (value: string) => T | false;
+	key: K;
+	settingsObject: NoInfer<Record<K, T>>;
+	stringify?: (value: T) => string;
+	invalidValue: string;
 }) {
 	text.inputEl.addEventListener('blur', () => {
 		const value = processValue(text.getValue());
-		if (value === false) new Notice(t('settings.invalidValue'));
-		else if (plugin.settings[field] !== value) {
-			plugin.settings[field] = value;
-			void plugin.saveSettings();
+		if (value === false) new Notice(invalidValue);
+		else if (settingsObject[key] !== value) {
+			settingsObject[key] = value;
+			void save();
 		}
-		text.setValue(stringify(plugin.settings[field]));
+		text.setValue(stringify(settingsObject[key]));
 	});
 }
 
-function format(value: number, type: UserInputType): string {
+function format(value: number, type: InputType): string {
 	switch (type) {
-		case UserInputType.Number: {
+		case 'number': {
 			return value.toString();
 		}
-		case UserInputType.Time: {
+		case 'time': {
 			return formatTime(value);
 		}
-		case UserInputType.FileSize: {
+		case 'fileSize': {
 			return formatFileSize(value);
 		}
 	}
 }
 
-function parse(value: string, type: UserInputType): number | undefined {
+function parse(value: string, type: InputType): number | undefined {
 	switch (type) {
-		case UserInputType.Number: {
+		case 'number': {
 			return parseFloat(value);
 		}
-		case UserInputType.Time: {
+		case 'time': {
 			return parseTime(value);
 		}
-		case UserInputType.FileSize: {
+		case 'fileSize': {
 			return parseFileSize(value);
 		}
 	}

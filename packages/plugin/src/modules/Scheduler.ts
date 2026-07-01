@@ -132,5 +132,7 @@ export default class Scheduler {
 
 	root = {
 		requestSync: this.requestSync,
+		startScheduledSync: this.startScheduledSync,
+		stopScheduledSync: this.stopScheduledSync,
 	};
 }

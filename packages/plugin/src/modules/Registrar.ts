@@ -1,5 +1,6 @@
-import type { App } from 'obsidian';
+import type { App, Plugin } from 'obsidian';
 import { hash } from '@repo/shared';
+import { PluginSettingTab } from 'obsidian';
 import { deleteMemoryDB, openIndexedDB, openMemoryDB } from 'uni-kv';
 import type { BatchOptimizer, LocalFs, RemoteFs, RootRemoteFs } from '@/fs';
 import type { Decider } from '@/sync';
@@ -43,13 +44,18 @@ export type SyncTriggerEntry = {
 	getRemoteList?: RemoteListGetter;
 	priority: number;
 };
-type RemoteOptimizerEntry = { optimizer: BatchOptimizer<RemoteFs>; fsBind?: string };
+export type RemoteOptimizerEntry = { optimizer: BatchOptimizer<RemoteFs>; fsBind?: string };
+export type SettingEntry = {
+	order: number;
+	render: (el: HTMLElement) => void;
+};
 
 export type Infras = { localFs: LocalFs; remoteFs: RemoteFs; record: SyncRecord };
 
 export default class Registrar {
 	private readonly memoryDB = openMemoryDB<MemoryDBSchema, MemoryDBMeta>(STORAGE_NAME);
 	private readonly indexedDB = openIndexedDB<IndexedDBSchema, IndexedDBMeta>(STORAGE_NAME);
+	private settingTab?: SettingTab;
 
 	private readonly localFsWrapperRegistry = new Set<LocalFsWrapperEntry>();
 	private readonly remoteFsWrapperRegistry = new Set<RemoteFsWrapperEntry>();
@@ -58,6 +64,8 @@ export default class Registrar {
 	private readonly remoteFsRegistry = new Map<string, RemoteFsEntry>();
 	private readonly deciderRegistry = new Map<string, DeciderEntry>();
 	private readonly syncTriggerRegistry = new Map<string, SyncTriggerEntry>();
+	private readonly settingRegistry = new Set<SettingEntry>();
+
 	declare readonly settings: { remoteFs: string; decider: string };
 
 	constructor(private readonly ctx: { app: App }) {}
@@ -93,6 +101,10 @@ export default class Registrar {
 	private readonly registerSyncTrigger = (id: string, entry: SyncTriggerEntry) => {
 		this.syncTriggerRegistry.set(id, entry);
 		return () => this.syncTriggerRegistry.delete(id);
+	};
+	private readonly registerSetting = (entry: SettingEntry) => {
+		this.settingRegistry.add(entry);
+		return () => this.settingRegistry.delete(entry);
 	};
 
 	private readonly createLocalFs = () => {
@@ -167,7 +179,14 @@ export default class Registrar {
 		return { localFs, record, remoteFs };
 	};
 
+	private readonly addSettingTab = (plugin: Plugin) => {
+		this.settingTab = new SettingTab(plugin, this.settingRegistry);
+		plugin.addSettingTab(this.settingTab);
+	};
+	private readonly rerenderSettingTab = () => this.settingTab?.display();
+
 	root = {
+		addSettingTab: this.addSettingTab,
 		createLocalFs: this.createLocalFs,
 		createRemoteFs: this.createRemoteFs,
 		getDecider: this.getDecider,
@@ -184,11 +203,29 @@ export default class Registrar {
 		registerRemoteFs: this.registerRemoteFs,
 		registerRemoteFsWrapper: this.registerRemoteFsWrapper,
 		registerRemoteOptimizer: this.registerRemoteOptimizer,
+		registerSetting: this.registerSetting,
 		registerSyncTrigger: this.registerSyncTrigger,
+		rerenderSettingTab: this.rerenderSettingTab,
 	};
 
 	dispose() {
 		deleteMemoryDB(STORAGE_NAME);
 		this.indexedDB.then((db) => db.dispose());
+	}
+}
+
+class SettingTab extends PluginSettingTab {
+	constructor(
+		plugin: Plugin,
+		private readonly settingRegistry: Set<SettingEntry>,
+	) {
+		super(plugin.app, plugin);
+	}
+
+	display(): void {
+		this.containerEl.empty();
+		const sorted: Record<number, (el: HTMLElement) => void> = {};
+		for (const { order, render } of this.settingRegistry) sorted[order] = render;
+		for (const render of Object.values(sorted)) render(this.containerEl);
 	}
 }

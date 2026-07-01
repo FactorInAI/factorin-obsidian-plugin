@@ -1,69 +1,79 @@
-import { Notice, Setting } from 'obsidian';
-import { createVaultFs, createWebdavFs } from '@/fs';
-import t from '@/i18n-old';
+import { hash } from '@repo/shared';
+import { App, Notice, Setting } from 'obsidian';
+import type { LocalFs, RemoteFs } from '@/fs';
+import type { Translate } from '@/modules/I18n';
+import { exportLogs } from '@/modules/Observability';
 import { clearAllStorage, clearStorageNamespace } from '@/storage';
-import { getStateKey } from '@/sync';
-import logger from '@/utils/logger';
-import BaseSettings from './settings.base';
 
-export default class DevelopmentSettings extends BaseSettings {
-	display() {
-		this.containerEl.empty();
-		new Setting(this.containerEl).setName(t('settings.sections.development')).setHeading();
+export type DevelopmentSettingTranslations = {
+	development: string;
+	vaultRecordsCleared: string;
+	clearVaultRecords: string;
+	clearAllRecords: string;
+	allRecordsCleared: string;
+	clearRecords: string;
+	clearRecordsDescription: string;
+	exportLogs: string;
+	exportLogsDescription: string;
+	exportLogsToFile: string;
+};
 
-		new Setting(this.containerEl)
-			.setName(t('settings.clearRecords.name'))
-			.setDesc(t('settings.clearRecords.desc'))
-			.addButton((button) =>
-				button
-					.setButtonText(t('settings.clearRecords.vaultButton'))
-					.onClick(() => void this.clearVaultRecords()),
-			)
-			.addButton((button) =>
-				button
-					.setButtonText(t('settings.clearRecords.allButton'))
-					.onClick(() => void this.clearAllRecords()),
-			);
+export default function developmentSettings(
+	el: HTMLElement,
+	ctx: {
+		translate: Translate<DevelopmentSettingTranslations>;
+		createLocalFs: () => LocalFs;
+		createRemoteFs: () => RemoteFs;
+		getLogs: () => string;
+		app: App;
+	},
+) {
+	const { translate, getLogs, app } = ctx;
+	new Setting(el).setName(translate('development')).setHeading();
 
-		new Setting(this.containerEl)
-			.setName(t('settings.log.name'))
-			.setDesc(t('settings.log.desc'))
-			.addButton((button) => {
-				button.setButtonText(t('settings.log.saveToNote')).onClick(() => {
-					void this.saveLogsToNote();
-				});
+	new Setting(el)
+		.setName(translate('clearRecords'))
+		.setDesc(translate('clearRecordsDescription'))
+		.addButton((button) =>
+			button
+				.setButtonText(translate('clearVaultRecords'))
+				.onClick(() => void clearVaultRecords(ctx)),
+		)
+		.addButton((button) =>
+			button
+				.setButtonText(translate('clearAllRecords'))
+				.onClick(() => void clearAllRecords(ctx)),
+		);
+
+	new Setting(el)
+		.setName(translate('exportLogs'))
+		.setDesc(translate('exportLogsDescription'))
+		.addButton((button) => {
+			button.setButtonText(translate('exportLogsToFile')).onClick(() => {
+				void exportLogs(getLogs(), app);
 			});
-	}
+		});
+}
 
-	private async clearVaultRecords() {
-		const namespace = getStateKey(createWebdavFs(this.plugin), createVaultFs(this.plugin));
-		await clearStorageNamespace(namespace);
-		new Notice(t('settings.clearRecords.vaultCleared'));
-	}
+async function clearVaultRecords({
+	createLocalFs,
+	createRemoteFs,
+	translate,
+}: {
+	createLocalFs: () => LocalFs;
+	createRemoteFs: () => RemoteFs;
+	translate: Translate<DevelopmentSettingTranslations>;
+}) {
+	const namespace = hash(`${createLocalFs().getUid()}~~${createRemoteFs().getUid()}`);
+	await clearStorageNamespace(namespace);
+	new Notice(translate('vaultRecordsCleared'));
+}
 
-	private async clearAllRecords() {
-		await clearAllStorage();
-		new Notice(t('settings.clearRecords.allCleared'));
-	}
-
-	async saveLogsToNote() {
-		try {
-			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-			const fileName = `${timestamp}.md`;
-			const dirPath = 'WebDAV Sync Logs';
-			const filePath = `${dirPath}/${fileName}`;
-			const content = logger.exportMarkdownReport();
-
-			const folderExists = this.app.vault.getFolderByPath(dirPath);
-			if (!folderExists) await this.app.vault.createFolder(dirPath);
-
-			const file = await this.app.vault.create(filePath, content);
-			new Notice(t('settings.log.savedToNote', { fileName: filePath }));
-
-			await this.app.workspace.getLeaf().openFile(file);
-		} catch (error) {
-			new Notice(t('settings.log.saveError'));
-			logger.error('Failed to export support report', error);
-		}
-	}
+async function clearAllRecords({
+	translate,
+}: {
+	translate: Translate<DevelopmentSettingTranslations>;
+}) {
+	await clearAllStorage();
+	new Notice(translate('allRecordsCleared'));
 }

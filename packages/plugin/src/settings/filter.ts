@@ -1,49 +1,57 @@
-import { Setting } from 'obsidian';
+import type { Settings } from '@';
+import { App, Setting } from 'obsidian';
+import type { FilterEditorTranslations } from '@/components/FilterEditorModal';
+import type { Translate } from '@/modules/I18n';
 import FilterEditorModal from '@/components/FilterEditorModal';
-import t from '@/i18n-old';
-import BaseSettings from './settings.base';
 
-export default class FilterSettings extends BaseSettings {
-	display() {
-		this.containerEl.empty();
-		new Setting(this.containerEl).setName(t('settings.sections.filters')).setHeading();
+type FilterSettingTranslations = {
+	filterRules: string;
+	edit: string;
+} & FilterEditorTranslations;
 
-		// Inclusion
-		new Setting(this.containerEl)
-			.setName(t('settings.filters.include.name'))
-			.setDesc(t('settings.filters.include.desc'))
-			.addButton((button) => {
-				button.setButtonText(t('settings.filters.edit')).onClick(() => {
-					new FilterEditorModal(
-						this.plugin,
-						(filters) => {
-							this.plugin.settings.filterRules.inclusionRules = filters;
-							this.display();
-							void this.plugin.saveSettings();
-						},
-						FilterEditorModal.FilterType.Include,
-						this.plugin.settings.filterRules.inclusionRules,
-					).open();
-				});
+export default function filterSettings(
+	el: HTMLElement,
+	ctx: {
+		translate: Translate<FilterSettingTranslations>;
+		saveSettings: () => Promise<void>;
+		app: App;
+	},
+	settings: Settings,
+) {
+	const { saveSettings, translate } = ctx;
+	new Setting(el).setName(translate('filterRules')).setHeading();
+
+	new Setting(el)
+		.setName(translate('inclusionRules'))
+		.setDesc(translate('inclusionRulesDescription'))
+		.addButton((button) => {
+			button.setButtonText(translate('edit')).onClick(() => {
+				new FilterEditorModal(
+					(filters) => {
+						settings.inclusionRules = filters;
+						void saveSettings();
+					},
+					'include',
+					ctx,
+					settings.inclusionRules,
+				).open();
 			});
+		});
 
-		// Exclusion
-		new Setting(this.containerEl)
-			.setName(t('settings.filters.exclude.name'))
-			.setDesc(t('settings.filters.exclude.desc'))
-			.addButton((button) => {
-				button.setButtonText(t('settings.filters.edit')).onClick(() => {
-					new FilterEditorModal(
-						this.plugin,
-						(filters) => {
-							this.plugin.settings.filterRules.exclusionRules = filters;
-							this.display();
-							void this.plugin.saveSettings();
-						},
-						FilterEditorModal.FilterType.Exclude,
-						this.plugin.settings.filterRules.exclusionRules,
-					).open();
-				});
+	new Setting(el)
+		.setName(translate('exclusionRules'))
+		.setDesc(translate('exclusionRulesDescription'))
+		.addButton((button) => {
+			button.setButtonText(translate('edit')).onClick(() => {
+				new FilterEditorModal(
+					(filters) => {
+						settings.exclusionRules = filters;
+						void saveSettings();
+					},
+					'exclude',
+					ctx,
+					settings.exclusionRules,
+				).open();
 			});
-	}
+		});
 }

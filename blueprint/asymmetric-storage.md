@@ -2,14 +2,14 @@
 
 ## Context
 
-Asymmetric storage means that the file structure at remote differs from the real hierarchies at local.
+Asymmetric storage means that the file structure at remote differs from real hierarchies at local.
 
 Symmetric hierarchal file storage on both local and remote has significant drawbacks regarding query speed, request frequency, and obfuscation:
 
 - during traversal, the APP needs to recursively traverse nested folders, the minimum time complexity is O(depth) when all folders of the same depth are traversed concurrently.
 - the APP needs to make network request for each folder, may reach rate limit.
 - during execution, the APP needs to care about folder hierarchies, the minimum time complexity is O(existing depth - target depth) with complex concurrency optimization.
-- the encrypted remote file structure mirrors the unencrypted shape, and files with the same basename always have the same ciphertext file name according to [current encryption schema](./encryption.md), which signals insufficient obfuscation.
+- the encrypted remote file structure mirrors the unencrypted shape, and files with the same basename always have the same ciphertext name according to [current encryption schema](./encryption.md), which signals insufficient obfuscation.
 
 Even classical asymmetric storage in _object storage_ (flat entries, file path as keys) has drawbacks:
 
@@ -17,7 +17,7 @@ Even classical asymmetric storage in _object storage_ (flat entries, file path a
 - the flat shape is decoupled from the real shape, making structural drift possible.
 - when a folder is renamed, all descendants need cascade renaming.
 
-Due to the reasons above, with respect to the fact that most users don't care about remote shape when syncing (they can disable if they'd like to), **asymmetric storage with hierarchal anchors** is proposed to eliminate all the frictions.
+Due to the reasons above, with respect to the fact that most users don't care about remote shape when syncing (they can disable if they'd like to), **Asymmetric Storage with Hierarchal Anchors™** is proposed to eliminate all the frictions.
 
 ## Mechanism
 

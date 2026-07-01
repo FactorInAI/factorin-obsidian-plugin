@@ -15,7 +15,8 @@ export type MemoryControlSharedState = {
 const STREAM_RESERVATION_SIZE = 4 * 1024 * 1024;
 
 function canReserve(state: MemoryControlSharedState, size: number) {
-	return state.memoryConsumption + size <= state.maxMemory;
+	const { memoryConsumption, maxMemory } = state;
+	return memoryConsumption + size <= maxMemory || memoryConsumption === 0;
 }
 
 function insertHangingOperation(state: MemoryControlSharedState, operation: HangingOperation) {

@@ -1,42 +1,48 @@
-import type WebDAVSyncPlugin from '@';
-import { Modal, Setting } from 'obsidian';
+import { App, Modal, Setting } from 'obsidian';
+import type { Translate } from '@/modules/I18n';
 import type { GlobMatchOptions } from '@/types';
-import t from '@/i18n-old';
 
-enum FilterType {
-	Include = 'include',
-	Exclude = 'exclude',
-}
+type FilterType = 'include' | 'exclude';
+
+export type FilterEditorTranslations = {
+	cancel: string;
+	remove: string;
+	save: string;
+	add: string;
+	inclusionRules: string;
+	exclusionRules: string;
+	inclusionRulesDescription: string;
+	exclusionRulesDescription: string;
+	filterPlaceholder: string;
+};
 
 export default class FilterEditorModal extends Modal {
-	static readonly FilterType = FilterType;
-
-	filters: Array<GlobMatchOptions>;
+	private readonly filters: Array<GlobMatchOptions>;
+	private readonly t: Translate<FilterEditorTranslations>;
 
 	constructor(
-		plugin: WebDAVSyncPlugin,
 		private readonly onSave: (filters: Array<GlobMatchOptions>) => void,
-		private readonly filterType: FilterType = FilterType.Exclude,
+		private readonly filterType: FilterType,
+		ctx: {
+			app: App;
+			translate: Translate<FilterEditorTranslations>;
+		},
 		filters: Array<GlobMatchOptions> = [],
 	) {
-		super(plugin.app);
+		super(ctx.app);
 		this.filters = structuredClone(filters);
+		this.t = ctx.translate;
 	}
 
 	onOpen() {
-		const { contentEl } = this;
+		const { contentEl, filterType, t, filters } = this;
 		contentEl.empty();
 
-		const titleKey =
-			this.filterType === FilterType.Include
-				? 'settings.filters.include.name'
-				: 'settings.filters.exclude.name';
+		const titleKey = filterType === 'include' ? 'inclusionRules' : 'exclusionRules';
 		const descKey =
-			this.filterType === FilterType.Include
-				? 'settings.filters.include.desc'
-				: 'settings.filters.exclude.desc';
+			filterType === 'include' ? 'inclusionRulesDescription' : 'exclusionRulesDescription';
 
-		contentEl.createEl('h2', { text: t(titleKey) });
+		this.setTitle(t(titleKey));
 		contentEl.createEl('p', {
 			cls: 'setting-item-description',
 			text: t(descKey),
@@ -48,22 +54,22 @@ export default class FilterEditorModal extends Modal {
 
 		const updateList = () => {
 			listContainer.empty();
-			this.filters.forEach((filter, index) => {
+			filters.forEach((filter, index) => {
 				const itemContainer = listContainer.createDiv({
 					cls: 'flex gap-2',
 				});
-				const input = listContainer.createEl('input', {
+				const input = itemContainer.createEl('input', {
 					cls: 'flex-1',
-					placeholder: t('settings.filters.placeholder'),
+					placeholder: t('filterPlaceholder'),
 					type: 'text',
 					value: filter.expr,
 				});
 				input.spellcheck = false;
 				input.addEventListener('input', () => {
 					filter.expr = input.value;
-					this.filters[index] = filter;
+					filters[index] = filter;
 				});
-				const forceCaseBtn = listContainer.createEl('button', {
+				const forceCaseBtn = itemContainer.createEl('button', {
 					cls: 'shadow-none!',
 					text: 'Aa',
 				});
@@ -79,40 +85,23 @@ export default class FilterEditorModal extends Modal {
 					}
 				}
 				updateButtonStatus();
-				forceCaseBtn.addEventListener('click', () => {
+				forceCaseBtn.onClickEvent(() => {
 					filter.options.caseSensitive = !filter.options.caseSensitive;
 					updateButtonStatus();
 				});
-				const trash = listContainer.createEl('button', {
-					text: t('settings.filters.remove'),
+				const trash = itemContainer.createEl('button', { text: t('remove') });
+				trash.onClickEvent(() => {
+					filters.splice(index, 1);
+					updateList();
 				});
-				let confirmDelete = false;
-				trash.addEventListener('click', () => {
-					if (!confirmDelete) {
-						confirmDelete = true;
-						trash.setText(t('settings.filters.confirmRemove'));
-						trash.addClass('mod-warning');
-					} else {
-						this.filters.splice(index, 1);
-						updateList();
-					}
-				});
-				trash.addEventListener('blur', () => {
-					confirmDelete = false;
-					trash.setText(t('settings.filters.remove'));
-					trash.removeClass('mod-warning');
-				});
-				itemContainer.appendChild(input);
-				itemContainer.appendChild(forceCaseBtn);
-				itemContainer.appendChild(trash);
 			});
 		};
 
 		updateList();
 
 		new Setting(contentEl).addButton((button) => {
-			button.setButtonText(t('settings.filters.add')).onClick(() => {
-				this.filters.push({
+			button.setButtonText(t('add')).onClick(() => {
+				filters.push({
 					expr: '',
 					options: {
 						caseSensitive: false,
@@ -125,17 +114,15 @@ export default class FilterEditorModal extends Modal {
 		new Setting(contentEl)
 			.addButton((button) => {
 				button
-					.setButtonText(t('settings.filters.save'))
+					.setButtonText(t('save'))
 					.setCta()
 					.onClick(() => {
-						this.onSave(this.filters);
+						this.onSave(filters);
 						this.close();
 					});
 			})
 			.addButton((button) => {
-				button.setButtonText(t('settings.filters.cancel')).onClick(() => {
-					this.close();
-				});
+				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
 			});
 	}
 

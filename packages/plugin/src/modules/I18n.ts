@@ -113,7 +113,7 @@ export default class I18n {
 	};
 
 	private readonly translate: Translate<Translations> = (key, params?) => {
-		const i18n = this.i18n as Record<string, string>;
+		const i18n = this.i18n as Record<PropertyKey, string>;
 		if (params) return interpolate(i18n[key], params);
 		return i18n[key];
 	};

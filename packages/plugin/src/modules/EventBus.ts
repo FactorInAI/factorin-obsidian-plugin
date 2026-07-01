@@ -56,7 +56,7 @@ export default class EventBus {
 			on('error', (log) => putLog(log, 'error')),
 			on('executionStarted', (tasks) => {
 				getThisSync().totalTasks = tasks.length;
-				putLog(`Execution of ${tasks.length} sync tasks started.`);
+				putLog(`Execution of ${tasks.length} sync task(s) started.`);
 			}),
 			on('taskCompleted', ({ key, name }) => {
 				const thisSync = getThisSync();
@@ -70,7 +70,7 @@ export default class EventBus {
 				else thisSync.failedTasks += 1;
 				putLog(`Task \`${name}\` of \`${key}\` failed with error: \`${error}\`.`, 'error');
 			}),
-			on('tasksConfirmed', (tasks) => putLog(`Confirmed ${tasks.length} tasks.`)),
+			on('tasksConfirmed', (tasks) => putLog(`Confirmed ${tasks.length} task(s).`)),
 			on('syncCanceled', () => putLog('Sync is forced to stop.')),
 			on('deleteConfirmed', ({ reupload, delete: { length } }) =>
 				putLog(`Confirmed to delete ${length} files, reupload ${reupload.length} files.`),

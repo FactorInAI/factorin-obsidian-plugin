@@ -7,7 +7,6 @@ function renderFailedTaskRow(
 	{ name, key, error, prettyName }: FailedTaskInfo,
 ) {
 	const row = itemEl.createDiv();
-
 	const main = row.createDiv({ cls: 'break-words flex items-center gap-2' });
 	const icon = main.createSpan({ cls: 'sync-engine-task__icon color-[var(--color-red)]' });
 	setIcon(icon, getTaskIcon(name));
@@ -15,7 +14,6 @@ function renderFailedTaskRow(
 
 	main.createSpan({ cls: 'text-[var(--text-muted)]', text: prettyName });
 	main.createSpan({ cls: 'font-semibold truncate', text: key });
-
 	row.createDiv({ cls: 'text-[var(--text-muted)] break-words mt-1', text: error });
 }
 

@@ -1,54 +1,81 @@
+import type { Settings } from '@';
 import { Setting } from 'obsidian';
-import t from '@/i18n-old';
-import { UserInputType, generateSettingEntry } from './generate-setting-entry';
-import BaseSettings from './settings.base';
+import type { Translate } from '@/modules/I18n';
+import { generateSettingEntry } from './generate-entry';
 
-export default class ControlsSettings extends BaseSettings {
-	display() {
-		this.containerEl.empty();
-		new Setting(this.containerEl).setName(t('settings.sections.control')).setHeading();
+type ControlsSettingTranslations = {
+	controls: string;
+	maxFileSize: string;
+	maxFileSizeDescription: string;
+	maxFileSizePlaceholder: string;
+	maxRequestConcurrency: string;
+	minRequestInterval: string;
+	minRequestIntervalDescription: string;
+	minRequestIntervalPlaceholder: string;
+	maxRequestConcurrencyPlaceholder: string;
+	maxRequestConcurrencyDescription: string;
+	maxMemoryConsumption: string;
+	maxMemoryConsumptionDescription: string;
+	maxMemoryConsumptionPlaceholder: string;
+	invalidValue: string;
+};
 
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.skipLargeFiles.desc'),
-			field: this.plugin.settings.skipLargeFiles,
-			name: t('settings.skipLargeFiles.name'),
-			placeholder: t('settings.skipLargeFiles.placeholder'),
-			rejectZero: true,
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.FileSize,
-		});
+export default function ControlsSettings(
+	el: HTMLElement,
+	ctx: {
+		translate: Translate<ControlsSettingTranslations>;
+		saveSettings: () => Promise<void>;
+	},
+	settings: Settings,
+) {
+	const { translate, saveSettings } = ctx;
+	const invalidValue = translate('invalidValue');
+	new Setting(el).setName(translate('controls')).setHeading();
 
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.maxRequestConcurrency.desc'),
-			field: this.plugin.settings.maxRequestConcurrency,
-			name: t('settings.maxRequestConcurrency.name'),
-			placeholder: t('settings.maxRequestConcurrency.placeholder'),
-			rejectZero: true,
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.Number,
-		});
+	generateSettingEntry({
+		container: el,
+		desc: translate('maxFileSizeDescription'),
+		field: settings.maxFileSize,
+		invalidValue,
+		name: translate('maxFileSize'),
+		placeholder: translate('maxFileSizePlaceholder'),
+		rejectZero: true,
+		saveSettings,
+		type: 'fileSize',
+	});
 
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.minRequestInterval.desc'),
-			field: this.plugin.settings.minRequestInterval,
-			name: t('settings.minRequestInterval.name'),
-			placeholder: t('settings.minRequestInterval.placeholder'),
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.Time,
-		});
+	generateSettingEntry({
+		container: el,
+		desc: translate('maxRequestConcurrencyDescription'),
+		field: settings.maxRequestConcurrency,
+		invalidValue,
+		name: translate('maxRequestConcurrency'),
+		placeholder: translate('maxRequestConcurrencyPlaceholder'),
+		rejectZero: true,
+		saveSettings,
+		type: 'number',
+	});
 
-		generateSettingEntry({
-			container: this.containerEl,
-			desc: t('settings.maxMemoryConsumption.desc'),
-			field: this.plugin.settings.maxMemoryConsumption,
-			name: t('settings.maxMemoryConsumption.name'),
-			placeholder: t('settings.maxMemoryConsumption.placeholder'),
-			rejectZero: true,
-			saveSettings: this.plugin.saveSettings,
-			type: UserInputType.FileSize,
-		});
-	}
+	generateSettingEntry({
+		container: el,
+		desc: translate('minRequestIntervalDescription'),
+		field: settings.minRequestInterval,
+		invalidValue,
+		name: translate('minRequestInterval'),
+		placeholder: translate('minRequestIntervalPlaceholder'),
+		saveSettings,
+		type: 'time',
+	});
+
+	generateSettingEntry({
+		container: el,
+		desc: translate('maxMemoryConsumptionDescription'),
+		field: settings.maxMemoryConsumption,
+		invalidValue,
+		name: translate('maxMemoryConsumption'),
+		placeholder: translate('maxMemoryConsumptionPlaceholder'),
+		rejectZero: true,
+		saveSettings,
+		type: 'fileSize',
+	});
 }
