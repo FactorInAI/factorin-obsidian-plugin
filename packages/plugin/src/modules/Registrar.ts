@@ -39,7 +39,7 @@ export type RemoteFsWrapperEntry = {
 };
 export type RemoteFsEntry = { instantiate: () => RootRemoteFs; prettyName: string };
 export type DeciderEntry = { decider: Decider; prettyName: string };
-export type RemoteListGetter = (fs: RemoteFs) => MaybePromise<Array<Stat> | undefined>;
+export type RemoteListGetter = (infras: Infras) => MaybePromise<Array<Stat> | undefined>;
 export type SyncTriggerEntry = {
 	getRemoteList?: RemoteListGetter;
 	priority: number;
@@ -189,6 +189,7 @@ export default class Registrar {
 		addSettingTab: this.addSettingTab,
 		createLocalFs: this.createLocalFs,
 		createRemoteFs: this.createRemoteFs,
+		deciderRegistry: this.deciderRegistry,
 		getDecider: this.getDecider,
 		getLocalOptimizer: this.getLocalOptimizer,
 		getRemoteListGetter: this.getRemoteListGetter,
@@ -205,6 +206,7 @@ export default class Registrar {
 		registerRemoteOptimizer: this.registerRemoteOptimizer,
 		registerSetting: this.registerSetting,
 		registerSyncTrigger: this.registerSyncTrigger,
+		remoteFsRegistry: this.remoteFsRegistry,
 		rerenderSettingTab: this.rerenderSettingTab,
 	};
 

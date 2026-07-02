@@ -8,7 +8,14 @@ import ModuleSourceEditorModal from '@/components/SourceEditorModal';
 import type { ModuleMeta } from './Extensibility';
 import type { Translate } from './I18n';
 
-type ModulesModalTranslations = ModuleManagementTranslations & SourceEditorTranslations;
+type ModulesModalTranslations = ModuleManagementTranslations &
+	SourceEditorTranslations & {
+		searchModules: string;
+		editSources: string;
+		moduleManagement: string;
+		showInstalledOnly: string;
+		configurations: string;
+	};
 
 export default class ModulesModal extends Modal {
 	private readonly t: Translate<ModulesModalTranslations>;
@@ -72,7 +79,7 @@ export default class ModulesModal extends Modal {
 			cls: 'clickable-icon flex-shrink-0 rounded-md',
 		});
 		setIcon(menuButton, 'menu');
-		setTooltip(menuButton, this.t('editSources'));
+		setTooltip(menuButton, this.t('configurations'));
 		menuButton.onClickEvent((event) => {
 			const menu = new Menu();
 			menu.setNoIcon()
@@ -127,9 +134,7 @@ export default class ModulesModal extends Modal {
 				translate: this.t,
 			},
 			this.ctx.settings.moduleSources,
-		).setCloseCallback(() => {
-			this.sourceEditorModal = undefined;
-		});
+		).setCloseCallback(() => (this.sourceEditorModal = undefined));
 		this.sourceEditorModal.open();
 	};
 

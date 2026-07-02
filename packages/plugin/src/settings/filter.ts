@@ -4,7 +4,7 @@ import type { FilterEditorTranslations } from '@/components/FilterEditorModal';
 import type { Translate } from '@/modules/I18n';
 import FilterEditorModal from '@/components/FilterEditorModal';
 
-type FilterSettingTranslations = {
+export type FilterSettingTranslations = {
 	filterRules: string;
 	edit: string;
 } & FilterEditorTranslations;

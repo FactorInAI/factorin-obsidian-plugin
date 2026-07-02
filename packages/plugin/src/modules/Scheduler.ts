@@ -5,10 +5,11 @@ import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
 import { untilTrue } from '@/utils/wait';
 import type { SyncStage } from './Observability';
 import type { SyncTriggerEntry } from './Registrar';
+import type { SyncResult } from './Sync';
 
 type SyncRequest = {
 	trigger: string;
-	resolve: () => void;
+	resolve: (result: SyncResult) => void;
 };
 
 export default class Scheduler {
@@ -21,7 +22,7 @@ export default class Scheduler {
 	constructor(
 		private readonly ctx: {
 			syncStage: Ref<SyncStage>;
-			executeSync: (trigger: string) => Promise<void>;
+			executeSync: (trigger: string) => Promise<SyncResult>;
 			registerEvent: (ref: EventRef) => void;
 			app: App;
 			isIdle: Ref<boolean>;
@@ -38,7 +39,7 @@ export default class Scheduler {
 		inclusionRules: Array<GlobMatchOptions>;
 	};
 
-	private readonly requestSync = (trigger: string): Promise<void> =>
+	private readonly requestSync = (trigger: string): Promise<SyncResult> =>
 		new Promise((resolve) => {
 			this.pendingRequests.push({ resolve, trigger });
 			void this.scheduleFlush();
@@ -66,7 +67,7 @@ export default class Scheduler {
 	dispose = () => {
 		while (this.pendingRequests.length > 0) {
 			const request = this.pendingRequests.shift();
-			request?.resolve();
+			request?.resolve('cancelled');
 		}
 		if (this.realtimeSyncTimer) {
 			window.clearTimeout(this.realtimeSyncTimer);
@@ -117,17 +118,17 @@ export default class Scheduler {
 	private readonly scheduleFlush = async () => {
 		if (this.pendingRequests.length === 0 || this.isScheduling) return;
 		this.isScheduling = true;
-		await untilTrue(this.ctx.isIdle);
+		await untilTrue(this.ctx.isIdle, true);
 		void this.flush();
 		this.isScheduling = false;
 	};
 
 	private readonly flush = async () => {
 		const batch = this.pendingRequests.splice(0);
-		await this.ctx.executeSync(
+		const result = await this.ctx.executeSync(
 			this.ctx.reduceSyncTrigger(batch.map((request) => request.trigger)),
 		);
-		for (const request of batch) request.resolve();
+		for (const request of batch) request.resolve(result);
 	};
 
 	root = {

@@ -4,6 +4,7 @@ import type { Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
 import type {
 	ConflictStrategy,
 	GlobMatchOptions,
+	MaybePromise,
 	Progress,
 	Stat,
 	StatsMap,
@@ -32,6 +33,7 @@ type SyncTerminateReason =
 	| { result: 'failed'; error: string }
 	| { result: 'noop' };
 
+export type SyncResult = SyncTerminateReason['result'];
 export type TaskInfo = { name: TaskNames; key: string; prettyName: string };
 export type FailedTaskInfo = TaskInfo & { error: string };
 
@@ -47,6 +49,7 @@ export default class Sync {
 			on: On<Events>;
 			translate: Translate<Translations>;
 			getRemoteListGetter: (trigger: string) => RemoteListGetter | undefined;
+			requestSync: (trigger: string) => Promise<SyncResult>;
 		},
 	) {
 		this.dispatch = ctx.dispatch;
@@ -63,6 +66,7 @@ export default class Sync {
 		taskCompleted: TaskInfo;
 		taskFailed: FailedTaskInfo;
 		executionStarted: Array<BaseTask>;
+		autoMigrationProgress: Progress | 'failed';
 	};
 	declare readonly settings: {
 		maxFileSize: TogglableValue;
@@ -124,7 +128,7 @@ export default class Sync {
 		let failedCount = 0;
 		let tasks: Array<BaseTask>;
 		const isCancelled = () => cancelled;
-		const unsub = this.on('syncCanceled', () => (cancelled = true));
+		const cleanup = this.on('syncCanceled', () => (cancelled = true));
 		try {
 			this.dispatch('syncStarted', { isCancelled, trigger });
 
@@ -142,8 +146,11 @@ export default class Sync {
 				}
 			};
 			const getRemoteList = async () => {
-				const list = await (this.ctx.getRemoteListGetter(trigger)?.(remoteFs) ??
-					traverseRemote());
+				const list = await (this.ctx.getRemoteListGetter(trigger)?.({
+					localFs,
+					record,
+					remoteFs,
+				}) ?? traverseRemote());
 				if (list) return list;
 				return await traverseRemote();
 			};
@@ -172,7 +179,7 @@ export default class Sync {
 			});
 			if (tasks.length === 0) {
 				this.dispatch('syncTerminated', { result: 'noop' });
-				return;
+				return 'noop';
 			}
 			this.dispatch('log', `Planning finished with ${tasks.length} task(s).`);
 
@@ -225,18 +232,24 @@ export default class Sync {
 				}),
 			);
 
-			if (failedCount)
+			if (failedCount) {
 				this.dispatch('syncTerminated', {
 					error: `Execution of ${failedCount} tasks failed.`,
 					result: 'failed',
 				});
-			else this.dispatch('syncTerminated', { result: 'completed' });
+				return 'failed';
+			}
+			this.dispatch('syncTerminated', { result: 'completed' });
+			return 'completed';
 		} catch (error) {
-			if (cancelled) this.dispatch('syncTerminated', { result: 'cancelled' });
-			else
-				this.dispatch('syncTerminated', { error: toErrorMessage(error), result: 'failed' });
+			if (cancelled) {
+				this.dispatch('syncTerminated', { result: 'cancelled' });
+				return 'cancelled';
+			}
+			this.dispatch('syncTerminated', { error: toErrorMessage(error), result: 'failed' });
+			return 'failed';
 		} finally {
-			unsub();
+			cleanup();
 		}
 	};
 
@@ -260,7 +273,36 @@ export default class Sync {
 		return final;
 	}
 
-	root = { executeSync: this.executeSync };
+	private readonly autoMigrate = async (apply: () => MaybePromise<void>) => {
+		const { dispatch, requestSync, initializeSync } = this.ctx;
+		dispatch('log', 'Auto-migration started.');
+		dispatch('autoMigrationProgress', { completed: 0, total: 3 });
+		const phase1Result = await requestSync('autoMigration');
+		if (phase1Result === 'cancelled' || phase1Result === 'failed') {
+			dispatch('error', 'Auto-migration phase 1 failed.');
+			dispatch('autoMigrationProgress', 'failed');
+			return;
+		}
+		dispatch('autoMigrationProgress', { completed: 1, total: 3 });
+		try {
+			const { record, remoteFs } = await initializeSync();
+			await Promise.all([record.drop(), remoteFs.delete('/'), apply()]);
+		} catch (error) {
+			dispatch('error', `Auto-migration phase 2 failed: \`${toErrorMessage(error)}\`.`);
+			dispatch('autoMigrationProgress', 'failed');
+			return;
+		}
+		dispatch('autoMigrationProgress', { completed: 2, total: 3 });
+		const phase3Result = await requestSync('autoMigration');
+		if (phase3Result === 'cancelled' || phase3Result === 'failed') {
+			dispatch('error', 'Auto-migration phase 3 failed.');
+			dispatch('autoMigrationProgress', 'failed');
+			return;
+		}
+		dispatch('autoMigrationProgress', { completed: 3, total: 3 });
+	};
+
+	root = { autoMigrate: this.autoMigrate, executeSync: this.executeSync };
 }
 
 function toMap(stats: Array<Stat>): StatsMap {

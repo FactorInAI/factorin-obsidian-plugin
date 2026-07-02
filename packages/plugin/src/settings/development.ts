@@ -13,7 +13,7 @@ export type DevelopmentSettingTranslations = {
 	allRecordsCleared: string;
 	clearRecords: string;
 	clearRecordsDescription: string;
-	exportLogs: string;
+	export: string;
 	exportLogsDescription: string;
 	exportLogsToFile: string;
 };
@@ -46,10 +46,10 @@ export default function developmentSettings(
 		);
 
 	new Setting(el)
-		.setName(translate('exportLogs'))
+		.setName(translate('exportLogsToFile'))
 		.setDesc(translate('exportLogsDescription'))
 		.addButton((button) => {
-			button.setButtonText(translate('exportLogsToFile')).onClick(() => {
+			button.setButtonText(translate('export')).onClick(() => {
 				void exportLogs(getLogs(), app);
 			});
 		});

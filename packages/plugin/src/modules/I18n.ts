@@ -78,24 +78,21 @@ export type ObsidianLanguageCode =
 
 const DEFAULT_LANGUAGE: ObsidianLanguageCode = 'en';
 type Primitive = string | number | boolean | null | undefined;
+export type TranslationResource = Record<string, string | ((frag: DocumentFragment) => void)>;
 export type InterpolationValues = Record<string, Primitive>;
-export type Translate<O extends object> = (
-	key: keyof O,
+export type Translate<O extends TranslationResource> = <K extends keyof O>(
+	key: K,
 	interpolate?: InterpolationValues,
-) => string;
+) => O[K] extends string ? string : DocumentFragment;
 
 export default class I18n {
-	private readonly i18nRegistry: Partial<
-		Record<ObsidianLanguageCode, Set<Record<string, string>>>
-	> = {};
+	private readonly i18nRegistry: Partial<Record<ObsidianLanguageCode, Set<TranslationResource>>> =
+		{};
 
 	declare i18n: {};
 
-	private readonly registerI18n = (
-		code: ObsidianLanguageCode,
-		resource: Record<string, string>,
-	) => {
-		this.i18nRegistry[code] ??= new Set<Record<string, string>>();
+	private readonly registerI18n = (code: ObsidianLanguageCode, resource: TranslationResource) => {
+		this.i18nRegistry[code] ??= new Set<TranslationResource>();
 		this.i18nRegistry[code].add(resource);
 		return () => this.i18nRegistry[code]?.delete(resource);
 	};
@@ -112,11 +109,18 @@ export default class I18n {
 		}
 	};
 
-	private readonly translate: Translate<Translations> = (key, params?) => {
-		const i18n = this.i18n as Record<PropertyKey, string>;
-		if (params) return interpolate(i18n[key], params);
-		return i18n[key];
-	};
+	private readonly translate: Translate<Translations> = ((
+		key: keyof Translations,
+		params?: InterpolationValues,
+	) => {
+		const i18n = this.i18n as Translations;
+		const value = i18n[key];
+		if (typeof value === 'string') {
+			if (params) return interpolate(value, params);
+			return value;
+		}
+		if (typeof value === 'function') return createFragment(value);
+	}) as Translate<Translations>;
 
 	root = {
 		loadI18n: this.loadI18n,

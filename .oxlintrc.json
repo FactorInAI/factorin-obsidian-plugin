@@ -83,7 +83,8 @@
 		"activeDocument": "readonly",
 		"Bun": "readonly",
 		"process": "readonly",
-		"activeWindow": "readonly"
+		"activeWindow": "readonly",
+		"createFragment": "readonly"
 	},
 	"overrides": [
 		{

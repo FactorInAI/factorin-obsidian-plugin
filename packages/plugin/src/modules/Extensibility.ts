@@ -2,7 +2,7 @@ import type { Context, Events, Translations } from '@';
 import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
 import obsidian, { Notice, requestUrl } from 'obsidian';
-import type { General, TogglableValue } from '@/types';
+import type { General } from '@/types';
 import { untilTrue } from '@/utils/wait';
 import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
@@ -25,6 +25,7 @@ type ModuleInstance = {
 type ModuleCtor = new (ctx: object) => ModuleInstance;
 
 const MODULE_EXTENSION = '.js';
+const AUTO_UPDATE_DELAY = 10_000;
 
 export default class Extensibility {
 	private readonly moduleDir: string;
@@ -36,16 +37,12 @@ export default class Extensibility {
 	declare readonly settings: {
 		moduleSources: Array<string>;
 		modules: Record<string, boolean>;
-		moduleAutoUpdate: TogglableValue;
+		moduleAutoUpdate: boolean;
 	};
 	declare readonly i18n: {
 		failedToLoadModule: string;
 		failedToDownloadModule: string;
 		failedToFetchSource: string;
-	};
-	declare readonly events: {
-		moduleUpdateStarted: number;
-		moduleUpdateTerminated: undefined;
 	};
 
 	constructor(
@@ -64,9 +61,9 @@ export default class Extensibility {
 	}
 
 	readonly start = () => {
-		const { enabled, value } = this.settings.moduleAutoUpdate;
+		const enabled = this.settings.moduleAutoUpdate;
 		if (!enabled) return;
-		this.autoUpdateTimeout = window.setTimeout(this.updateModules, value);
+		this.autoUpdateTimeout = window.setTimeout(this.updateModules, AUTO_UPDATE_DELAY);
 	};
 
 	private readonly createOperationFactory = () => {
@@ -76,7 +73,7 @@ export default class Extensibility {
 		const factory = {
 			delete: (path: string) => operations.push(() => adapter.remove(path)),
 			download: (name: string, version: string, url: string) =>
-				operations.push(() => this.downloadModule(name, version, url)),
+				operations.push(() => this.downloadModule(name, version, url, false)),
 			load: (name: string) => operations.push(() => this.loadModule(name)),
 			rename: (source: string, target: string) =>
 				operations.push(() => adapter.rename(source, target)),
@@ -156,8 +153,13 @@ export default class Extensibility {
 		allModules.delete(ctor);
 	};
 
-	private readonly downloadModule = async (name: string, version: string, url: string) => {
-		const { dispatch, translate, app } = this.ctx;
+	private readonly downloadModule = async (
+		name: string,
+		version: string,
+		url: string,
+		waitIdle = true,
+	) => {
+		const { dispatch, translate, app, isIdle } = this.ctx;
 		try {
 			const legacyVersion = this.discoveredModules.get(name);
 			if (legacyVersion === version) return;
@@ -165,6 +167,7 @@ export default class Extensibility {
 			const { adapter } = app.vault;
 			const { arrayBuffer: module } = await requestUrl(url);
 			const isRunning = this.loadedModules.has(name);
+			if (waitIdle) await untilTrue(isIdle, true);
 			if (isRunning) this.unloadModule(name);
 			await Promise.all([
 				legacyVersion ? adapter.remove(this.getModulePath(name)) : Promise.resolve(),
@@ -172,6 +175,7 @@ export default class Extensibility {
 			]);
 			this.discoveredModules.set(name, version);
 			if (isRunning || this.settings.modules[name]) await this.loadModule(name, true);
+			if (waitIdle) isIdle(true);
 		} catch (error) {
 			const message = toErrorMessage(error);
 			dispatch('error', `Failed to download module \`${name}\`: ${message}`);
@@ -232,7 +236,7 @@ export default class Extensibility {
 
 	private readonly updateModules = async () => {
 		const { execute, factory, operations } = this.createOperationFactory();
-		const { dispatch, isIdle } = this.ctx;
+		const { isIdle } = this.ctx;
 		(await this.fetchSources()).forEach(({ name, version, main }) => {
 			const existingVersion = this.discoveredModules.get(name);
 			if (!existingVersion) return;
@@ -240,10 +244,9 @@ export default class Extensibility {
 				factory.download(name, version, main);
 		});
 		if (!operations.length) return;
-		await untilTrue(isIdle);
-		dispatch('moduleUpdateStarted', operations.length);
+		await untilTrue(isIdle, true);
 		await execute();
-		dispatch('moduleUpdateTerminated');
+		isIdle(true);
 	};
 
 	private readonly getModulePath = (name: string, version = this.discoveredModules.get(name)) =>

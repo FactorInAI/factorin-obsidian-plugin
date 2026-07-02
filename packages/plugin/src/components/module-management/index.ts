@@ -1,7 +1,7 @@
 import type { Hook } from 'synthkernel';
 import { render } from 'solid-js/web';
 import type { ModuleMeta } from '@/modules/Extensibility';
-import type { Translate } from '../../modules/I18n';
+import type { Translate } from '@/modules/I18n';
 import App from './App';
 
 export type PendingAction = 'delete' | 'disable' | 'download' | 'enable';
@@ -10,18 +10,14 @@ export type ModuleManagementTranslations = {
 	disableModule: string;
 	disabled: string;
 	downloadModule: string;
-	editSources: string;
 	enableModule: string;
 	enabled: string;
 	installed: string;
 	loadingModules: string;
-	moduleManagement: string;
 	noInstalledModulesFound: string;
 	noMatchingModulesFound: string;
 	noModulesAvailable: string;
 	notInstalled: string;
-	searchModules: string;
-	showInstalledOnly: string;
 	updateAvailable: string;
 	updateModule: string;
 	deleteModule: string;

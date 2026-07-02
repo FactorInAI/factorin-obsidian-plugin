@@ -3,7 +3,7 @@ import { Setting } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 import { generateSettingEntry } from './generate-entry';
 
-type ControlsSettingTranslations = {
+export type ControlsSettingTranslations = {
 	controls: string;
 	maxFileSize: string;
 	maxFileSizeDescription: string;
@@ -20,7 +20,7 @@ type ControlsSettingTranslations = {
 	invalidValue: string;
 };
 
-export default function ControlsSettings(
+export default function controlsSettings(
 	el: HTMLElement,
 	ctx: {
 		translate: Translate<ControlsSettingTranslations>;

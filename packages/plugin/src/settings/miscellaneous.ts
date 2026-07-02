@@ -2,10 +2,9 @@ import type { Settings } from '@';
 import { Setting } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 import { ConflictStrategy, UnmergeableStrategy } from '@/types';
-import { generateSettingEntry } from './generate-entry';
 
-export type CommonSettingTranslations = {
-	common: string;
+export type MiscellaneousSettingTranslations = {
+	miscellaneous: string;
 	conflictStrategy: string;
 	conflictStrategyDescription: string;
 	diffMatchPatch: string;
@@ -23,42 +22,20 @@ export type CommonSettingTranslations = {
 	confirmTasksInSyncDescription: string;
 	confirmDeleteInAutoSync: string;
 	confirmDeleteInAutoSyncDescription: string;
-	realtimeSyncFastMode: string;
-	realtimeSyncFastModeDescription: string;
-	realtimeSync: string;
-	realtimeSyncDescription: string;
-	realtimeSyncPlaceholder: string;
-	startupSync: string;
-	startupSyncDescription: string;
-	startupSyncPlaceholder: string;
-	scheduledSync: string;
-	scheduledSyncDescription: string;
-	scheduledSyncPlaceholder: string;
-	invalidValue: string;
 };
 
-export default function commonSettings(
+export default function miscellaneousSettings(
 	el: HTMLElement,
 	ctx: {
-		translate: Translate<CommonSettingTranslations>;
+		translate: Translate<MiscellaneousSettingTranslations>;
 		saveSettings: () => Promise<void>;
 		rerenderSettingTab: () => void;
-		startScheduledSync: () => void;
-		stopScheduledSync: () => void;
 		settings: Settings;
 	},
 ) {
-	const {
-		translate,
-		saveSettings,
-		rerenderSettingTab,
-		startScheduledSync,
-		stopScheduledSync,
-		settings,
-	} = ctx;
-	const invalidValue = translate('invalidValue');
+	const { translate, saveSettings, rerenderSettingTab, settings } = ctx;
 
-	new Setting(el).setName(translate('common')).setHeading();
+	new Setting(el).setName(translate('miscellaneous')).setHeading();
 
 	new Setting(el)
 		.setName(translate('conflictStrategy'))
@@ -141,56 +118,4 @@ export default function commonSettings(
 				void saveSettings();
 			}),
 		);
-
-	new Setting(el)
-		.setName(translate('realtimeSyncFastMode'))
-		.setDesc(translate('realtimeSyncFastModeDescription'))
-		.addToggle((toggle) =>
-			toggle.setValue(settings.realtimeSyncFastMode).onChange((value) => {
-				settings.realtimeSyncFastMode = value;
-				void saveSettings();
-			}),
-		);
-
-	generateSettingEntry({
-		container: el,
-		desc: translate('realtimeSyncDescription'),
-		field: settings.realtimeSync,
-		invalidValue,
-		name: translate('realtimeSync'),
-		placeholder: translate('realtimeSyncPlaceholder'),
-		saveSettings,
-		type: 'time',
-	});
-
-	generateSettingEntry({
-		container: el,
-		desc: translate('startupSyncDescription'),
-		field: settings.startupSync,
-		invalidValue,
-		name: translate('startupSync'),
-		placeholder: translate('startupSyncPlaceholder'),
-		saveSettings,
-		type: 'time',
-	});
-
-	generateSettingEntry({
-		container: el,
-		desc: translate('scheduledSyncDescription'),
-		field: settings.scheduledSync,
-		invalidValue,
-		name: translate('scheduledSync'),
-		onChange: () => {
-			stopScheduledSync();
-			startScheduledSync();
-		},
-		onToggle: (enabled) => {
-			if (enabled) startScheduledSync();
-			else stopScheduledSync();
-		},
-		placeholder: translate('scheduledSyncPlaceholder'),
-		rejectZero: true,
-		saveSettings,
-		type: 'time',
-	});
 }

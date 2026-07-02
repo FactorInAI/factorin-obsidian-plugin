@@ -3,7 +3,7 @@ import { apiVersion, Platform } from 'obsidian';
 import { ref } from 'synthkernel';
 import type { General } from '@/types';
 import { VERSION } from '@/consts';
-import { formatDateTime } from '@/utils/format-date';
+import formatDateTime from '@/utils/format-date';
 import { formatTime } from '@/utils/unit-converter';
 
 // oxlint-disable-next-line sort-keys
@@ -85,8 +85,6 @@ export default class EventBus {
 				else putLog(`Sync ended with result: \`${result}\`.`);
 				isIdle(true);
 			}),
-			on('moduleUpdateStarted', () => isIdle(false)),
-			on('moduleUpdateTerminated', () => isIdle(true)),
 		);
 	}
 
