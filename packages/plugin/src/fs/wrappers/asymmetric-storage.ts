@@ -1,14 +1,13 @@
-import type { DatabaseSync, StoreSync } from 'uni-kv';
-import type { MemoryDBMeta, MemoryDBSchema } from '@/modules/Registrar';
+import type { StoreSync } from 'uni-kv';
 import type { Progress, Stat } from '@/types';
 import generateAnchor from '@/fs/utils/generate-anchor';
 import type { RemoteFs, RemoteFsWrapper, WrappedRemoteFs } from '../interface';
+import type { ContextMemoryDB } from './context';
 
 const ROOT_KEY = '/';
 const ROOT_ANCHOR = '00000';
 const EMPTY_BUFFER = new ArrayBuffer(0);
 
-type DB = DatabaseSync<MemoryDBSchema, MemoryDBMeta>;
 type ParsedFlatKey =
 	| { isDir: false; basename: string; parentAnchor: string }
 	| { isDir: true; anchor: string; basename: string; parentAnchor: string };
@@ -76,7 +75,7 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 
 	constructor(
 		public readonly original: RemoteFs,
-		DB: DB,
+		DB: ContextMemoryDB,
 	) {
 		this.statStore = DB.getStore('remoteStatContext');
 	}
@@ -250,8 +249,8 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function asymmetricStorageWrapper(original: RemoteFs, options: DB): WrappedRemoteFs {
+function asymmetricStorageWrapper(original: RemoteFs, options: ContextMemoryDB): WrappedRemoteFs {
 	return new AsymmetricStorageRemoteFs(original, options);
 }
 
-export default asymmetricStorageWrapper satisfies RemoteFsWrapper<DB>;
+export default asymmetricStorageWrapper satisfies RemoteFsWrapper<ContextMemoryDB>;

@@ -10,7 +10,7 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 - `bun tests`: run all tests (do not use `bun test`).
 - `bun tests -F <package-name> -- <test path>`: run tests in specific file.
 - `bun <command> -F <package-name>`: run command targeting a specific package.
-- `cd packages/plugin && bun synthkernel <file-name> <type-alias>`: inspect the final flattened content of a type alias in a file
+- `cd packages/plugin && bun synthkernel <file-name> <type-alias>`: inspect the final flattened content of a type alias in a file, use when dealing when complex merged types.
 
 ## Packages
 

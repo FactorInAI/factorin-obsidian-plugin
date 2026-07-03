@@ -1,6 +1,6 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { Show, createEffect } from 'solid-js';
-import { compareVersions } from '@/modules/Extensibility';
+import compareVersions from '@/utils/compare-versions';
 import type { DisplayModule, ModuleManagementContext, PendingAction } from './index';
 
 export default function Card(props: {

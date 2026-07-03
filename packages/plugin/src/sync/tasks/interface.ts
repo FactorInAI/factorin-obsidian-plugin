@@ -58,41 +58,20 @@ const RED_COLOR = 'var(--color-red)';
 const BLUE_COLOR = 'var(--color-blue)';
 const YELLOW_COLOR = 'var(--color-yellow)';
 
-export function getTaskIcon(taskName: TaskNames): string {
-	switch (taskName) {
-		case 'createRemoteDir': {
-			return 'folder-up';
-		}
-		case 'createLocalDir': {
-			return 'folder-down';
-		}
-		case 'download': {
-			return 'file-down';
-		}
-		case 'upload': {
-			return 'file-up';
-		}
-		case 'merge': {
-			return 'combine';
-		}
-		case 'removeLocal': {
-			return 'file-x';
-		}
-		case 'removeRemote': {
-			return 'archive-x';
-		}
-		case 'moveLocal':
-		case 'moveRemote': {
-			return 'file-output';
-		}
-		default: {
-			return 'refresh-cw';
-		}
-	}
+export function getTaskIcon(name: TaskNames, isDir: boolean): string {
+	if (name === 'createRemoteDir') return 'folder-up';
+	if (name === 'createLocalDir') return 'folder-down';
+	if (name === 'download') return 'file-down';
+	if (name === 'upload') return 'file-up';
+	if (name === 'merge') return 'combine';
+	if (name === 'removeLocal' || name === 'removeRemote') return isDir ? 'folder-x' : 'file-x';
+	if (name === 'moveLocal' || name === 'moveRemote')
+		return isDir ? 'folder-output' : 'file-output';
+	return 'refresh-cw';
 }
 
-export function getTaskColor(taskName: TaskNames): string {
-	switch (taskName) {
+export function getTaskColor(name: TaskNames): string {
+	switch (name) {
 		case 'merge': {
 			return YELLOW_COLOR;
 		}

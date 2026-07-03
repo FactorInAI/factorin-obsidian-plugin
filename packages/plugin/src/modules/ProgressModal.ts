@@ -1,17 +1,18 @@
 import type { Events, Translations } from '@';
 import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
-import { Modal, Setting, ProgressBarComponent } from 'obsidian';
+import { Modal, Setting } from 'obsidian';
 import { computed, hook } from 'synthkernel';
 import type { BaseTask, RemoveLocal, TaskNames } from '@/sync';
 import type { Progress } from '@/types';
 import mountFileTree from '@/components/file-tree';
 import renderFailedTasks from '@/components/render-failed-tasks';
+import renderProgress from '@/utils/render-progress';
+import roundPercent from '@/utils/round-percent';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
 import type { SyncStage } from './Observability';
 import type { FailedTaskInfo, TaskInfo } from './Sync';
-import { roundPercent } from './Observability';
 
 export type DeleteConfirmReturn = {
 	delete: Array<RemoveLocal>;
@@ -243,34 +244,20 @@ export default class ProgressModal extends Modal {
 			{ deps: [this.ctx.walkProgress, this.ctx.syncStage, this.ctx.executionProgress] },
 		);
 
-		const container = contentEl.createDiv({
-			cls: 'flex flex-col gap-4 max-h-[75vh] pt-3 pb-3',
-		});
-		const progressSection = container.createDiv({
-			cls: 'flex flex-col gap-2',
-		});
-		const progressTextContainer = progressSection.createDiv({
-			cls: 'flex flex-row',
-		});
-		const currentItem = progressTextContainer.createDiv({
-			cls: 'text-3 text-[var(--text-muted)] truncate whitespace-nowrap',
-		});
-		const progressStats = progressTextContainer.createDiv({
-			cls: 'text-3 text-[var(--text-muted)] ml-auto whitespace-nowrap ml-2',
-		});
-		const progressBar = new ProgressBarComponent(progressSection);
+		const container = contentEl.createDiv('flex flex-col gap-4 max-h-[75vh] pt-3 pb-3');
+		const { bar, left, right } = renderProgress(container);
 		this.description = container.createEl('p', { cls: 'whitespace-pre-line hidden my-0' });
-		this.detailContainer = container.createDiv({
-			cls: 'max-h-[50vh] overflow-y-auto rounded-lg border border-[var(--background-modifier-border)] bg-[var(--background-secondary)] p-2 hidden',
-		});
+		this.detailContainer = container.createDiv(
+			'max-h-[50vh] overflow-y-auto rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2 hidden',
+		);
 
 		this.modalCleanupCallbacks.subscribe(
 			progress.subscribe(
 				({ completed, current, percent, total }) => {
 					if (completed !== undefined && total !== undefined)
-						progressStats.setText(`${completed}/${total} ${this.t('completed')}`);
-					if (current !== undefined) currentItem.setText(current);
-					if (percent !== undefined) progressBar.setValue(percent);
+						right.setText(`${completed}/${total} ${this.t('completed')}`);
+					if (current !== undefined) left.setText(current);
+					if (percent !== undefined) bar.setValue(percent);
 				},
 				{ immediate: true },
 			),

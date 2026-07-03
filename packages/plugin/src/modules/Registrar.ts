@@ -1,23 +1,16 @@
+import type { Events } from '@';
 import type { App, Plugin } from 'obsidian';
-import { hash } from '@repo/shared';
+import type { DatabaseSync } from 'uni-kv';
 import { PluginSettingTab } from 'obsidian';
 import { deleteMemoryDB, openIndexedDB, openMemoryDB } from 'uni-kv';
 import type { BatchOptimizer, LocalFs, RemoteFs, RootRemoteFs } from '@/fs';
 import type { Decider } from '@/sync';
-import type { MaybePromise, RecordStat, Stat } from '@/types';
+import type { General, MaybePromise, RecordStat, Stat } from '@/types';
 import { STORAGE_NAME } from '@/consts';
 import { VaultFs } from '@/fs';
 import { SyncRecord } from '@/storage';
-
-export type MemoryDBMeta = {
-	lastLocalContextUid: string;
-	lastRemoteContextUid: string;
-};
-
-export type MemoryDBSchema = {
-	localStatContext: Stat;
-	remoteStatContext: Stat;
-};
+import getNamespace from '@/utils/get-namespace';
+import type { On } from './EventBus';
 
 export type IndexedDBSchema = {
 	'base-text': string;
@@ -53,9 +46,10 @@ export type SettingEntry = {
 export type Infras = { localFs: LocalFs; remoteFs: RemoteFs; record: SyncRecord };
 
 export default class Registrar {
-	private readonly memoryDB = openMemoryDB<MemoryDBSchema, MemoryDBMeta>(STORAGE_NAME);
+	private readonly memoryDB = openMemoryDB<General, General>(STORAGE_NAME);
 	private readonly indexedDB = openIndexedDB<IndexedDBSchema, IndexedDBMeta>(STORAGE_NAME);
 	private settingTab?: SettingTab;
+	private readonly cleanupCallbacks: Array<() => void> = [];
 
 	private readonly localFsWrapperRegistry = new Set<LocalFsWrapperEntry>();
 	private readonly remoteFsWrapperRegistry = new Set<RemoteFsWrapperEntry>();
@@ -68,7 +62,12 @@ export default class Registrar {
 
 	declare readonly settings: { remoteFs: string; decider: string };
 
-	constructor(private readonly ctx: { app: App }) {}
+	constructor(private readonly ctx: { app: App; on: On<Events> }) {
+		this.cleanupCallbacks.push(
+			ctx.on('moduleLoaded', this.rerenderSettingTab),
+			ctx.on('moduleUnloaded', this.rerenderSettingTab),
+		);
+	}
 
 	private readonly registerLocalFsWrapper = (entry: LocalFsWrapperEntry) => {
 		this.localFsWrapperRegistry.add(entry);
@@ -174,7 +173,7 @@ export default class Registrar {
 	private readonly initializeSync = async () => {
 		const localFs = this.createLocalFs();
 		const remoteFs = this.createRemoteFs();
-		const stateKey = hash(`${localFs.getUid()}~~${remoteFs.getUid()}`);
+		const stateKey = getNamespace(localFs, remoteFs);
 		const record = new SyncRecord(stateKey, await this.indexedDB);
 		return { localFs, record, remoteFs };
 	};
@@ -196,7 +195,7 @@ export default class Registrar {
 		getRemoteOptimizer: this.getRemoteOptimizer,
 		indexedDB: this.indexedDB,
 		initializeSync: this.initializeSync,
-		memoryDB: this.memoryDB,
+		memoryDB: this.memoryDB as DatabaseSync<General, General>,
 		reduceSyncTrigger: this.reduceSyncTrigger,
 		registerDecider: this.registerDecider,
 		registerLocalFsWrapper: this.registerLocalFsWrapper,
@@ -212,7 +211,8 @@ export default class Registrar {
 
 	dispose() {
 		deleteMemoryDB(STORAGE_NAME);
-		this.indexedDB.then((db) => db.dispose());
+		this.cleanupCallbacks.splice(0).forEach((fn) => fn());
+		void this.indexedDB.then((db) => db.dispose());
 	}
 }
 
@@ -225,6 +225,7 @@ class SettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		if (!this.containerEl) return;
 		this.containerEl.empty();
 		const sorted: Record<number, (el: HTMLElement) => void> = {};
 		for (const { order, render } of this.settingRegistry) sorted[order] = render;

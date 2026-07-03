@@ -1,5 +1,6 @@
 plans
 .ignore
 **/dist
+**/dist-sdk
 **/.turbo
 **/node_modules

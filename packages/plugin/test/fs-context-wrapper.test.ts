@@ -1,13 +1,13 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
-import type { MemoryDBMeta, MemoryDBSchema } from '@/modules/Registrar';
+import type { ContextMemoryDB } from '@/fs';
 import type { Stat } from '@/types';
 import { STORAGE_NAME } from '@/consts';
 import { localContextWrapper, remoteContextWrapper } from '@/fs';
 import { testKit } from '@/sdk';
 
 const { file, remoteFs, localFs, folder, bytes, stream } = testKit;
-const db = openMemoryDB<MemoryDBSchema, MemoryDBMeta>(STORAGE_NAME);
+const db: ContextMemoryDB = openMemoryDB(STORAGE_NAME);
 
 function getLocalStore() {
 	return db.getStore('localStatContext');

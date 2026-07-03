@@ -1,7 +1,8 @@
-import type { Settings } from '@';
+import type { Settings, Context } from '@';
 import { Setting } from 'obsidian';
-import type { Translate } from '@/modules/I18n';
-import type { MaybePromise } from '@/types';
+import type { MigrationModalTranslations } from '@/components/MigrationModal';
+import type { Fragment, Translate } from '@/modules/I18n';
+import MigrationModal from '@/components/MigrationModal';
 import { generateSettingEntry } from './generate-entry';
 
 export type FeaturesSettingTranslations = {
@@ -18,9 +19,11 @@ export type FeaturesSettingTranslations = {
 	scheduledSyncDescription: string;
 	scheduledSyncPlaceholder: string;
 	asymmetricStorage: string;
-	asymmetricStorageDescription: (frag: DocumentFragment) => void;
+	asymmetricStorageDescription: Fragment;
+	asymmetricStorageEnableMigration: Fragment;
+	asymmetricStorageDisableMigration: Fragment;
 	invalidValue: string;
-};
+} & MigrationModalTranslations;
 
 export default function featuresSettings(
 	el: HTMLElement,
@@ -29,19 +32,12 @@ export default function featuresSettings(
 		saveSettings: () => Promise<void>;
 		startScheduledSync: () => void;
 		stopScheduledSync: () => void;
-		autoMigrate: (apply: () => MaybePromise<void>) => Promise<void>;
 		settings: Settings;
 	},
 ) {
-	const {
-		translate,
-		saveSettings,
-		startScheduledSync,
-		stopScheduledSync,
-		autoMigrate,
-		settings,
-	} = ctx;
+	const { translate, saveSettings, startScheduledSync, stopScheduledSync, settings } = ctx;
 	const invalidValue = translate('invalidValue');
+	let selfTrigger = false;
 	new Setting(el).setName(translate('features')).setHeading();
 
 	generateSettingEntry({
@@ -101,8 +97,28 @@ export default function featuresSettings(
 		.setDesc(translate('asymmetricStorageDescription'))
 		.addToggle((toggle) =>
 			toggle.setValue(settings.asymmetricStorage).onChange((value) => {
-				settings.asymmetricStorage = value;
-				void saveSettings();
+				if (selfTrigger) {
+					selfTrigger = false;
+					return;
+				}
+				const original = settings.asymmetricStorage;
+				new MigrationModal(ctx as Context, {
+					apply: () => {
+						settings.asymmetricStorage = value;
+						void saveSettings();
+					},
+					content: translate(
+						value
+							? 'asymmetricStorageEnableMigration'
+							: 'asymmetricStorageDisableMigration',
+					),
+					onCancel: () => {
+						settings.asymmetricStorage = original;
+						void saveSettings();
+						selfTrigger = true;
+						toggle.setValue(original);
+					},
+				}).open();
 			}),
 		);
 }

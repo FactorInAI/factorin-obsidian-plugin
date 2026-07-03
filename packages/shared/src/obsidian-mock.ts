@@ -30,6 +30,8 @@ export class Setting {}
 export class PluginSettingTab {}
 export class TextComponent {}
 export class ButtonComponent {}
+export class ProgressBarComponent {}
+export class SecretComponent {}
 
 export function setIcon() {}
 export function setTooltip() {}

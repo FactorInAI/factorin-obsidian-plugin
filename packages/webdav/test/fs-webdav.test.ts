@@ -32,9 +32,9 @@ let response: RequestUrlResponse;
 let parsedResponse: ParsedResponse;
 
 const defaultOptions = {
+	depthInfinity: false,
 	endpoint: 'https://dav.example.com/dav',
 	password: 'pass',
-	useInfinity: false,
 	username: 'alice',
 } satisfies WebdavFsOptions;
 
@@ -191,7 +191,7 @@ test('list uses infinity when enabled', async () => {
 		},
 	]);
 
-	const webdav = createWebdavFs({ endpoint: 'https://dav.example.com/dav', useInfinity: true });
+	const webdav = createWebdavFs({ depthInfinity: true, endpoint: 'https://dav.example.com/dav' });
 
 	let storedProgress: Progress = { completed: 0, total: 0 };
 	const progress = (prog: Progress) => (storedProgress = prog);

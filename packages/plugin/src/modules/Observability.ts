@@ -4,11 +4,12 @@ import type { Ref } from 'synthkernel';
 import { Notice, Platform } from 'obsidian';
 import { computed, ref } from 'synthkernel';
 import type { Progress } from '@/types';
+import roundPercent from '@/utils/round-percent';
+import toErrorMessage from '@/utils/to-error-message';
 import { formatTime } from '@/utils/unit-converter';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
-import type { SyncResult, TaskInfo } from './Sync';
-import { toErrorMessage } from './Sync';
+import type { SyncTerminateReason, TaskInfo } from './Sync';
 
 export type SyncStage =
 	| 'none'
@@ -81,7 +82,7 @@ export default class Observability {
 			translate: Translate<Translations>;
 			isIdle: Ref<boolean>;
 			dispatch: Dispatch<Events>;
-			requestSync: (trigger: string) => Promise<SyncResult>;
+			requestSync: (trigger: string) => Promise<SyncTerminateReason>;
 			showProgress: () => void;
 			addCommand: (command: Command) => Command;
 			addRibbonIcon: AddRibbonIcon;
@@ -112,7 +113,9 @@ export default class Observability {
 				completedTasks = 0;
 				this.syncStage('executing');
 			}),
-			ctx.on('remoteWalkProgress', (progress) => this.walkProgress(progress)),
+			ctx.on('remoteWalkProgress', (progress) => {
+				this.walkProgress(progress);
+			}),
 			ctx.on('taskCompleted', (current) => {
 				completedTasks += 1;
 				this.executionProgress({
@@ -167,7 +170,7 @@ export default class Observability {
 		this.setupCommands();
 		const { requestSync, dispatch, isIdle, addRibbonIcon } = this.ctx;
 		const startIcon = addRibbonIcon('refresh-ccw', this.t('startSync'), () => {
-			if (isIdle()) requestSync('manual');
+			if (isIdle()) void requestSync('manual');
 		});
 		const stopIcon = addRibbonIcon('square', this.t('stopSync'), () =>
 			dispatch('syncCanceled'),
@@ -241,20 +244,31 @@ export default class Observability {
 				name: this.t('showProgress'),
 			},
 			{
-				callback: () => {
-					try {
-						void exportLogs(this.ctx.getLogs(), this.ctx.app);
-					} catch (error) {
-						const message = toErrorMessage(error);
-						new Notice(`${this.t('exportLogsFailed')}: ${message}`);
-						this.ctx.dispatch('error', `Export log failed: \`${message}\`.`);
-					}
-				},
+				callback: () => void this.exportLogs(),
 				icon: 'scroll-text',
 				id: 'export-logs',
 				name: this.t('exportLogsToFile'),
 			},
 		].forEach((command) => this.ctx.addCommand(command));
+
+	private readonly exportLogs = async () => {
+		const { getLogs, app, dispatch, translate } = this.ctx;
+		const log = getLogs();
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+		const fileName = `${timestamp}.md`;
+		const dirPath = 'Sync Engine Logs';
+		const filePath = `${dirPath}/${fileName}`;
+		try {
+			const folderExists = app.vault.getFolderByPath(dirPath);
+			if (!folderExists) await app.vault.createFolder(dirPath);
+			const file = await app.vault.create(filePath, log);
+			await app.workspace.getLeaf().openFile(file);
+		} catch (error) {
+			const message = toErrorMessage(error);
+			new Notice(`${translate('exportLogsFailed')}: ${message}`);
+			dispatch('error', `Export log failed: \`${message}\`.`);
+		}
+	};
 
 	readonly dispose = () => {
 		for (const unsub of this.cleanupCallbacks) unsub();
@@ -264,22 +278,8 @@ export default class Observability {
 
 	root = {
 		executionProgress: this.executionProgress,
+		exportLogs: this.exportLogs,
 		syncStage: this.syncStage,
 		walkProgress: this.walkProgress,
 	};
-}
-
-export function roundPercent(completed: number, total: number) {
-	return Math.round((completed / (total || 1)) * 10_000) / 100;
-}
-
-export async function exportLogs(log: string, app: App) {
-	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-	const fileName = `${timestamp}.md`;
-	const dirPath = 'Sync Engine Logs';
-	const filePath = `${dirPath}/${fileName}`;
-	const folderExists = app.vault.getFolderByPath(dirPath);
-	if (!folderExists) await app.vault.createFolder(dirPath);
-	const file = await app.vault.create(filePath, log);
-	await app.workspace.getLeaf().openFile(file);
 }

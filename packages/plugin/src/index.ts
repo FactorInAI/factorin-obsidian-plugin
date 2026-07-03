@@ -61,7 +61,7 @@ export type Translations = MergeSingleKey<InternalModules, 'i18n'>;
 export default class SyncEngine extends Plugin {
 	context?: Context;
 	readonly allModules = new Set(internalModules);
-	readonly settings: Settings = {
+	settings: Settings = {
 		asymmetricStorage: true,
 		confirmDeleteInAutoSync: true,
 		confirmTasksInSync: true,
@@ -98,7 +98,7 @@ export default class SyncEngine extends Plugin {
 		realtimeSync: { enabled: false, value: 5000 },
 		realtimeSyncFastMode: true,
 		remoteFs: '',
-		scheduledSync: { enabled: false, value: 5000 },
+		scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
 		startupSync: { enabled: false, value: 5000 },
 		unmergeableStrategy: UnmergeableStrategy.LatestTimeStamp,
 		useGitStyle: false,
@@ -121,6 +121,7 @@ export default class SyncEngine extends Plugin {
 			mergeKeys: ['settings', 'root', 'events', 'i18n'],
 			preMerge,
 		}).__assign__({ settings: this.settings });
+		this.settings = this.context.settings;
 		await this.context.loadAllModules();
 		this.context.loadI18n(getLanguage() as ObsidianLanguageCode);
 		this.context.addSettingTab(this);

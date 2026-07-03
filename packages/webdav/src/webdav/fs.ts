@@ -21,7 +21,7 @@ export type WebdavFsOptions = {
 	endpoint: string;
 	username: string;
 	password: string;
-	useInfinity?: boolean;
+	depthInfinity?: boolean;
 };
 
 type WebDAVPropValue = string | { '#text'?: string } | undefined;
@@ -352,7 +352,7 @@ class WebdavFs implements RootRemoteFs {
 	}
 
 	async list(key: string, progress?: (progress: Progress) => void) {
-		if (this.options.useInfinity) {
+		if (this.options.depthInfinity) {
 			const items = await propfind(this.request, this.auth, this.endpoint, {
 				depth: 'infinity',
 				key,

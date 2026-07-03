@@ -1,9 +1,18 @@
 import type { DatabaseSync, StoreSync } from 'uni-kv';
-import type { MemoryDBMeta, MemoryDBSchema } from '@/modules/Registrar';
 import type { MaybePromise, Progress, Stat } from '@/types';
 import type { LocalFs, RemoteFs, WrappedLocalFs, WrappedRemoteFs } from '../interface';
 
-type DB = DatabaseSync<MemoryDBSchema, MemoryDBMeta>;
+type ContextMemoryDBMeta = {
+	lastLocalContextUid: string;
+	lastRemoteContextUid: string;
+};
+
+type ContextMemoryDBSchema = {
+	localStatContext: Stat;
+	remoteStatContext: Stat;
+};
+
+export type ContextMemoryDB = DatabaseSync<ContextMemoryDBSchema, ContextMemoryDBMeta>;
 
 function getCachedReadSize(store: StoreSync<Stat>, key: string) {
 	const stat = store.get(key);
@@ -44,7 +53,7 @@ class ContextRemoteFs implements WrappedRemoteFs {
 
 	constructor(
 		public readonly original: RemoteFs,
-		db: DB,
+		db: ContextMemoryDB,
 	) {
 		const uid = original.getUid();
 		this.statStore = db.getStore('remoteStatContext');
@@ -109,7 +118,7 @@ class ContextLocalFs implements WrappedLocalFs {
 
 	constructor(
 		public readonly original: LocalFs,
-		db: DB,
+		db: ContextMemoryDB,
 	) {
 		const uid = original.getUid();
 		this.statStore = db.getStore('localStatContext');
@@ -163,10 +172,10 @@ class ContextLocalFs implements WrappedLocalFs {
 	}
 }
 
-export function remoteContextWrapper(original: RemoteFs, db: DB): WrappedRemoteFs {
+export function remoteContextWrapper(original: RemoteFs, db: ContextMemoryDB): WrappedRemoteFs {
 	return new ContextRemoteFs(original, db);
 }
 
-export function localContextWrapper(original: LocalFs, db: DB): WrappedLocalFs {
+export function localContextWrapper(original: LocalFs, db: ContextMemoryDB): WrappedLocalFs {
 	return new ContextLocalFs(original, db);
 }

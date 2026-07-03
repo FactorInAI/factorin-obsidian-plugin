@@ -1,7 +1,7 @@
 export default function obsidianBridge() {
 	return {
 		name: 'obsidian-import-bridge',
-		transform(code: string) {
+		renderChunk(code: string) {
 			const transformed = code
 				.replace(
 					/^\s*import\s+(?<name>[A-Za-z_$][\w$]*)\s+from\s+(?<quote>['"])obsidian\k<quote>\s*;?\s*$/gm,

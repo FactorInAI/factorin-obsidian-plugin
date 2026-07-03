@@ -13,8 +13,39 @@ const en: Translations = {
 			},
 			text: 'asymmetric storage',
 		});
-		frag.createSpan({
-			text: ' to substantially accelerate syncing. Toggling this option requires auto-migration.',
+		frag.createSpan({ text: ' to substantially accelerate syncing.' });
+	},
+	asymmetricStorageDisableMigration: (frag) => {
+		frag.createEl('p', {
+			text: '⚠️ You should be cautious about following points before disabling asymmetric storage:',
+		});
+		const ol = frag.createEl('ol');
+		ol.createEl('li', {
+			text: 'All subsequent uploads will mirror local hierarchal structure.',
+		});
+		ol.createEl('li', {
+			text: 'Please ensure all devices have asymmetric storage disabled.',
+		});
+		ol.createEl('li', {
+			text: 'Migration is necessary if this vault was previously uploaded with asymmetric storage enabled.',
+		});
+	},
+	asymmetricStorageEnableMigration: (frag) => {
+		frag.createEl('p', {
+			text: '⚠️ You should be cautious about following points before enabling asymmetric storage:',
+		});
+		const ol = frag.createEl('ol');
+		ol.createEl('li', {
+			text: 'Remote storage will no longer mirror local hierarchal structure. All files will be uploaded flatly to the base directory with random string anchors appended.',
+		});
+		ol.createEl('li', {
+			text: "If you need the remote to remain readable by humans, please don't enable this feature.",
+		});
+		ol.createEl('li', {
+			text: 'After enabling, please ensure all devices have asymmetric storage disabled.',
+		});
+		ol.createEl('li', {
+			text: 'Migration is necessary if this vault was previously uploaded without asymmetric storage.',
 		});
 	},
 	awaitingConfirmation: 'Awaiting confirmation',
@@ -23,6 +54,9 @@ const en: Translations = {
 	bidirectional: 'Bidirectional',
 	cancel: 'Cancel',
 	cancelled: 'Cancelled',
+	checkConnection: 'Check connection',
+	checkConnectionFailed: 'Check connection failed',
+	checkConnectionSuccess: 'Check connection succeeded',
 	clearAllRecords: 'Clear all records',
 	clearRecords: 'Clear records',
 	clearRecordsDescription:
@@ -99,6 +133,12 @@ const en: Translations = {
 		'Limit the number of simultaneous requests during synchronization. This option is useful for services with request rate limits. Alter the concurrency limit in the field.',
 	maxRequestConcurrencyPlaceholder: 'Enter concurrency limit',
 	merge: 'Merge',
+	migrationDescription:
+		'Migration may take seconds to minutes depending on the vault size. If you have migrated the remote on other devices, you can skip the migration.\n\nStart migration now?',
+	migrationPhase1Description: 'Ensure local state is up-to-date',
+	migrationPhase2Description: 'Clean up remote and records',
+	migrationPhase3Description: 'Populate remote with new structure',
+	migrationProcess: 'Migration process',
 	minRequestInterval: 'Min request interval',
 	minRequestIntervalDescription:
 		'Limit the minimum time between consecutive requests during synchronization. This option is useful for services with request rate limits. Alter the interval in the field.',
@@ -128,6 +168,7 @@ const en: Translations = {
 	realtimeSyncFastModeDescription:
 		'Reuse cached data and avoid unnecessary remote discovery during real-time sync to accelerate sync.',
 	realtimeSyncPlaceholder: 'Enter sync delay (e.g. 500ms, 5s)',
+	remoteMigration: 'Remote migration',
 	remove: 'Remove',
 	removeLocal: 'Remove local',
 	removeRecord: 'Remove record',
@@ -142,6 +183,7 @@ const en: Translations = {
 	showProgress: 'Show progress',
 	skip: 'Skip',
 	sourcesDescription: 'Add module source URLs. Empty and invalid rows are omitted when saved.',
+	startMigration: 'Start migration',
 	startNonInteractiveSync: 'Start non-interactive sync',
 	startSync: 'Start sync',
 	startupSync: 'Startup sync',
@@ -152,6 +194,7 @@ const en: Translations = {
 	syncProgress: 'Sync progress',
 	syncStrategy: 'Sync strategy',
 	syncStrategyDescription: 'Select the synchronization strategy to resolve file changes.',
+	toggleWithoutMigration: 'Toggle without migration',
 	unmergeableStrategy: 'Unmergeable conflict strategy',
 	unmergeableStrategyDescription:
 		'Choose the alternative strategy for files that are not resolvable by merging (all non-markdown files).',

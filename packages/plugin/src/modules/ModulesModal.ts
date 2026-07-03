@@ -50,12 +50,14 @@ export default class ModulesModal extends Modal {
 	};
 
 	onOpen() {
+		this.containerEl.getElementsByClassName('modal-bg')[0].addClass('opacity-0!');
 		this.setTitle(this.t('moduleManagement'));
 		this.modalEl.addClasses([
 			'w-[--modal-width]',
 			'h-[--modal-height]',
 			'max-w-[--modal-max-width]',
 			'max-h-[--modal-max-height]',
+			'shadow-none!',
 		]);
 		this.contentEl.empty();
 		const controlsEl = this.contentEl.createDiv({

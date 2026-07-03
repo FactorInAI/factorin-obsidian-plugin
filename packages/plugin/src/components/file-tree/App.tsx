@@ -15,38 +15,42 @@ export default function App(props: {
 				{(nodeId) => {
 					const node = props.data.nodes[nodeId];
 					const task = node.task;
+					const taskIsDir = task?.local?.isDir ?? task?.remote?.isDir ?? false;
 					const icon = task
 						? {
 								color: getTaskColor(task.name),
-								icon: getTaskIcon(task.name),
+								icon: getTaskIcon(task.name, taskIsDir),
 							}
 						: { color: 'var(--text-normal)', icon: 'folder-open' };
 					const isSelected = () => (task ? props.isSelected(nodeId) : false);
 					return (
 						<div
 							class="flex min-h-7 items-center"
-							style={{ 'padding-left': `${node.depth * 14}px` }}
+							style={{ 'padding-left': `${node.depth * 24}px` }}
 						>
 							<div
-								class="flex min-w-0 items-center gap-2"
+								class="flex min-w-0 items-center gap-2 mx-1"
 								onClick={() => task && props.toggle(nodeId, !isSelected())}
 							>
 								{task ? (
 									<input
 										checked={isSelected()}
-										class="m-0 accent-[var(--interactive-accent)] cursor-pointer"
+										class="m-0 accent-[--interactive-accent] cursor-pointer"
+										style={{ 'margin-inline-end': '0' }}
 										type="checkbox"
 									/>
 								) : (
 									<div class="m-1 h-2 w-2 flex-shrink-0 rounded-full bg-[var(--text-muted)]" />
 								)}
 								<div
-									class="sync-engine-task__icon"
+									class="sync-engine-icon"
 									ref={(element) => {
 										setIcon(element, icon.icon);
 										element.style.color = icon.color;
 										if (!task) return;
-										setTooltip(element, task.prettyName, { delay: 100 });
+										setTooltip(element, task.prettyName, {
+											delay: 100,
+										});
 									}}
 								/>
 								<div

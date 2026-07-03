@@ -1,13 +1,12 @@
 import type { Context, Events, Translations } from '@';
-import type { DatabaseSync } from 'uni-kv';
-import type { LocalFs, BatchOptimizer, RemoteFs } from '@/fs';
+import type { LocalFs, BatchOptimizer, RemoteFs, ContextMemoryDB } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
 import type { FeaturesSettingTranslations } from '@/settings/features';
 import type { FilterSettingTranslations } from '@/settings/filter';
 import type { HeadSettingTranslations } from '@/settings/head';
 import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous';
-import type { TogglableValue } from '@/types';
+import type { Progress, TogglableValue } from '@/types';
 import {
 	localCancellationWrapper,
 	localContextWrapper,
@@ -35,8 +34,6 @@ import type { ObsidianLanguageCode, Translate, TranslationResource } from './I18
 import type {
 	DeciderEntry,
 	LocalFsWrapperEntry,
-	MemoryDBMeta,
-	MemoryDBSchema,
 	RemoteFsEntry,
 	RemoteFsWrapperEntry,
 	SettingEntry,
@@ -70,12 +67,16 @@ export default class Bootstrap {
 		realtimeSyncFastMode: boolean;
 		asymmetricStorage: boolean;
 	};
+	declare readonly events: {
+		migrationProgress: Progress;
+		migrationFailed: string;
+	};
 
 	constructor(
 		private readonly ctx: {
 			registerI18n: (code: ObsidianLanguageCode, resource: TranslationResource) => void;
 			on: On<Events>;
-			memoryDB: DatabaseSync<MemoryDBSchema, MemoryDBMeta>;
+			memoryDB: ContextMemoryDB;
 			registerDecider: (id: string, entry: DeciderEntry) => void;
 			registerLocalFsWrapper: (entry: LocalFsWrapperEntry) => void;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => void;
@@ -113,7 +114,7 @@ export default class Bootstrap {
 			maxRequestConcurrency.enabled ? maxRequestConcurrency.value : Infinity;
 		const getMinInterval = () => (minRequestInterval.enabled ? minRequestInterval.value : 0);
 
-		registerSyncTrigger('autoMigration', { priority: 6000 });
+		registerSyncTrigger('migration', { priority: 6000 });
 		registerSyncTrigger('manual', { priority: 5000 });
 		registerSyncTrigger('nonInteractiveManual', { priority: 4000 });
 		registerSyncTrigger('startup', { priority: 3000 });

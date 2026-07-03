@@ -4,7 +4,6 @@ import type { Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
 import type {
 	ConflictStrategy,
 	GlobMatchOptions,
-	MaybePromise,
 	Progress,
 	Stat,
 	StatsMap,
@@ -22,19 +21,19 @@ import {
 	syncCancelledError,
 	taskMap,
 } from '@/sync';
+import toErrorMessage from '@/utils/to-error-message';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
 import type { DeleteConfirmReturn } from './ProgressModal';
 import type { Infras, RemoteListGetter } from './Registrar';
 
-type SyncTerminateReason =
+export type SyncTerminateReason =
 	| { result: 'cancelled' }
 	| { result: 'completed' }
 	| { result: 'failed'; error: string }
 	| { result: 'noop' };
 
-export type SyncResult = SyncTerminateReason['result'];
-export type TaskInfo = { name: TaskNames; key: string; prettyName: string };
+export type TaskInfo = { name: TaskNames; key: string; prettyName: string; isDir: boolean };
 export type FailedTaskInfo = TaskInfo & { error: string };
 
 export default class Sync {
@@ -49,7 +48,6 @@ export default class Sync {
 			on: On<Events>;
 			translate: Translate<Translations>;
 			getRemoteListGetter: (trigger: string) => RemoteListGetter | undefined;
-			requestSync: (trigger: string) => Promise<SyncResult>;
 		},
 	) {
 		this.dispatch = ctx.dispatch;
@@ -66,7 +64,6 @@ export default class Sync {
 		taskCompleted: TaskInfo;
 		taskFailed: FailedTaskInfo;
 		executionStarted: Array<BaseTask>;
-		autoMigrationProgress: Progress | 'failed';
 	};
 	declare readonly settings: {
 		maxFileSize: TogglableValue;
@@ -127,12 +124,14 @@ export default class Sync {
 		let cancelled = false;
 		let failedCount = 0;
 		let tasks: Array<BaseTask>;
+		let terminateReason!: SyncTerminateReason;
 		const isCancelled = () => cancelled;
 		const cleanup = this.on('syncCanceled', () => (cancelled = true));
 		try {
 			this.dispatch('syncStarted', { isCancelled, trigger });
 
-			const { record, localFs, remoteFs } = await this.ctx.initializeSync();
+			const infras = await this.ctx.initializeSync();
+			const { record, localFs, remoteFs } = infras;
 			const traverseRemote = async () => {
 				try {
 					return await remoteFs.list('/', (progress) =>
@@ -145,15 +144,8 @@ export default class Sync {
 					return [];
 				}
 			};
-			const getRemoteList = async () => {
-				const list = await (this.ctx.getRemoteListGetter(trigger)?.({
-					localFs,
-					record,
-					remoteFs,
-				}) ?? traverseRemote());
-				if (list) return list;
-				return await traverseRemote();
-			};
+			const getRemoteList = async () =>
+				(await this.ctx.getRemoteListGetter(trigger)?.(infras)) ?? (await traverseRemote());
 			const [localList, remoteList] = await Promise.all([localFs.list('/'), getRemoteList()]);
 			if (cancelled) throw syncCancelledError;
 			const records = await record.getRecords();
@@ -178,8 +170,8 @@ export default class Sync {
 				taskFactory,
 			});
 			if (tasks.length === 0) {
-				this.dispatch('syncTerminated', { result: 'noop' });
-				return 'noop';
+				terminateReason = { result: 'noop' };
+				return terminateReason;
 			}
 			this.dispatch('log', `Planning finished with ${tasks.length} task(s).`);
 
@@ -203,6 +195,7 @@ export default class Sync {
 			if (
 				trigger !== 'manual' &&
 				trigger !== 'nonInteractiveManual' &&
+				trigger !== 'autoMigration' &&
 				this.settings.confirmDeleteInAutoSync &&
 				removeLocalTasks.length !== 0
 			) {
@@ -232,25 +225,18 @@ export default class Sync {
 				}),
 			);
 
-			if (failedCount) {
-				this.dispatch('syncTerminated', {
-					error: `Execution of ${failedCount} tasks failed.`,
-					result: 'failed',
-				});
-				return 'failed';
-			}
-			this.dispatch('syncTerminated', { result: 'completed' });
-			return 'completed';
+			terminateReason = failedCount
+				? { error: `Execution of ${failedCount} tasks failed.`, result: 'failed' }
+				: { result: 'completed' };
 		} catch (error) {
-			if (cancelled) {
-				this.dispatch('syncTerminated', { result: 'cancelled' });
-				return 'cancelled';
-			}
-			this.dispatch('syncTerminated', { error: toErrorMessage(error), result: 'failed' });
-			return 'failed';
+			terminateReason = cancelled
+				? { result: 'cancelled' }
+				: ({ error: toErrorMessage(error), result: 'failed' } as const);
 		} finally {
 			cleanup();
+			this.dispatch('syncTerminated', terminateReason);
 		}
+		return terminateReason;
 	};
 
 	private async convertDeleteToUpload(tasks: Array<RemoveLocal>, localFs: LocalFs) {
@@ -273,36 +259,7 @@ export default class Sync {
 		return final;
 	}
 
-	private readonly autoMigrate = async (apply: () => MaybePromise<void>) => {
-		const { dispatch, requestSync, initializeSync } = this.ctx;
-		dispatch('log', 'Auto-migration started.');
-		dispatch('autoMigrationProgress', { completed: 0, total: 3 });
-		const phase1Result = await requestSync('autoMigration');
-		if (phase1Result === 'cancelled' || phase1Result === 'failed') {
-			dispatch('error', 'Auto-migration phase 1 failed.');
-			dispatch('autoMigrationProgress', 'failed');
-			return;
-		}
-		dispatch('autoMigrationProgress', { completed: 1, total: 3 });
-		try {
-			const { record, remoteFs } = await initializeSync();
-			await Promise.all([record.drop(), remoteFs.delete('/'), apply()]);
-		} catch (error) {
-			dispatch('error', `Auto-migration phase 2 failed: \`${toErrorMessage(error)}\`.`);
-			dispatch('autoMigrationProgress', 'failed');
-			return;
-		}
-		dispatch('autoMigrationProgress', { completed: 2, total: 3 });
-		const phase3Result = await requestSync('autoMigration');
-		if (phase3Result === 'cancelled' || phase3Result === 'failed') {
-			dispatch('error', 'Auto-migration phase 3 failed.');
-			dispatch('autoMigrationProgress', 'failed');
-			return;
-		}
-		dispatch('autoMigrationProgress', { completed: 3, total: 3 });
-	};
-
-	root = { autoMigrate: this.autoMigrate, executeSync: this.executeSync };
+	root = { executeSync: this.executeSync };
 }
 
 function toMap(stats: Array<Stat>): StatsMap {
@@ -333,10 +290,7 @@ function partition<T, U extends T>(
 	return [truthy as Array<U>, falsy as Array<Exclude<T, U>>];
 }
 
-function toTaskInfo(task: BaseTask): TaskInfo {
-	return { key: task.key, name: task.name, prettyName: task.prettyName };
-}
-
-export function toErrorMessage(error: unknown) {
-	return error instanceof Error ? error.message : String(error);
+function toTaskInfo({ key, name, prettyName, local, remote }: BaseTask): TaskInfo {
+	const isDir = local?.isDir ?? remote?.isDir ?? false;
+	return { isDir, key, name, prettyName };
 }

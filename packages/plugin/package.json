@@ -3,12 +3,20 @@
 	"version": "3.0.0",
 	"license": "MIT",
 	"files": [
-		"./dist/module-sdk.js",
-		"./dist/module-sdk.d.ts"
+		"./dist-sdk"
 	],
 	"type": "module",
-	"types": "./dist/module-sdk.d.ts",
-	"exports": "./dist/module-sdk.js",
+	"types": "./dist-sdk/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist-sdk/index.d.ts",
+			"default": "./dist-sdk/index.js"
+		},
+		"./obsidian-bridge": {
+			"types": "./dist-sdk/obsidian-bridge.d.ts",
+			"default": "./dist-sdk/obsidian-bridge.js"
+		}
+	},
 	"scripts": {
 		"dev": "MODE=dev BUILD=plugin tsdown && MODE=dev BUILD=sdk tsdown",
 		"build": "BUILD=plugin tsdown && BUILD=sdk tsdown",

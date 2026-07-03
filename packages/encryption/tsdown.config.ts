@@ -1,3 +1,4 @@
+import obsidianBridge from '@hesprs/sync-engine-sdk/obsidian-bridge';
 import { defineConfig } from 'tsdown';
 
 const dev = process.env.MODE === 'dev';
@@ -5,7 +6,7 @@ const dev = process.env.MODE === 'dev';
 export default defineConfig({
 	clean: !dev,
 	dts: false,
-	entry: { encryption: 'src/index.ts' },
+	entry: { Encryption: 'src/index.ts' },
 	inputOptions: {
 		resolve: {
 			alias: {
@@ -19,4 +20,5 @@ export default defineConfig({
 	outputOptions: {
 		codeSplitting: false,
 	},
+	plugins: [obsidianBridge()],
 });

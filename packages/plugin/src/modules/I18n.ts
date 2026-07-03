@@ -1,5 +1,6 @@
-import type { Translations } from '@';
+import type { Events, Translations } from '@';
 import type { General } from '@/types';
+import type { On } from './EventBus';
 
 // https://github.com/obsidianmd/obsidian-translations
 export type ObsidianLanguageCode =
@@ -78,7 +79,8 @@ export type ObsidianLanguageCode =
 
 const DEFAULT_LANGUAGE: ObsidianLanguageCode = 'en';
 type Primitive = string | number | boolean | null | undefined;
-export type TranslationResource = Record<string, string | ((frag: DocumentFragment) => void)>;
+export type Fragment = (frag: DocumentFragment) => void;
+export type TranslationResource = Record<string, string | Fragment>;
 export type InterpolationValues = Record<string, Primitive>;
 export type Translate<O extends TranslationResource> = <K extends keyof O>(
 	key: K,
@@ -86,26 +88,69 @@ export type Translate<O extends TranslationResource> = <K extends keyof O>(
 ) => O[K] extends string ? string : DocumentFragment;
 
 export default class I18n {
-	private readonly i18nRegistry: Partial<Record<ObsidianLanguageCode, Set<TranslationResource>>> =
-		{};
+	private readonly i18nRegistry = new Map<ObsidianLanguageCode, Set<TranslationResource>>();
+	private readonly loadedResources = new Set<TranslationResource>();
+	readonly dispose: () => void;
+	private targetLang: ObsidianLanguageCode = DEFAULT_LANGUAGE;
+	declare readonly i18n: {};
 
-	declare i18n: {};
+	constructor({ on }: { on: On<Events> }) {
+		this.dispose = on('moduleLoaded', this.refreshI18n);
+	}
 
 	private readonly registerI18n = (code: ObsidianLanguageCode, resource: TranslationResource) => {
-		this.i18nRegistry[code] ??= new Set<TranslationResource>();
-		this.i18nRegistry[code].add(resource);
-		return () => this.i18nRegistry[code]?.delete(resource);
+		let set = this.i18nRegistry.get(code);
+		if (!set) {
+			set = new Set<TranslationResource>();
+			this.i18nRegistry.set(code, set);
+		}
+		set.add(resource);
+		return () => {
+			set.delete(resource);
+			this.loadedResources.delete(resource);
+		};
 	};
 
 	private readonly loadI18n = (target: ObsidianLanguageCode) => {
-		const langs: Array<ObsidianLanguageCode> = [
+		this.targetLang = target;
+		const langs = new Set<ObsidianLanguageCode>([
 			DEFAULT_LANGUAGE,
 			target.split('-')[0] as ObsidianLanguageCode,
 			target,
-		];
+		]);
 		for (const lang of langs) {
-			if (!this.i18nRegistry[lang]) continue;
-			for (const version of this.i18nRegistry[lang]) Object.assign(this.i18n, version);
+			const set = this.i18nRegistry.get(lang);
+			if (!set) continue;
+			for (const resource of set) {
+				Object.assign(this.i18n, resource);
+				this.loadedResources.add(resource);
+			}
+		}
+	};
+
+	private readonly refreshI18n = () => {
+		const langs = new Set<ObsidianLanguageCode>([
+			this.targetLang.split('-')[0] as ObsidianLanguageCode,
+			this.targetLang,
+		]);
+		if (!langs.has(DEFAULT_LANGUAGE)) {
+			const set = this.i18nRegistry.get(DEFAULT_LANGUAGE);
+			if (set)
+				for (const resource of set) {
+					if (this.loadedResources.has(resource)) continue;
+					for (const [key, value] of Object.entries(resource))
+						(this.i18n as Record<string, unknown>)[key] ??= value;
+					this.loadedResources.add(resource);
+				}
+		}
+		for (const lang of langs) {
+			const set = this.i18nRegistry.get(lang);
+			if (!set) continue;
+			for (const resource of set) {
+				if (this.loadedResources.has(resource)) continue;
+				Object.assign(this.i18n, resource);
+				this.loadedResources.add(resource);
+			}
 		}
 	};
 
@@ -124,6 +169,7 @@ export default class I18n {
 
 	root = {
 		loadI18n: this.loadI18n,
+		refreshI18n: this.refreshI18n,
 		registerI18n: this.registerI18n,
 		translate: this.translate as Translate<General>,
 	};

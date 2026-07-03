@@ -4,12 +4,12 @@ import { getTaskIcon } from '@/sync';
 
 function renderFailedTaskRow(
 	itemEl: HTMLDivElement,
-	{ name, key, error, prettyName }: FailedTaskInfo,
+	{ name, key, error, prettyName, isDir }: FailedTaskInfo,
 ) {
 	const row = itemEl.createDiv();
 	const main = row.createDiv({ cls: 'break-words flex items-center gap-2' });
-	const icon = main.createSpan({ cls: 'sync-engine-task__icon color-[var(--color-red)]' });
-	setIcon(icon, getTaskIcon(name));
+	const icon = main.createSpan({ cls: 'sync-engine-icon color-[var(--color-red)]' });
+	setIcon(icon, getTaskIcon(name, isDir));
 	setTooltip(icon, prettyName);
 
 	main.createSpan({ cls: 'text-[var(--text-muted)]', text: prettyName });

@@ -3,10 +3,11 @@ import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
 import obsidian, { Notice, requestUrl } from 'obsidian';
 import type { General } from '@/types';
+import compareVersions from '@/utils/compare-versions';
+import toErrorMessage from '@/utils/to-error-message';
 import { untilTrue } from '@/utils/wait';
 import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
-import { toErrorMessage } from './Sync';
 
 export type ModuleMeta = {
 	name: string;
@@ -43,6 +44,10 @@ export default class Extensibility {
 		failedToLoadModule: string;
 		failedToDownloadModule: string;
 		failedToFetchSource: string;
+	};
+	declare readonly events: {
+		moduleLoaded: string;
+		moduleUnloaded: string;
 	};
 
 	constructor(
@@ -116,17 +121,16 @@ export default class Extensibility {
 		await execute();
 	};
 
-	private readonly loadModule = async <N extends string>(name: N, start = false) => {
+	private readonly loadModule = async (name: string, start = false) => {
 		if (this.loadedModules.get(name)) return;
 		const { dispatch, translate, app, __addModule__, __getModule__, allModules } = this.ctx;
-		dispatch('log', `Loading module \`${name}\`.`);
 		try {
 			const { default: ctor } = await import(
 				app.vault.adapter.getResourcePath(this.getModulePath(name))
 			);
 			__addModule__(ctor);
 			const instance: ModuleInstance = __getModule__(ctor);
-			const settings = this.settings as Partial<Record<N, General>>;
+			const settings = this.settings as Partial<Record<string, General>>;
 			const existingSettings = settings[name];
 			if (existingSettings) {
 				Object.assign(instance.moduleSettings, existingSettings);
@@ -135,6 +139,7 @@ export default class Extensibility {
 			if (start) instance.start?.();
 			allModules.add(ctor);
 			this.loadedModules.set(name, ctor);
+			dispatch('moduleLoaded', name);
 		} catch (error) {
 			const message = toErrorMessage(error);
 			dispatch('error', `Module \`${name}\` failed to load: ${message}`);
@@ -146,11 +151,11 @@ export default class Extensibility {
 		const ctor = this.loadedModules.get(name);
 		if (!ctor) return;
 		const { __getModule__, dispatch, allModules } = this.ctx;
-		dispatch('log', `Unloading module \`${name}\`.`);
 		const instance: ModuleInstance = __getModule__(ctor as General);
 		instance.dispose?.();
 		this.loadedModules.delete(name);
 		allModules.delete(ctor);
+		dispatch('moduleUnloaded', name);
 	};
 
 	private readonly downloadModule = async (
@@ -275,19 +280,6 @@ export default class Extensibility {
 		unloadModule: this.unloadModule,
 		updateModules: this.updateModules,
 	};
-}
-
-// 1 = a > b
-export function compareVersions(a: string, b: string): number {
-	const pa = a.split('.').map(Number);
-	const pb = b.split('.').map(Number);
-	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-		const va = pa[i] ?? 0;
-		const vb = pb[i] ?? 0;
-		if (va > vb) return 1;
-		if (va < vb) return -1;
-	}
-	return 0;
 }
 
 function isValidSource(d: unknown): d is ModuleSourceSchema {

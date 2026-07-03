@@ -73,7 +73,8 @@
 		"eslint/no-multi-assign": "off",
 		"react/jsx-handler-names": "off",
 		"typescript/method-signature-style": ["warn", "property"],
-		"eslint/no-constant-condition": ["warn", { "checkLoops": "none" }]
+		"eslint/no-constant-condition": ["warn", { "checkLoops": "none" }],
+		"typescript/await-thenable": "off" // Glitchy on MaybePromise array: https://github.com/typescript-eslint/typescript-eslint/issues/11694
 	},
 	"env": {
 		"builtin": true,

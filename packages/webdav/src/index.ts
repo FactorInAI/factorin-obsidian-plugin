@@ -1,33 +1,51 @@
 import type {
 	RemoteFsEntry,
 	RemoteFsWrapperEntry,
-	SelectFromContext,
-	Settings,
 	Translate,
 	Translations,
+	SelectFromContext,
+	SettingEntry,
+	Context,
+	ObsidianLanguageCode,
+	TranslationResource,
 } from '@hesprs/sync-engine-sdk';
 import type { App } from 'obsidian';
+import type { WebdavTranslations } from './setting';
 import baseDirWrapper from './base-dir';
+import { en, zh } from './i18n';
+import webdavSetting from './setting';
 import WebdavFs from './webdav/fs';
 
-type I18nMap = Webdav['i18n'] & Translations;
+export type WebdavSettings = {
+	baseDirectory: string;
+	depthInfinity: boolean;
+	endpoint: string;
+	password: string;
+	username: string;
+};
 
 export default class Webdav {
 	private readonly cleanup: Array<() => void> = [];
 
 	constructor(
 		private readonly ctx: SelectFromContext<{
-			translate: Translate<I18nMap>;
+			translate: Translate<Translations & WebdavTranslations>;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => () => void;
 			app: App;
-			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => boolean;
+			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => void;
+			registerSetting: (entry: SettingEntry) => () => void;
+			registerI18n: (
+				lang: ObsidianLanguageCode,
+				translations: TranslationResource,
+			) => () => void;
 		}>,
 	) {
 		if (!this.moduleSettings.baseDirectory)
 			this.moduleSettings.baseDirectory = `${ctx.app.vault.getName()}/`;
+		this.cleanup.push(ctx.registerI18n('en', en), ctx.registerI18n('zh', zh));
 	}
 
-	moduleSettings = {
+	readonly moduleSettings: WebdavSettings = {
 		baseDirectory: '',
 		depthInfinity: false,
 		endpoint: '',
@@ -35,16 +53,13 @@ export default class Webdav {
 		username: '',
 	};
 
-	declare settings: Settings;
-
-	i18n = { webdav: 'WebDAV' };
-
 	readonly start = () => {
 		const {
 			translate,
 			registerRemoteFs,
 			app: { secretStorage },
 			registerRemoteFsWrapper,
+			registerSetting,
 		} = this.ctx;
 		this.cleanup.push(
 			registerRemoteFs('webdav', {
@@ -53,12 +68,12 @@ export default class Webdav {
 						endpoint,
 						username,
 						password: pwd,
-						depthInfinity: useInfinity,
+						depthInfinity,
 					} = this.moduleSettings;
 					const password = secretStorage.getSecret(pwd);
 					if (password === null || !endpoint)
 						throw new Error('Please configure WebDAV account!');
-					return new WebdavFs({ endpoint, password, useInfinity, username });
+					return new WebdavFs({ depthInfinity, endpoint, password, username });
 				},
 				prettyName: translate('webdav'),
 			}),
@@ -66,6 +81,10 @@ export default class Webdav {
 				apply: (fs) => baseDirWrapper(fs, this.moduleSettings.baseDirectory),
 				fsBind: 'webdav',
 				order: 6318,
+			}),
+			registerSetting({
+				order: 749,
+				render: (el) => webdavSetting(el, this.ctx as Context, this.moduleSettings),
 			}),
 		);
 	};

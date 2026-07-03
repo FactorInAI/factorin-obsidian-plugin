@@ -74,7 +74,7 @@ export default class FilterEditorModal extends Modal {
 					text: 'Aa',
 				});
 				function updateButtonStatus() {
-					const activeCls = ['bg-[var(--interactive-accent)]!'];
+					const activeCls = ['bg-[--interactive-accent]!'];
 					const inactiveCls = ['background-none!', 'hover:bg-[--interactive-normal]!'];
 					if (filter.options.caseSensitive) {
 						forceCaseBtn.classList.add(...activeCls);

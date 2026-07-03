@@ -14,7 +14,9 @@ function getDateParts(input: number | Date) {
 	};
 }
 
-export default function formatDateTime(input: number | Date): string {
+export default function formatDateTime(input: number | Date, timeOnly = false): string {
 	const { year, month, day, hour, minute, second } = getDateParts(input);
-	return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+	return timeOnly
+		? `${hour}:${minute}:${second}`
+		: `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }

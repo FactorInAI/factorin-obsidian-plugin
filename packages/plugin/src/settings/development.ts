@@ -1,9 +1,8 @@
-import { hash } from '@repo/shared';
-import { App, Notice, Setting } from 'obsidian';
+import { Notice, Setting } from 'obsidian';
 import type { LocalFs, RemoteFs } from '@/fs';
 import type { Translate } from '@/modules/I18n';
-import { exportLogs } from '@/modules/Observability';
 import { clearAllStorage, clearStorageNamespace } from '@/storage';
+import getNamespace from '@/utils/get-namespace';
 
 export type DevelopmentSettingTranslations = {
 	development: string;
@@ -24,11 +23,10 @@ export default function developmentSettings(
 		translate: Translate<DevelopmentSettingTranslations>;
 		createLocalFs: () => LocalFs;
 		createRemoteFs: () => RemoteFs;
-		getLogs: () => string;
-		app: App;
+		exportLogs: () => Promise<void>;
 	},
 ) {
-	const { translate, getLogs, app } = ctx;
+	const { translate, exportLogs } = ctx;
 	new Setting(el).setName(translate('development')).setHeading();
 
 	new Setting(el)
@@ -49,9 +47,7 @@ export default function developmentSettings(
 		.setName(translate('exportLogsToFile'))
 		.setDesc(translate('exportLogsDescription'))
 		.addButton((button) => {
-			button.setButtonText(translate('export')).onClick(() => {
-				void exportLogs(getLogs(), app);
-			});
+			button.setButtonText(translate('export')).onClick(() => void exportLogs());
 		});
 }
 
@@ -64,7 +60,7 @@ async function clearVaultRecords({
 	createRemoteFs: () => RemoteFs;
 	translate: Translate<DevelopmentSettingTranslations>;
 }) {
-	const namespace = hash(`${createLocalFs().getUid()}~~${createRemoteFs().getUid()}`);
+	const namespace = getNamespace(createLocalFs(), createRemoteFs());
 	await clearStorageNamespace(namespace);
 	new Notice(translate('vaultRecordsCleared'));
 }

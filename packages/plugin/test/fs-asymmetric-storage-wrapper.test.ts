@@ -1,13 +1,13 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
-import type { MemoryDBMeta, MemoryDBSchema } from '@/modules/Registrar';
+import type { ContextMemoryDB } from '@/fs';
 import type { Stat } from '@/types';
 import { STORAGE_NAME } from '@/consts';
 import { asymmetricStorageWrapper } from '@/fs';
 import { testKit } from '@/sdk';
 
 const { bytes, file, folder, remoteFs } = testKit;
-const db = openMemoryDB<MemoryDBSchema, MemoryDBMeta>(STORAGE_NAME);
+const db: ContextMemoryDB = openMemoryDB(STORAGE_NAME);
 
 function seedRemoteContext(...stats: Array<Stat>) {
 	const store = db.getStore('remoteStatContext');

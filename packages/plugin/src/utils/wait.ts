@@ -9,7 +9,7 @@ export function untilTrue(ref: Ref<boolean>, reserve = false) {
 	return new Promise<void>((resolve) => {
 		const unsub = ref.subscribe((isTrue) => {
 			if (isTrue) {
-				if (reserve) ref(false);
+				if (reserve) (ref as unknown as { value: boolean }).value = false;
 				unsub();
 				resolve();
 			}

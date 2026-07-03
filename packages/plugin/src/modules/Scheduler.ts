@@ -5,11 +5,11 @@ import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
 import { untilTrue } from '@/utils/wait';
 import type { SyncStage } from './Observability';
 import type { SyncTriggerEntry } from './Registrar';
-import type { SyncResult } from './Sync';
+import type { SyncTerminateReason } from './Sync';
 
 type SyncRequest = {
 	trigger: string;
-	resolve: (result: SyncResult) => void;
+	resolve: (result: SyncTerminateReason) => void;
 };
 
 export default class Scheduler {
@@ -22,7 +22,7 @@ export default class Scheduler {
 	constructor(
 		private readonly ctx: {
 			syncStage: Ref<SyncStage>;
-			executeSync: (trigger: string) => Promise<SyncResult>;
+			executeSync: (trigger: string) => Promise<SyncTerminateReason>;
 			registerEvent: (ref: EventRef) => void;
 			app: App;
 			isIdle: Ref<boolean>;
@@ -39,7 +39,7 @@ export default class Scheduler {
 		inclusionRules: Array<GlobMatchOptions>;
 	};
 
-	private readonly requestSync = (trigger: string): Promise<SyncResult> =>
+	private readonly requestSync = (trigger: string): Promise<SyncTerminateReason> =>
 		new Promise((resolve) => {
 			this.pendingRequests.push({ resolve, trigger });
 			void this.scheduleFlush();
@@ -67,7 +67,7 @@ export default class Scheduler {
 	dispose = () => {
 		while (this.pendingRequests.length > 0) {
 			const request = this.pendingRequests.shift();
-			request?.resolve('cancelled');
+			request?.resolve({ result: 'cancelled' });
 		}
 		if (this.realtimeSyncTimer) {
 			window.clearTimeout(this.realtimeSyncTimer);

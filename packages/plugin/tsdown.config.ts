@@ -70,8 +70,11 @@ const sdkConfig = defineConfig({
 	...sharedConfig,
 	clean: false,
 	dts: true,
-	entry: { 'module-sdk': 'src/sdk/index.ts' },
-	outDir: 'dist',
+	entry: {
+		index: 'src/sdk/index.ts',
+		'obsidian-bridge': 'src/sdk/obsidian-bridge.ts',
+	},
+	outDir: 'dist-sdk',
 });
 
 export default buildingPlugin ? pluginConfig : sdkConfig;

@@ -1,4 +1,3 @@
-import type { TextComponent } from 'obsidian';
 import { Notice, Setting } from 'obsidian';
 import type { TogglableValue } from '@/types';
 import { formatFileSize, formatTime, parseFileSize, parseTime } from '@/utils/unit-converter';
@@ -69,34 +68,6 @@ export function generateSettingEntry({
 				}
 			});
 		});
-}
-
-export function handleInput<T, K extends string>({
-	text,
-	save,
-	processValue,
-	stringify = (value: T) => String(value),
-	key,
-	settingsObject,
-	invalidValue,
-}: {
-	text: TextComponent;
-	save: () => Promise<void>;
-	processValue: (value: string) => T | false;
-	key: K;
-	settingsObject: NoInfer<Record<K, T>>;
-	stringify?: (value: T) => string;
-	invalidValue: string;
-}) {
-	text.inputEl.addEventListener('blur', () => {
-		const value = processValue(text.getValue());
-		if (value === false) new Notice(invalidValue);
-		else if (settingsObject[key] !== value) {
-			settingsObject[key] = value;
-			void save();
-		}
-		text.setValue(stringify(settingsObject[key]));
-	});
 }
 
 function format(value: number, type: InputType): string {

@@ -8,4 +8,5 @@ export { default as retryWrapper } from './wrappers/retry';
 export { default as VaultFs } from './vault';
 export { default as hierarchalOptimizer } from './hierarchal-optimizer';
 export type { MemoryControlSharedState } from './wrappers/memory-control';
+export type { ContextMemoryDB } from './wrappers/context';
 export type * from './interface';

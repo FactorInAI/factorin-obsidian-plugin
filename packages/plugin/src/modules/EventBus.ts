@@ -85,13 +85,20 @@ export default class EventBus {
 				else putLog(`Sync ended with result: \`${result}\`.`);
 				isIdle(true);
 			}),
+			on('migrationProgress', ({ completed }) => {
+				if (completed === 0) putLog('Migration started.');
+			}),
+			on('migrationFailed', (error) => putLog(`Migration failed: \`${error}\`.`, 'error')),
+			on('moduleLoaded', (name) => putLog(`Module \`${name}\` loaded.`)),
+			on('moduleUnloaded', (name) => putLog(`Module \`${name}\` unloaded.`)),
 		);
 	}
 
 	private readonly getThisSync = () => this.syncLogs.at(-1) as SyncStats;
 	private readonly putLog = (log: string, level: 'info' | 'error' = 'info') => {
 		const message = `- \`${level.toLocaleUpperCase()}\` - ${log}`;
-		if (this.isIdle()) this.generalLogs.push(message);
+		if (this.isIdle())
+			this.generalLogs.push(`- ${formatDateTime(Date.now(), true)} ${message}`);
 		else this.getThisSync().logs.push(message);
 	};
 

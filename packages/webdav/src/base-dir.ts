@@ -27,7 +27,7 @@ function stripBaseDirFromStats(baseDir: string, stats: Array<Stat>) {
 
 class BaseDirRemoteFs implements WrappedRemoteFs {
 	constructor(
-		public readonly original: RemoteFs | WrappedRemoteFs,
+		public readonly original: RemoteFs,
 		private readonly baseDir: string,
 	) {}
 
