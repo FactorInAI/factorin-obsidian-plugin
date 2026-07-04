@@ -56,55 +56,55 @@ export default function headSettings(
 		'color-neutral-600',
 		'sync-engine-spinning',
 	];
-	const setChecking = () => {
-		statusButton?.setIcon('refresh-ccw');
-		statusButton?.extraSettingsEl.removeClasses(possibleClasses);
-		statusButton?.extraSettingsEl.addClasses(['sync-engine-spinning', 'color-neutral-600']);
+	const setChecking = (button: ExtraButtonComponent) => {
+		button.setIcon('refresh-ccw');
+		button.extraSettingsEl.removeClasses(possibleClasses);
+		button.extraSettingsEl.addClasses(['sync-engine-spinning', 'color-neutral-600']);
 	};
-	const setSuccess = () => {
-		statusButton?.setIcon('check');
-		statusButton?.extraSettingsEl.removeClasses(possibleClasses);
-		statusButton?.extraSettingsEl.addClasses(['color-green-400']);
+	const setSuccess = (button: ExtraButtonComponent) => {
+		button.setIcon('check');
+		button.extraSettingsEl.removeClasses(possibleClasses);
+		button.extraSettingsEl.addClasses(['color-green-400']);
 	};
-	const setError = () => {
-		statusButton?.setIcon('cloud-off');
-		statusButton?.extraSettingsEl.removeClasses(possibleClasses);
-		statusButton?.extraSettingsEl.addClasses(['color-rose-500']);
+	const setError = (button: ExtraButtonComponent) => {
+		button.setIcon('cloud-off');
+		button.extraSettingsEl.removeClasses(possibleClasses);
+		button.extraSettingsEl.addClasses(['color-rose-500']);
 	};
 	const scheduleCheckConnection = () =>
-		window.setInterval(checkConnection, CHECK_CONNECTION_INTERVAL);
+		window.setTimeout(checkConnection, CHECK_CONNECTION_INTERVAL);
 
-	const checkConnection = async (force = false, noGC = false) => {
-		// Self garbage collection
-		if (!noGC && statusButton?.extraSettingsEl.isConnected) {
+	const checkConnection = async (force = false, skipGC = false) => {
+		if (!statusButton) return;
+		if (!statusButton.extraSettingsEl.isConnected && !skipGC) {
 			statusButton = undefined;
 			return;
 		}
 		if (memoryDB.getMeta('lastCheckedFs') === settings.remoteFs && !force) {
-			setSuccess();
+			setSuccess(statusButton);
 			return;
 		}
 		if (!settings.remoteFs) {
-			setError();
+			setError(statusButton);
 			return;
 		}
 		try {
-			setChecking();
+			setChecking(statusButton);
 			const result = await createRemoteFs().checkConnection();
 			if (result.success) {
 				memoryDB.setMeta('lastCheckedFs', settings.remoteFs);
-				setSuccess();
+				setSuccess(statusButton);
 				if (force) new Notice(translate('checkConnectionSuccess'));
 			} else {
-				setError();
-				scheduleCheckConnection();
+				setError(statusButton);
 				if (force) new Notice(`${translate('checkConnectionFailed')}: ${result.reason}`);
+				else scheduleCheckConnection();
 			}
 		} catch (error) {
-			setError();
-			scheduleCheckConnection();
+			setError(statusButton);
 			if (force)
 				new Notice(`${translate('checkConnectionFailed')}: ${toErrorMessage(error)}`);
+			else scheduleCheckConnection();
 		}
 	};
 
@@ -115,7 +115,6 @@ export default function headSettings(
 			statusButton = button
 				.setTooltip(translate('checkConnection'))
 				.onClick(() => void checkConnection(true));
-			void checkConnection(undefined, true);
 		})
 		.addDropdown((dropdown) => {
 			for (const [key, { prettyName }] of remoteFsRegistry)
@@ -126,6 +125,7 @@ export default function headSettings(
 				void saveSettings();
 			});
 		});
+	void checkConnection(false, true);
 
 	new Setting(el)
 		.setName(translate('moduleManagement'))

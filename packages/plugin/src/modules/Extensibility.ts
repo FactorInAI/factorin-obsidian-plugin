@@ -5,7 +5,7 @@ import obsidian, { Notice, requestUrl } from 'obsidian';
 import type { General } from '@/types';
 import compareVersions from '@/utils/compare-versions';
 import toErrorMessage from '@/utils/to-error-message';
-import { untilTrue } from '@/utils/wait';
+import untilTrue from '@/utils/until-true';
 import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
 
@@ -172,7 +172,10 @@ export default class Extensibility {
 			const { adapter } = app.vault;
 			const { arrayBuffer: module } = await requestUrl(url);
 			const isRunning = this.loadedModules.has(name);
-			if (waitIdle) await untilTrue(isIdle, true);
+			if (waitIdle) {
+				await untilTrue(isIdle, 'stop');
+				isIdle(false);
+			}
 			if (isRunning) this.unloadModule(name);
 			await Promise.all([
 				legacyVersion ? adapter.remove(this.getModulePath(name)) : Promise.resolve(),
@@ -249,7 +252,8 @@ export default class Extensibility {
 				factory.download(name, version, main);
 		});
 		if (!operations.length) return;
-		await untilTrue(isIdle, true);
+		await untilTrue(isIdle, 'stop');
+		isIdle(false);
 		await execute();
 		isIdle(true);
 	};

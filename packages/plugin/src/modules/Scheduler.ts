@@ -2,7 +2,7 @@ import type { App, EventRef, TAbstractFile } from 'obsidian';
 import type { Ref } from 'synthkernel';
 import type { GlobMatchOptions, TogglableValue } from '@/types';
 import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
-import { untilTrue } from '@/utils/wait';
+import untilTrue from '@/utils/until-true';
 import type { SyncStage } from './Observability';
 import type { SyncTriggerEntry } from './Registrar';
 import type { SyncTerminateReason } from './Sync';
@@ -118,7 +118,8 @@ export default class Scheduler {
 	private readonly scheduleFlush = async () => {
 		if (this.pendingRequests.length === 0 || this.isScheduling) return;
 		this.isScheduling = true;
-		await untilTrue(this.ctx.isIdle, true);
+		await untilTrue(this.ctx.isIdle, 'stop');
+		this.ctx.isIdle(false);
 		void this.flush();
 		this.isScheduling = false;
 	};
