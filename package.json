@@ -9,7 +9,8 @@
 	],
 	"type": "module",
 	"scripts": {
-		"dev:docs": "turbo run dev:docs",
+		"dev:docs": "cd docs && bun dev:docs",
+		"build:docs": "cd docs && bun build:docs",
 		"dev": "turbo run dev",
 		"build": "turbo run build",
 		"ver": "bun scripts/version-bump.ts",

@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"dev:docs": "vitepress dev",
-		"build": "vitepress build",
+		"build:docs": "vitepress build",
 		"lint": "oxlint --fix --silent --type-aware && oxfmt",
 		"check": "vue-tsc && oxlint --format agent --type-aware && oxfmt --check"
 	},

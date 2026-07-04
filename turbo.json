@@ -25,10 +25,6 @@
 		"tests": {
 			"dependsOn": ["^dev"],
 			"cache": true
-		},
-		"dev:docs": {
-			"persistent": true,
-			"cache": false
 		}
 	}
 }

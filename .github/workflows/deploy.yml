@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: 'pages'
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
@@ -28,11 +28,14 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build
+      - name: Build modules
         run: bun run build
 
       - name: Sync modules
-        run: bun run scripts/deploy-modules.ts
+        run: bun scripts/deploy-modules.ts
+
+      - name: Build docs
+        run: bun build:docs
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
