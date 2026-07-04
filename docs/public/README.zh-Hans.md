@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-    <a href="../README.md">
+    <a href="../../README.md">
         <strong>English</strong>
     </a> • 
     <a href="https://community.obsidian.md/plugins/webdav-sync">

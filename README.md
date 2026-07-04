@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img src="assets/logo.svg" alt="Obsidian WebDAV Sync logo" width="280px">
+    <img src="./docs/public/logo.svg" alt="Obsidian WebDAV Sync logo" width="280px">
     <br />
     Obsidian WebDAV Sync
     <br />
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-    <a href="./assets/README.zh-Hans.md">
+    <a href="./docs/public/README.zh-Hans.md">
         <strong>简体中文</strong>
     </a> • 
     <a href="https://community.obsidian.md/plugins/webdav-sync">
@@ -188,6 +188,6 @@ Below is a list of planned features and improvements, the faster this plugin is 
 ## License
 
 The source code of Sync Engine and modules in this repository are licensed under the [MIT License](https://mit-license.org/).<br>
-The documents in `blueprint/` directory are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
+The documents in `blueprint/` directory and documentation website are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
 
 Copyright ©️ 2026 Hēsperus and all contributors

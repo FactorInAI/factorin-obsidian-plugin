@@ -92,7 +92,7 @@ export default class SyncEngine extends Plugin {
 		maxRequestConcurrency: { enabled: true, value: 50 },
 		minRequestInterval: { enabled: false, value: 0 },
 		moduleAutoUpdate: true,
-		moduleSources: [],
+		moduleSources: ['https://sync.consensia.cc/modules.json'],
 		modules: {},
 		noticeStatusOnMobile: true,
 		realtimeSync: { enabled: false, value: 5000 },

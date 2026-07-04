@@ -4,3 +4,4 @@ plans
 **/dist-sdk
 **/.turbo
 **/node_modules
+**/cache

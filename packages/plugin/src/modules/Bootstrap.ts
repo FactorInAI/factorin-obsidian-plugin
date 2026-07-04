@@ -7,6 +7,7 @@ import type { FilterSettingTranslations } from '@/settings/filter';
 import type { HeadSettingTranslations } from '@/settings/head';
 import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous';
 import type { Progress, TogglableValue } from '@/types';
+import en from '@/en';
 import {
 	localCancellationWrapper,
 	localContextWrapper,
@@ -21,7 +22,6 @@ import {
 	hierarchalOptimizer,
 	asymmetricStorageWrapper,
 } from '@/fs';
-import en from '@/i18n/en';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
 import featuresSettings from '@/settings/features';

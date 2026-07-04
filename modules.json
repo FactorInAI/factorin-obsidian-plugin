@@ -1,0 +1,14 @@
+[
+	{
+		"name": "WebDAV",
+		"version": "0.0.1",
+		"description": "[Official] WebDAV backend support.",
+		"main": "https://sync.consensia.cc/modules/WebDAV.js"
+	},
+	{
+		"name": "Encryption",
+		"version": "0.0.1",
+		"description": "[Official] Client-side encrypt vault files before uploading to backend.",
+		"main": "https://sync.consensia.cc/modules/Encryption.js"
+	}
+]

@@ -1,6 +1,8 @@
 {
 	"$schema": "https://turborepo.dev/schema.json",
-	"ui": "tui",
+	"ui": "stream",
+	"noUpdateNotifier": true,
+	"concurrency": "100%",
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
@@ -23,6 +25,10 @@
 		"tests": {
 			"dependsOn": ["^dev"],
 			"cache": true
+		},
+		"dev:docs": {
+			"persistent": true,
+			"cache": false
 		}
 	}
 }
