@@ -1,4 +1,6 @@
 import type { Context, Events, Translations } from '@';
+import type { App, SecretStorage } from 'obsidian';
+import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
 import type { LocalFs, BatchOptimizer, RemoteFs, ContextMemoryDB } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
@@ -21,6 +23,7 @@ import {
 	retryWrapper,
 	hierarchalOptimizer,
 	asymmetricStorageWrapper,
+	customHeadersWrapper,
 } from '@/fs';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
@@ -39,6 +42,8 @@ import type {
 	SettingEntry,
 	SyncTriggerEntry,
 } from './Registrar';
+
+export type CustomHeaders = Array<{ type: 'plaintext' | 'secret'; value: string; key: string }>;
 
 export default class Bootstrap {
 	private readonly cleanupCallbacks: Array<() => void> = [];
@@ -59,13 +64,15 @@ export default class Bootstrap {
 		FeaturesSettingTranslations &
 		FilterSettingTranslations &
 		HeadSettingTranslations &
-		MiscellaneousSettingTranslations;
+		MiscellaneousSettingTranslations &
+		HeadersEditorTranslations;
 	declare readonly settings: {
 		maxMemoryConsumption: TogglableValue;
 		maxRequestConcurrency: TogglableValue;
 		minRequestInterval: TogglableValue;
 		realtimeSyncFastMode: boolean;
 		asymmetricStorage: boolean;
+		customHeaders: CustomHeaders;
 	};
 	declare readonly events: {
 		migrationProgress: Progress;
@@ -74,6 +81,7 @@ export default class Bootstrap {
 
 	constructor(
 		private readonly ctx: {
+			app: App;
 			registerI18n: (code: ObsidianLanguageCode, resource: TranslationResource) => void;
 			on: On<Events>;
 			memoryDB: ContextMemoryDB;
@@ -95,6 +103,7 @@ export default class Bootstrap {
 
 	readonly start = () => {
 		const {
+			app: { secretStorage },
 			registerLocalFsWrapper,
 			registerRemoteFsWrapper,
 			on,
@@ -192,6 +201,14 @@ export default class Bootstrap {
 			order: 5000,
 		});
 		registerRemoteFsWrapper({
+			apply: (fs) =>
+				customHeadersWrapper(
+					fs,
+					synthesizeHeaders(this.settings.customHeaders, secretStorage),
+				),
+			order: 6000,
+		});
+		registerRemoteFsWrapper({
 			apply: (fs) => remoteContextWrapper(fs, memoryDB),
 			order: 10_000,
 		});
@@ -236,4 +253,15 @@ export default class Bootstrap {
 		this.cleanupCallbacks.length = 0;
 		this.hangingOperations.length = 0;
 	};
+}
+
+function synthesizeHeaders(headers: CustomHeaders, secret: SecretStorage): Record<string, string> {
+	return Object.fromEntries(
+		headers.map(({ key, type, value }) => {
+			if (type === 'plaintext') return [key, value];
+			const secretValue = secret.getSecret(key);
+			if (!secretValue) throw new Error(`Custom secret header not found: "${key}".`);
+			return [key, secretValue];
+		}),
+	);
 }

@@ -1,4 +1,4 @@
-import { App, Modal, setIcon, Setting } from 'obsidian';
+import { App, Modal, setIcon, Setting, setTooltip } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 import type { GlobMatchOptions } from '@/types';
 
@@ -93,6 +93,7 @@ export default class FilterEditorModal extends Modal {
 		updateList();
 		const add = contentEl.createEl('button', 'clickable-icon aspect-square ml-auto mb-2');
 		setIcon(add, 'plus');
+		setTooltip(add, t('add'));
 		add.onClickEvent(() => {
 			filters.push({ expr: '', options: { caseSensitive: false } });
 			updateList();

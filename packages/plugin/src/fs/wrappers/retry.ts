@@ -1,3 +1,4 @@
+import type { RequestUrlParam } from 'obsidian';
 import { requestUrl } from 'obsidian';
 import sleep from '@/utils/sleep';
 import type { RemoteFs, RemoteFsWrapper } from '../interface';
@@ -14,19 +15,15 @@ function retryWrapper(original: RemoteFs, options?: RetryOptions): RemoteFs {
 	const { maxRetry = 3, isRetryable = isRetryableError, retryDelayMs = 1000 } = options ?? {};
 	const root = digOriginal(original);
 	const request = root.request;
-	type RequestParam = Parameters<typeof requestUrl>[0];
-
-	async function wrappedRequest(p: RequestParam, retryCount = 0) {
-		try {
-			return await request(p);
-		} catch (error) {
-			if (!isRetryable(error) || retryCount >= maxRetry) throw error;
-			await sleep(retryDelayMs);
-			return wrappedRequest(p, retryCount + 1);
-		}
-	}
-
-	root.request = wrappedRequest as typeof requestUrl;
+	root.request = (async (args: string | RequestUrlParam) => {
+		for (let i = 0; ; i++)
+			try {
+				return await request(args);
+			} catch (error) {
+				if (!isRetryable(error) || i >= maxRetry) throw error;
+				await sleep(retryDelayMs);
+			}
+	}) as typeof requestUrl;
 	return original;
 }
 

@@ -3,6 +3,7 @@ import type { Translations } from '@';
 const en: Translations = {
 	add: 'Add',
 	addRecord: 'Add record',
+	addSecretHeader: 'Add secret header',
 	allRecordsCleared: 'All records cleared',
 	asymmetricStorage: 'Asymmetric storage',
 	asymmetricStorageDescription: (frag) => {
@@ -81,6 +82,9 @@ const en: Translations = {
 	controls: 'Controls',
 	createLocalDir: 'Create local folder',
 	createRemoteDir: 'Create remote folder',
+	customHeaders: 'Custom headers',
+	customHeadersDescription:
+		'Add custom headers to be included with each request, they can either be stored in plaintext or in Obsidian keychain.',
 	deleteModule: 'Delete module',
 	development: 'Development',
 	diffMatchPatch: 'Merge',
@@ -90,6 +94,7 @@ const en: Translations = {
 	download: 'Download',
 	downloadModule: 'Download module',
 	edit: 'Edit',
+	editHeaders: 'Edit headers',
 	editSources: 'Edit sources',
 	enableModule: 'Enable module',
 	enabled: 'Enabled',
@@ -109,12 +114,14 @@ const en: Translations = {
 	features: 'Features',
 	filterPlaceholder: 'E.g., temp.md, .trash/**/*',
 	filterRules: 'Filter rules',
+	headerKeyPlaceholder: 'Header key',
+	headerValuePlaceholder: 'Header value',
 	hide: 'Hide',
 	inclusionRules: 'Inclusion rules',
 	inclusionRulesDescription:
 		'Files / folders matching exclusion rules but also matching these glob patterns will still be synced.',
 	installed: 'Installed',
-	invalidSourceOmitted: 'Invalid module sources were omitted.',
+	invalidEntriesOmitted: 'Invalid entries were omitted.',
 	invalidValue: 'Invalid value, reverted to original.',
 	keepLocal: 'Keep local',
 	keepRemote: 'Keep remote',

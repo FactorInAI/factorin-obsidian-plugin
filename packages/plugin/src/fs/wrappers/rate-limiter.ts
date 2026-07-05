@@ -1,4 +1,4 @@
-import type { requestUrl } from 'obsidian';
+import type { requestUrl, RequestUrlParam } from 'obsidian';
 import type { RemoteFs, RemoteFsWrapper } from '../interface';
 import ApiLimiter from '../utils/api-limiter';
 import digOriginal from '../utils/dig-original';
@@ -13,8 +13,8 @@ function rateLimiterWrapper(original: RemoteFs, options: RateLimiterOptions): Re
 	const root = digOriginal(original);
 	const request = root.request;
 
-	root.request = limiter.wrap((...args: Parameters<typeof requestUrl>) =>
-		request(...args),
+	root.request = limiter.wrap((arg: string | RequestUrlParam) =>
+		request(arg),
 	) as typeof requestUrl;
 
 	return original;

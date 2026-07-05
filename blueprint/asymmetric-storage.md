@@ -52,9 +52,9 @@ Can be flattened as:
 ├── 00000~foo.md (file)
 ├── 00000~bar.md (file)
 ├── 00000~abc.md (file)
-├── 00000z9Eb{m~a-folder (folder becomes empty file)
-├── z9Eb{m~nested.md (file)
-└── z9Eb{m~child.md (file)
+├── 00000z9E{m~a-folder (folder becomes empty file)
+├── z9E{m~nested.md (file)
+└── z9E{m~child.md (file)
 ```
 
 The anchor generation algorithm is deterministic, it needs to take `<parent-anchor>~<basename>` as seed to generate an anchor. For example, the seed of `a-folder/` into the algorithm is `00000~a-folder`.

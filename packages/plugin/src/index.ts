@@ -65,6 +65,7 @@ export default class SyncEngine extends Plugin {
 		confirmDeleteInAutoSync: true,
 		confirmTasksInSync: true,
 		conflictStrategy: ConflictStrategy.DiffMatchPatch,
+		customHeaders: [],
 		decider: 'bidirectional',
 		exclusionRules: [
 			'**/.git',

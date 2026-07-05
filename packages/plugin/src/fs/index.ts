@@ -5,6 +5,7 @@ export { localCancellationWrapper, remoteCancellationWrapper } from './wrappers/
 export { remoteMemoryControlWrapper, localMemoryControlWrapper } from './wrappers/memory-control';
 export { default as rateLimiterWrapper } from './wrappers/rate-limiter';
 export { default as retryWrapper } from './wrappers/retry';
+export { default as customHeadersWrapper } from './wrappers/custom-headers';
 export { default as VaultFs } from './vault';
 export { default as hierarchalOptimizer } from './hierarchal-optimizer';
 export type { MemoryControlSharedState } from './wrappers/memory-control';

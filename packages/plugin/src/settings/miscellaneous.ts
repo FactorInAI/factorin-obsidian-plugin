@@ -1,6 +1,7 @@
-import type { Settings } from '@';
+import type { Context, Settings } from '@';
 import { Setting } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
+import HeadersEditorModal from '@/components/HeadersEditorModal';
 import { ConflictStrategy, UnmergeableStrategy } from '@/types';
 
 export type MiscellaneousSettingTranslations = {
@@ -22,6 +23,9 @@ export type MiscellaneousSettingTranslations = {
 	confirmTasksInSyncDescription: string;
 	confirmDeleteInAutoSync: string;
 	confirmDeleteInAutoSyncDescription: string;
+	customHeaders: string;
+	customHeadersDescription: string;
+	edit: string;
 };
 
 export default function miscellaneousSettings(
@@ -36,6 +40,23 @@ export default function miscellaneousSettings(
 	const { translate, saveSettings, rerenderSettingTab, settings } = ctx;
 
 	new Setting(el).setName(translate('miscellaneous')).setHeading();
+
+	new Setting(el)
+		.setName(translate('customHeaders'))
+		.setDesc(translate('customHeadersDescription'))
+		.addButton((button) => {
+			button.setButtonText(translate('edit'));
+			button.onClick(() => {
+				new HeadersEditorModal(
+					(headers) => {
+						settings.customHeaders = headers;
+						void saveSettings();
+					},
+					ctx as Context,
+					settings.customHeaders,
+				).open();
+			});
+		});
 
 	new Setting(el)
 		.setName(translate('conflictStrategy'))

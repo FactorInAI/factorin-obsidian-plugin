@@ -1,11 +1,11 @@
-import { App, Modal, Notice, setIcon, Setting } from 'obsidian';
+import { App, Modal, Notice, setIcon, Setting, setTooltip } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 
 export type SourceEditorTranslations = {
 	add: string;
 	cancel: string;
 	editSources: string;
-	invalidSourceOmitted: string;
+	invalidEntriesOmitted: string;
 	moduleSourcePlaceholder: string;
 	remove: string;
 	save: string;
@@ -67,6 +67,7 @@ export default class SourceEditorModal extends Modal {
 		updateList();
 		const add = contentEl.createEl('button', 'clickable-icon aspect-square ml-auto mb-2');
 		setIcon(add, 'plus');
+		setTooltip(add, t('add'));
 		add.onClickEvent(() => {
 			sources.push('');
 			updateList();
@@ -78,19 +79,14 @@ export default class SourceEditorModal extends Modal {
 					.setButtonText(t('save'))
 					.setCta()
 					.onClick(() => {
-						let omittedInvalidSource = false;
 						const validSources = sources.flatMap((source) => {
 							const trimmedSource = source.trim();
-							if (!trimmedSource) return [];
-							if (!isValidModuleSource(trimmedSource)) {
-								omittedInvalidSource = true;
-								return [];
-							}
+							if (!trimmedSource || !isValidModuleSource(trimmedSource)) return [];
 							return [trimmedSource];
 						});
-
 						this.onSave(validSources);
-						if (omittedInvalidSource) new Notice(t('invalidSourceOmitted'));
+						if (validSources.length !== sources.length)
+							new Notice(t('invalidEntriesOmitted'));
 						this.close();
 					});
 			})
