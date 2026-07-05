@@ -1,4 +1,4 @@
-import { dirname } from '@repo/shared';
+import { dirname } from '@repo/shared/path';
 import type { StatsMap, GlobMatchOptions } from '@/types';
 import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
 

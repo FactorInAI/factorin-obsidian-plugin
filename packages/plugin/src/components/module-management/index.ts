@@ -42,8 +42,6 @@ export type ModuleManagementContext = {
 	translate: Translate<ModuleManagementTranslations>;
 } & ModuleManagementHooks;
 
-export type DisplayModule = ModuleMeta & { fromSource: boolean };
-
 export function mountModuleManagementList(el: Element, ctx: ModuleManagementContext) {
 	let isUnmounted = false;
 	const unmount = render(() => App({ ctx, isUnmounted: () => isUnmounted }), el);

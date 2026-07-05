@@ -1,4 +1,5 @@
 import { requestUrl } from 'obsidian';
+import sleep from '@/utils/sleep';
 import type { RemoteFs, RemoteFsWrapper } from '../interface';
 import digOriginal from '../utils/dig-original';
 import isRetryableError from '../utils/is-retryable-error';

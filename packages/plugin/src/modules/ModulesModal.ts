@@ -60,11 +60,9 @@ export default class ModulesModal extends Modal {
 			'shadow-none!',
 		]);
 		this.contentEl.empty();
-		const controlsEl = this.contentEl.createDiv({
-			cls: 'flex items-center gap-2 pb-4',
-		});
-		const searchEl = controlsEl.createDiv({ cls: 'min-w-0 flex-1' });
-		const listEl = this.contentEl.createDiv({ cls: 'min-h-0 overflow-y-auto' });
+		const controlsEl = this.contentEl.createDiv('flex items-center gap-2 pb-4');
+		const searchEl = controlsEl.createDiv('min-w-0 flex-1');
+		const listEl = this.contentEl.createDiv('min-h-0 overflow-y-auto');
 
 		const onQuery = hook<[string]>();
 		const onShowInstalledOnlyChange = hook<[boolean]>();

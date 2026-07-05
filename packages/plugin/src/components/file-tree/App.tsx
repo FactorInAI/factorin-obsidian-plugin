@@ -40,10 +40,10 @@ export default function App(props: {
 										type="checkbox"
 									/>
 								) : (
-									<div class="m-1 h-2 w-2 flex-shrink-0 rounded-full bg-[var(--text-muted)]" />
+									<div class="m-1 h-2 w-2 flex-shrink-0 rounded-full bg-[--text-muted]" />
 								)}
 								<div
-									class="sync-engine-icon"
+									class="w-4 h-4"
 									ref={(element) => {
 										setIcon(element, icon.icon);
 										element.style.color = icon.color;
@@ -56,8 +56,8 @@ export default function App(props: {
 								<div
 									class={
 										task && !isSelected()
-											? 'min-w-0 break-words text-[var(--text-muted)]'
-											: 'min-w-0 break-words text-[var(--text-normal)]'
+											? 'min-w-0 break-words text-[--text-muted]'
+											: 'min-w-0 break-words text-[--text-normal]'
 									}
 								>
 									{node.compressedLabel}

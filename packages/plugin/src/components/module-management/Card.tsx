@@ -1,7 +1,8 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { Show, createEffect } from 'solid-js';
+import type { ModuleMeta } from '@/modules/Extensibility';
 import compareVersions from '@/utils/compare-versions';
-import type { DisplayModule, ModuleManagementContext, PendingAction } from './index';
+import type { ModuleManagementContext, PendingAction } from './index';
 
 export default function Card(props: {
 	ctx: Pick<
@@ -16,7 +17,7 @@ export default function Card(props: {
 	>;
 	installedVersion?: string;
 	isLoaded: boolean;
-	module: DisplayModule;
+	module: ModuleMeta;
 	pendingAction?: PendingAction;
 	runAction: (action: PendingAction, op: () => Promise<void>) => void;
 }) {
@@ -27,22 +28,22 @@ export default function Card(props: {
 	const busy = () => props.pendingAction !== undefined;
 	const versionLabel = () => {
 		const currentVersion = props.installedVersion;
-		if (currentVersion && props.module.fromSource && currentVersion !== props.module.version)
+		if (currentVersion !== props.module.version && currentVersion !== undefined)
 			return `v${currentVersion} -> v${props.module.version}`;
 		return `v${currentVersion ?? props.module.version}`;
 	};
 
 	return (
-		<div class="flex min-h-48 flex-col gap-3 rounded-md border border-[var(--background-modifier-border)] px-4 py-3">
+		<div class="flex min-h-40 flex-col gap-3 rounded-md border border-[--background-modifier-border] px-4 py-3 bg-[--background-primary-alt]">
 			<div class="flex items-start justify-between gap-3">
-				<div class="min-w-0 text-base font-semibold text-[var(--text-normal)] break-words">
+				<div class="min-w-0 text-base font-semibold text-[--text-normal] break-words">
 					{props.module.name}
 				</div>
-				<div class="flex-shrink-0 text-xs text-[var(--text-muted)]">{versionLabel()}</div>
+				<div class="flex-shrink-0 text-xs text-[--text-muted]">{versionLabel()}</div>
 			</div>
 
 			<div class="flex flex-1 flex-col gap-2">
-				<div class="flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
+				<div class="flex flex-wrap gap-2 text-xs text-[--text-muted]">
 					<span>
 						{isInstalled()
 							? props.ctx.translate('installed')
@@ -59,7 +60,7 @@ export default function Card(props: {
 						<span>{props.ctx.translate('updateAvailable')}</span>
 					</Show>
 				</div>
-				<div class="flex-1 text-sm text-[var(--text-muted)] break-words">
+				<div class="flex-1 text-sm text-[--text-muted] break-words">
 					{props.module.description}
 				</div>
 			</div>
@@ -151,12 +152,13 @@ function ActionButton(props: {
 		setIcon(button, props.pending ? 'loader-circle' : props.icon);
 		button.ariaLabel = props.tooltip;
 		setTooltip(button, props.tooltip);
-		button.classList.toggle('animate-spin', props.pending);
+		const iconSvg = button.firstElementChild;
+		if (iconSvg) iconSvg.classList.toggle('animate-spin', props.pending);
 	});
 
 	return (
 		<button
-			class="clickable-icon rounded-md border border-[var(--background-modifier-border)]"
+			class="clickable-icon rounded-md p-1"
 			disabled={props.disabled}
 			onClick={() => props.onClick()}
 			ref={button}

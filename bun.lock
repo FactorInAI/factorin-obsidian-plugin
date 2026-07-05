@@ -23,6 +23,8 @@
         "vitepress": "^2.0.0-alpha.17",
         "vitepress-theme-trito": "^1.1.1",
         "vue": "^3.5.39",
+      },
+      "devDependencies": {
         "vue-tsc": "^3.3.6",
       },
     },
@@ -38,6 +40,13 @@
         "@repo/shared": "workspace:*",
         "hash-wasm": "^4.12.0",
         "uni-kv": "../../uni-kv.tgz",
+      },
+    },
+    "packages/i18n-zh": {
+      "name": "i18n-zh",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@hesprs/sync-engine-sdk": "workspace:*",
       },
     },
     "packages/plugin": {
@@ -690,6 +699,8 @@
     "html-entities": ["html-entities@2.3.3", "", {}, "sha512-DV5Ln36z34NNTDgnz0EWGBLZENelNAtkiFA4kyNOG2tDI6Mz1uSWiq1wAKdyjnJwyDiDO7Fa2SO1CTxPXL8VxA=="],
 
     "html-void-elements": ["html-void-elements@3.0.0", "", {}, "sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg=="],
+
+    "i18n-zh": ["i18n-zh@workspace:packages/i18n-zh"],
 
     "idb": ["idb@8.0.3", "", {}, "sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg=="],
 

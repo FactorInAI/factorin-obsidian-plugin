@@ -1,4 +1,4 @@
-import { arrayBufferEquals, arrayBufferToText, textToArrayBuffer } from '@repo/shared';
+import { arrayBufferEquals, arrayBufferToText, textToArrayBuffer } from '@repo/shared/binary';
 import { toRecordStat } from '@/storage';
 import type { OptionsWithBothFileStatsAndSettings } from '../decision/interface';
 import { resolveByIntelligentMerge } from '../utils/merge';

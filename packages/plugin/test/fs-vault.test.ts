@@ -1,5 +1,5 @@
 import type { Vault } from 'obsidian';
-import { arrayBufferToText, textToArrayBuffer } from '@repo/shared';
+import { arrayBufferToText, textToArrayBuffer } from '@repo/shared/binary';
 import { expect, test } from 'bun:test';
 import type { RootLocalFs } from '@/fs';
 import type { HarnessState } from '@/sdk/test-utils';

@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, setIcon, Setting } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 import type { GlobMatchOptions } from '@/types';
 
@@ -43,21 +43,13 @@ export default class FilterEditorModal extends Modal {
 			filterType === 'include' ? 'inclusionRulesDescription' : 'exclusionRulesDescription';
 
 		this.setTitle(t(titleKey));
-		contentEl.createEl('p', {
-			cls: 'setting-item-description',
-			text: t(descKey),
-		});
+		contentEl.createEl('p', { cls: 'setting-item-description', text: t(descKey) });
 
-		const listContainer = contentEl.createDiv({
-			cls: 'flex flex-col gap-2 pb-2',
-		});
-
+		const listContainer = contentEl.createDiv('flex flex-col gap-2 pb-2');
 		const updateList = () => {
 			listContainer.empty();
 			filters.forEach((filter, index) => {
-				const itemContainer = listContainer.createDiv({
-					cls: 'flex gap-2',
-				});
+				const itemContainer = listContainer.createDiv('flex gap-2');
 				const input = itemContainer.createEl('input', {
 					cls: 'flex-1',
 					placeholder: t('filterPlaceholder'),
@@ -69,46 +61,41 @@ export default class FilterEditorModal extends Modal {
 					filter.expr = input.value;
 					filters[index] = filter;
 				});
-				const forceCaseBtn = itemContainer.createEl('button', {
-					cls: 'shadow-none!',
-					text: 'Aa',
-				});
+				const forceCaseBtn = itemContainer.createEl(
+					'button',
+					'clickable-icon aspect-square',
+				);
+				setIcon(forceCaseBtn, 'case-sensitive');
 				function updateButtonStatus() {
-					const activeCls = ['bg-[--interactive-accent]!'];
-					const inactiveCls = ['background-none!', 'hover:bg-[--interactive-normal]!'];
-					if (filter.options.caseSensitive) {
-						forceCaseBtn.classList.add(...activeCls);
-						forceCaseBtn.classList.remove(...inactiveCls);
-					} else {
-						forceCaseBtn.classList.remove(...activeCls);
-						forceCaseBtn.classList.add(...inactiveCls);
-					}
+					const activeClasses = [
+						'bg-[--interactive-accent]!',
+						'color-[--text-on-accent]!',
+					];
+					if (filter.options.caseSensitive) forceCaseBtn.addClasses(activeClasses);
+					else forceCaseBtn.removeClasses(activeClasses);
 				}
 				updateButtonStatus();
 				forceCaseBtn.onClickEvent(() => {
 					filter.options.caseSensitive = !filter.options.caseSensitive;
 					updateButtonStatus();
 				});
-				const trash = itemContainer.createEl('button', { text: t('remove') });
+				const trash = itemContainer.createEl(
+					'button',
+					'clickable-icon aspect-square color-rose-500',
+				);
+				setIcon(trash, 'trash-2');
 				trash.onClickEvent(() => {
 					filters.splice(index, 1);
 					updateList();
 				});
 			});
 		};
-
 		updateList();
-
-		new Setting(contentEl).addButton((button) => {
-			button.setButtonText(t('add')).onClick(() => {
-				filters.push({
-					expr: '',
-					options: {
-						caseSensitive: false,
-					},
-				});
-				updateList();
-			});
+		const add = contentEl.createEl('button', 'clickable-icon aspect-square ml-auto mb-2');
+		setIcon(add, 'plus');
+		add.onClickEvent(() => {
+			filters.push({ expr: '', options: { caseSensitive: false } });
+			updateList();
 		});
 
 		new Setting(contentEl)

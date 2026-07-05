@@ -54,22 +54,28 @@ export default function headSettings(
 		'color-green-400',
 		'color-rose-500',
 		'color-neutral-600',
-		'sync-engine-spinning',
+		'animate-spin',
 	];
 	const setChecking = (button: ExtraButtonComponent) => {
-		button.setIcon('refresh-ccw');
-		button.extraSettingsEl.removeClasses(possibleClasses);
-		button.extraSettingsEl.addClasses(['sync-engine-spinning', 'color-neutral-600']);
+		button.setIcon('loader-circle');
+		const ele = button.extraSettingsEl.firstElementChild;
+		if (!ele) return;
+		ele.removeClasses(possibleClasses);
+		ele.addClasses(['animate-spin', 'color-neutral-600']);
 	};
 	const setSuccess = (button: ExtraButtonComponent) => {
 		button.setIcon('check');
-		button.extraSettingsEl.removeClasses(possibleClasses);
-		button.extraSettingsEl.addClasses(['color-green-400']);
+		const ele = button.extraSettingsEl.firstElementChild;
+		if (!ele) return;
+		ele.removeClasses(possibleClasses);
+		ele.addClasses(['color-green-400']);
 	};
 	const setError = (button: ExtraButtonComponent) => {
 		button.setIcon('cloud-off');
-		button.extraSettingsEl.removeClasses(possibleClasses);
-		button.extraSettingsEl.addClasses(['color-rose-500']);
+		const ele = button.extraSettingsEl.firstElementChild;
+		if (!ele) return;
+		ele.removeClasses(possibleClasses);
+		ele.addClasses(['color-rose-500']);
 	};
 	const scheduleCheckConnection = () =>
 		window.setTimeout(checkConnection, CHECK_CONNECTION_INTERVAL);
@@ -88,6 +94,7 @@ export default function headSettings(
 			setError(statusButton);
 			return;
 		}
+
 		try {
 			setChecking(statusButton);
 			const result = await createRemoteFs().checkConnection();

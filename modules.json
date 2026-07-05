@@ -10,5 +10,11 @@
 		"version": "0.0.1",
 		"description": "[Official] Client-side encrypt vault files before uploading to backend.",
 		"main": "https://sync.consensia.cc/modules/Encryption.js"
+	},
+	{
+		"name": "I18n 简体中文",
+		"version": "0.0.1",
+		"description": "[Official] Simplified Chinese language UI localization pack. / 简体中文 UI 本地化包。",
+		"main": "https://sync.consensia.cc/modules/I18n 简体中文.js"
 	}
 ]

@@ -36,12 +36,7 @@ jobs:
           fi
 
       - name: Build plugin
-        run: |
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            bun dev
-          else
-            bun run build
-          fi
+        run: bun run build
 
       - name: Attest plugin artifacts
         uses: actions/attest@v4.1.0

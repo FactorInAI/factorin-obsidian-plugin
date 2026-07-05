@@ -5,14 +5,14 @@ import type {
 	RootRemoteFs,
 	RootRemoteFsCtor,
 } from '@hesprs/sync-engine-sdk';
+import { getStatus } from '@repo/shared/get-status';
 import {
 	dirname,
 	normalizeChar,
 	normalizeKey,
 	normalizeUrl,
 	stripEndSlash,
-	getStatus,
-} from '@repo/shared';
+} from '@repo/shared/path';
 import { requestUrl } from 'obsidian';
 import parseXML from '@/parse-xml';
 import createWebDAVReadStream from './read-stream';

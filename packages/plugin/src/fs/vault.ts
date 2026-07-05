@@ -1,5 +1,5 @@
 import type { Vault } from 'obsidian';
-import { dirname, stripEndSlash } from '@repo/shared';
+import { dirname, stripEndSlash } from '@repo/shared/path';
 import type { Stat } from '@/types';
 import type { RootLocalFs, LocalFs, RootLocalFsCtor } from './interface';
 

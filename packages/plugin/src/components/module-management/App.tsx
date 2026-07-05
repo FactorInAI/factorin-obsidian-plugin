@@ -2,7 +2,7 @@ import type { SearchResult } from 'obsidian';
 import { prepareFuzzySearch } from 'obsidian';
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import type { ModuleMeta } from '@/modules/Extensibility';
-import type { DisplayModule, ModuleManagementContext, PendingAction } from './index';
+import type { ModuleManagementContext, PendingAction } from './index';
 import Card from './Card';
 
 export default function App(props: { ctx: ModuleManagementContext; isUnmounted: () => boolean }) {
@@ -38,11 +38,11 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 		}
 	};
 
-	const mergedModules = createMemo<Array<DisplayModule>>(() =>
+	const mergedModules = createMemo<Array<ModuleMeta>>(() =>
 		mergeModules(sourceModules(), installedVersions()),
 	);
 
-	const visibleModules = createMemo<Array<DisplayModule>>(() => {
+	const visibleModules = createMemo<Array<ModuleMeta>>(() => {
 		const installedByName = installedVersions();
 		const normalizedQuery = query().trim();
 		const filtered = mergedModules().filter((module) => {
@@ -50,13 +50,14 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 			return installedByName[module.name] !== undefined;
 		});
 
-		if (!normalizedQuery) return [...filtered].sort(sortModulesAlphabetically);
+		if (!normalizedQuery) return filtered.sort(sortModulesAlphabetically);
 
 		const match = prepareFuzzySearch(normalizedQuery);
 		return filtered
 			.map((module) => ({ module, score: getModuleScore(match, module) }))
 			.filter(
-				(entry): entry is { module: DisplayModule; score: number } => entry.score !== null,
+				(entry): entry is { module: ModuleMeta; score: number } =>
+					entry.score !== undefined,
 			)
 			.sort((a, b) => b.score - a.score || sortModulesAlphabetically(a.module, b.module))
 			.map(({ module }) => module);
@@ -70,7 +71,10 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 			syncSnapshots();
 		} finally {
 			if (!props.isUnmounted())
-				setPendingByName((current) => ({ ...current, [name]: undefined }));
+				setPendingByName((current) => ({
+					...current,
+					[name]: undefined,
+				}));
 		}
 	};
 
@@ -98,7 +102,7 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 			<Show
 				when={visibleModules().length > 0}
 				fallback={
-					<div class="flex min-h-36 items-center justify-center rounded-md border border-[var(--background-modifier-border)] px-4 py-6 text-center text-[var(--text-muted)]">
+					<div class="flex min-h-40 items-center justify-center rounded-md border border-[--background-modifier-border] px-4 py-6 text-center text-[--text-muted] bg-[--background-primary-alt]">
 						{getEmptyStateText({
 							hasLoaded: hasLoaded(),
 							isLoading: isLoading(),
@@ -160,20 +164,14 @@ function getModuleScore(match: (text: string) => SearchResult | null, module: Mo
 function mergeModules(
 	sourceModules: Array<ModuleMeta>,
 	installedVersions: Record<string, string>,
-): Array<DisplayModule> {
-	const modules = new Map<string, DisplayModule>();
-	for (const module of sourceModules) modules.set(module.name, { ...module, fromSource: true });
+): Array<ModuleMeta> {
+	const modules: Record<string, ModuleMeta> = {};
+	for (const module of sourceModules) modules[module.name] = module;
 	for (const [name, version] of Object.entries(installedVersions)) {
-		if (modules.has(name)) continue;
-		modules.set(name, {
-			description: '',
-			fromSource: false,
-			main: '',
-			name,
-			version,
-		});
+		if (modules[name]) continue;
+		modules[name] = { description: '', main: '', name, version };
 	}
-	return [...modules.values()];
+	return Object.values(modules);
 }
 
 function sortModulesAlphabetically(a: ModuleMeta, b: ModuleMeta) {

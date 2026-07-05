@@ -59,6 +59,7 @@ export default class Extensibility {
 			translate: Translate<Translations>;
 			allModules: Set<General>;
 			isIdle: Ref<boolean>;
+			saveSettings: () => Promise<void>;
 		},
 	) {
 		this.moduleDir = `${ctx.app.vault.configDir}/plugins/sync-engine/modules`;
@@ -115,15 +116,18 @@ export default class Extensibility {
 		await execute();
 		this.discoveredModules.keys().forEach((name) => {
 			const enabled = this.settings.modules[name];
-			if (enabled === undefined) this.settings.modules[name] = false;
-			else if (enabled) factory.load(name);
+			if (enabled === undefined) {
+				this.settings.modules[name] = false;
+				void this.ctx.saveSettings();
+			} else if (enabled) factory.load(name);
 		});
 		await execute();
 	};
 
 	private readonly loadModule = async (name: string, start = false) => {
 		if (this.loadedModules.get(name)) return;
-		const { dispatch, translate, app, __addModule__, __getModule__, allModules } = this.ctx;
+		const { dispatch, translate, app, __addModule__, __getModule__, allModules, saveSettings } =
+			this.ctx;
 		try {
 			const { default: ctor } = await import(
 				app.vault.adapter.getResourcePath(this.getModulePath(name))
@@ -136,6 +140,7 @@ export default class Extensibility {
 				Object.assign(instance.moduleSettings, existingSettings);
 				settings[name] = instance.moduleSettings;
 			} else settings[name] = instance.moduleSettings;
+			void saveSettings();
 			if (start) instance.start?.();
 			allModules.add(ctor);
 			this.loadedModules.set(name, ctor);
@@ -198,6 +203,7 @@ export default class Extensibility {
 		await this.ctx.app.vault.adapter.remove(this.getModulePath(name));
 		this.discoveredModules.delete(name);
 		delete this.settings.modules[name];
+		void this.ctx.saveSettings();
 	};
 
 	private readonly fetchSources = async (cached = true) => {

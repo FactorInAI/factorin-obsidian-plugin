@@ -1,5 +1,5 @@
-import type { ErrorLike } from '@repo/shared';
-import { getStatus } from '@repo/shared';
+import type { ErrorLike } from '@repo/shared/get-status';
+import { getStatus } from '@repo/shared/get-status';
 
 const RETRYABLE_STATUS_CODES = new Set([401, 408, 425, 429, 502, 503, 504]);
 

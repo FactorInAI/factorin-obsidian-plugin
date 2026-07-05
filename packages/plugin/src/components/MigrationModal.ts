@@ -6,7 +6,7 @@ import type { Translate } from '@/modules/I18n';
 import type { Infras } from '@/modules/Registrar';
 import type { SyncTerminateReason } from '@/modules/Sync';
 import type { MaybePromise } from '@/types';
-import renderProgress from '@/utils/render-progress';
+import renderProgress from '@/components/render-progress';
 import roundPercent from '@/utils/round-percent';
 import toErrorMessage from '@/utils/to-error-message';
 

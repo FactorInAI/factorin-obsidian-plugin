@@ -1,4 +1,4 @@
-import { isSub } from '@repo/shared';
+import { isSub } from '@repo/shared/path';
 import type { OptimizerInput, RemoteFs, LocalFs, InputAtom } from './interface';
 
 type Fs = RemoteFs | LocalFs;

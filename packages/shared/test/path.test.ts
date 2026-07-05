@@ -1,3 +1,4 @@
+import { expect, test } from 'bun:test';
 import {
 	normalizeChar,
 	normalizeBaseDir,
@@ -6,8 +7,7 @@ import {
 	stripEndSlash,
 	basename,
 	dirname,
-} from '@';
-import { expect, test } from 'bun:test';
+} from '@/path';
 
 test('normalizes path characters', () => {
 	expect(normalizeChar('/base/%E2%82%AC.md')).toBe('/base/€.md');

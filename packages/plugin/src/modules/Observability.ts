@@ -169,7 +169,7 @@ export default class Observability {
 	readonly start = () => {
 		this.setupCommands();
 		const { requestSync, dispatch, isIdle, addRibbonIcon } = this.ctx;
-		const startIcon = addRibbonIcon('refresh-ccw', this.t('startSync'), () => {
+		const startIcon = addRibbonIcon('refresh-cw', this.t('startSync'), () => {
 			if (isIdle()) void requestSync('manual');
 		});
 		const stopIcon = addRibbonIcon('square', this.t('stopSync'), () =>
@@ -178,13 +178,15 @@ export default class Observability {
 		this.cleanupCallbacks.push(
 			isIdle.subscribe(
 				(idle) => {
+					const svgIcon = startIcon.firstElementChild;
+					if (!svgIcon) return;
 					if (idle) {
 						startIcon.removeAttribute('aria-disabled');
-						startIcon.removeClass('sync-engine-spinning');
+						svgIcon.removeClass('animate-spin');
 						stopIcon.classList.add('hidden');
 					} else {
 						startIcon.setAttr('aria-disabled', 'true');
-						startIcon.addClass('sync-engine-spinning');
+						svgIcon.addClass('animate-spin');
 						stopIcon.classList.remove('hidden');
 					}
 				},
@@ -203,7 +205,7 @@ export default class Observability {
 					}
 					void this.ctx.requestSync('manual');
 				},
-				icon: 'refresh-ccw',
+				icon: 'refresh-cw',
 				id: 'start-sync',
 				name: this.t('startSync'),
 			},

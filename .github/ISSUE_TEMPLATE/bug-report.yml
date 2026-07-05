@@ -31,9 +31,9 @@ body:
   - type: input
     id: provider
     attributes:
-      label: WebDAV Service Provider
-      description: The WebDAV service from which provider are you using?
-      placeholder: e.g., Nextcloud
+      label: Backend
+      description: The service from which provider are you using?
+      placeholder: e.g., Nextcloud WebDAV
     validations:
       required: true
 
@@ -74,5 +74,5 @@ body:
         - I have ensured that this issue only contains one bug.
         - I have checked historical bugs and there's no entry fitting this scenario.
         - I have confirmed that the issue doesn't contain any sensitive information.
-        - Issues caused by non-standard WebDAV server configurations **will not be fixed**.
+        - Issues caused by non-standard server configurations **will not be fixed**.
         - Issues where maintainers have requested clarification / coordinated testing but the reporter hasn't provide any further information will be closed after 72 hours.

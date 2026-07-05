@@ -7,12 +7,14 @@ import {
 } from '@/fs';
 import { testKit } from '@/sdk';
 import { syncCancelledError } from '@/sync';
+// oxlint-disable-next-line import/no-namespace
+import * as sleepModule from '@/utils/sleep';
 
 const { remoteFs, localFs, deferred, flush, stream, bytes } = testKit;
-const sleepSpy = spyOn(globalThis, 'sleep');
+const sleepSpy = spyOn(sleepModule, 'default').mockImplementation(() => Promise.resolve());
 
 test('retry shim retries matching request statuses and waits between attempts', async () => {
-	sleepSpy.mockReset();
+	sleepSpy.mockClear();
 	const remote = remoteFs();
 	remote.control.request = async () => {
 		if (remote.state.requestCalls.length < 3) throw { res: { status: 503 } };
@@ -34,7 +36,7 @@ test('retry shim retries matching request statuses and waits between attempts', 
 });
 
 test('retry shim stops after max retry count and ignores other statuses', async () => {
-	sleepSpy.mockReset();
+	sleepSpy.mockClear();
 	const remote = remoteFs();
 	remote.control.request = async () => {
 		throw { res: { status: 404 } };

@@ -7,7 +7,7 @@ import type { BaseTask, RemoveLocal, TaskNames } from '@/sync';
 import type { Progress } from '@/types';
 import mountFileTree from '@/components/file-tree';
 import renderFailedTasks from '@/components/render-failed-tasks';
-import renderProgress from '@/utils/render-progress';
+import renderProgress from '@/components/render-progress';
 import roundPercent from '@/utils/round-percent';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
@@ -246,7 +246,7 @@ export default class ProgressModal extends Modal {
 
 		const container = contentEl.createDiv('flex flex-col gap-4 max-h-[75vh] pt-3 pb-3');
 		const { bar, left, right } = renderProgress(container);
-		this.description = container.createEl('p', { cls: 'whitespace-pre-line hidden my-0' });
+		this.description = container.createEl('p', 'whitespace-pre-line hidden my-0');
 		this.detailContainer = container.createDiv(
 			'max-h-[50vh] overflow-y-auto rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2 hidden',
 		);

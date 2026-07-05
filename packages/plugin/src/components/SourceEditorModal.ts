@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Setting } from 'obsidian';
+import { App, Modal, Notice, setIcon, Setting } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 
 export type SourceEditorTranslations = {
@@ -39,16 +39,12 @@ export default class SourceEditorModal extends Modal {
 			text: t('sourcesDescription'),
 		});
 
-		const listContainer = contentEl.createDiv({
-			cls: 'flex flex-col gap-2 pb-2',
-		});
+		const listContainer = contentEl.createDiv('flex flex-col gap-2 pb-2');
 
 		const updateList = () => {
 			listContainer.empty();
 			sources.forEach((source, index) => {
-				const itemContainer = listContainer.createDiv({
-					cls: 'flex gap-2',
-				});
+				const itemContainer = listContainer.createDiv('flex gap-2');
 				const input = itemContainer.createEl('input', {
 					cls: 'flex-1',
 					placeholder: t('moduleSourcePlaceholder'),
@@ -56,26 +52,24 @@ export default class SourceEditorModal extends Modal {
 					value: source,
 				});
 				input.spellcheck = false;
-				input.addEventListener('input', () => {
-					sources[index] = input.value;
-				});
-				const removeButton = itemContainer.createEl('button', {
-					text: t('remove'),
-				});
-				removeButton.onClickEvent(() => {
+				input.addEventListener('input', () => (sources[index] = input.value));
+				const trash = itemContainer.createEl(
+					'button',
+					'clickable-icon aspect-square color-rose-500',
+				);
+				setIcon(trash, 'trash-2');
+				trash.onClickEvent(() => {
 					sources.splice(index, 1);
 					updateList();
 				});
 			});
 		};
-
 		updateList();
-
-		new Setting(contentEl).addButton((button) => {
-			button.setButtonText(t('add')).onClick(() => {
-				sources.push('');
-				updateList();
-			});
+		const add = contentEl.createEl('button', 'clickable-icon aspect-square ml-auto mb-2');
+		setIcon(add, 'plus');
+		add.onClickEvent(() => {
+			sources.push('');
+			updateList();
 		});
 
 		new Setting(contentEl)

@@ -1,6 +1,6 @@
 import type { StoreSync } from '@hesprs/sync-engine-sdk';
 import { gcmsiv } from '@noble/ciphers/aes.js';
-import { textToArrayBuffer, textToUint8Array, uint8ArrayToText } from '@repo/shared';
+import { textToArrayBuffer, textToUint8Array, uint8ArrayToText } from '@repo/shared/binary';
 import { toArrayBuffer } from './shared';
 
 export type EncryptionStores = {

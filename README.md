@@ -1,11 +1,11 @@
 <h1 align="center">
-    <img src="./docs/public/logo.svg" alt="Obsidian WebDAV Sync logo" width="280px">
+    <img src="./docs/public/logo.svg" alt="Sync Engine logo" width="280px">
     <br />
-    Obsidian WebDAV Sync
+    Sync Engine
     <br />
 </h1>
 
-<h4 align="center">General-purpose & bidirectional WebDAV syncing for your vault.</h4>
+<h4 align="center">Next generation syncing plugin for Obsidian vault. Free · Performant · Extensible.</h4>
 
 <p align="center">
     <a href="https://github.com/hesprs/obsidian-webdav-sync/releases/latest">
@@ -14,7 +14,20 @@
     <a href="https://github.com/hesprs/obsidian-webdav-sync/actions">
         <img src="https://img.shields.io/github/actions/workflow/status/hesprs/obsidian-webdav-sync/ci.yml?style=flat&logo=github&logoColor=white&label=CI&labelColor=d4ab00&color=333333" alt="ci">
     </a>
+    <a href="https://www.codefactor.io/repository/github/hesprs/obsidian-webdav-sync">
+        <img src="https://img.shields.io/codefactor/grade/github/hesprs/obsidian-webdav-sync?style=flat&logo=codefactor&logoColor=white&label=Code%20Quality&labelColor=17b37a&color=333333" alt="Code Quality" />
+    </a>
+    <a href="https://sync.consensia.cc">
+        <img src="https://img.shields.io/badge/Documentation-Ready-333333?labelColor=5C73E7&logo=vitepress&logoColor=white" alt="Documentation" />
+    </a>
     <img src="https://img.shields.io/badge/Types-Strict-333333?logo=typescript&labelColor=blue&logoColor=white" alt="TypeScript">
+    <img src="https://img.shields.io/badge/%F0%9F%96%90%EF%B8%8F%20Made%20by-Humans-333333?labelColor=15C2C0" alt="Made by Humans">
+</p>
+
+<p align="center">
+    <a href="https://github.com/hesprs/synthkernel">
+        <img src="https://github.com/hesprs/synthkernel/raw/refs/heads/main/assets/powered-by-synthkernel.svg" width="200px" alt="powered by SynthKernel"></img>
+    </a>
 </p>
 
 <p align="center">
@@ -34,25 +47,21 @@
 
 ## Introduction
 
-Obsidian WebDAV Sync is a general-purpose syncing plugin for Obsidian via a WebDAV server.
+Sync Engine is a revolutionary solution for vault syncing. Its not only a syncing plugin, it is a modular platform that everyone can build upon.
 
-There's already a lot of plugins to sync your notes between devices. But when we have a look at the syncing plugin landscape, we can clearly see that each plugin has its own disadvantages that prevent you from using it:
+The core ships the infrastructure, and all backends (WebDAV, S3, GDrive) and features (i18n, optimization, sync strategy) come from composable modules. You and your AI agents can build your own modules via convenient SDK, extend the plugin, contribute to community, all without modifying the source code.
 
-- [Remotely Save](https://github.com/remotely-save/remotely-save): full-featured syncing plugin, but currently unmaintained and full of bugs (like [deleted files come back](https://github.com/remotely-save/remotely-save/issues/985)).
-- [Syncthing Integration](https://github.com/LBF38/obsidian-syncthing-integration): a great way of P2P syncing, but requires both of your devices to be online, not 24/7.
-- [Live Sync](https://github.com/vrtmrz/obsidian-livesync): most robust solution in the room, but requires custom server setup.
+There's already a lot of plugins to sync your notes between devices. But the advantage becomes clear with a comparison:
+
+- [Remotely Save](https://github.com/remotely-save/remotely-save): full-featured syncing plugins, but currently has optional payment, unmaintained, and 200 unresolved issues.
+- All plugins similar to Remotely Save: one plugin owns everything, you use part of it, others worsen the loading time. Vibe-coded / maintenance issues / optional payments possible.
+- [Syncthing](https://syncthing.net/): a great way of P2P syncing, but requires both of your devices to be online, not 24/7.
+- [Self-hosted Live Sync](https://github.com/vrtmrz/obsidian-livesync) / [Fast note sync](https://github.com/haierkeys/obsidian-fast-note-sync): most robust solutions in the room, but require custom server setup.
 - [Git Integration](https://github.com/Vinzent03/obsidian-git): ideal for production-level collaboration and provenance, but not suitable for daily usage.
-- Vendor-specific Syncing Plugin (like [Nutstore Sync](https://github.com/nutstore/obsidian-nutstore-sync)): tailored experiences, but locked to a single vendor.
 
-Acknowledging that WebDAV would be the most convenient DIY solution for syncing, this plugin comes to provide a balanced experience of day-to-day convenience, easy setup, and the robustness that doesn't make your notes into a chaos.
+Sync engine is free (MIT License), extensible, community-driven, human curated, AI-friendly, with a highly optimized core.
 
 ## Notices
-
-### 📢 V3 is Coming
-
-An **extremely huge update** V3 is [being actively developed](https://github.com/hesprs/obsidian-webdav-sync/pull/155) and will released soon. It is completely rewritten and will achieve noticeably better sync performance, much shorter load time, and revolutionary extensibility. More crucially, the support for other cloud services such as S3 and GDrive would become effortless in the new paradigm.
-
-**However, the plugin in V3 is fundamentally incompatible with current V2. Existing users may suffer breakage when updating.** A guide will be written later, before the release of V3, to elaborate the changes and how to safely upgrade from V2 to V3.
 
 ### 📢 Here is a Voting
 
@@ -62,99 +71,61 @@ Here's ongoing polling about new directions in development! I recommend **everyo
 
 ## Features
 
-🔄 **Reliable Bidirectional Syncing**:
+🧰 **Complete Basic Features**:
 
-- This plugin syncs your vault with a WebDAV storage.
-- It does three-way comparison: remote state, local state, and recorded local & remote states of last sync
-- Then it follows a decision matrix for maximum precision and data integrity, detail see [this page](https://hesprs.github.io/projects/obsidian-webdav-sync#technical-breakdown).
+- Bidirectional syncing.
+- Startup / periodic / save-on-change syncing.
+- Conflict resolution strategies (merge / latest survive / keep remote / keep local / skip).
+- Advanced rate / memory control options.
+- You can extend most above features by writing modules.
 
-🔀 **Auto Sync and Conflict Handling**:
+🖥 **Supported Backends**:
 
-- The plugin supports automatically triggered sync as follows:
-  - **Startup sync**: trigger a sync when Obsidian starts.
-  - **Scheduled sync**: trigger syncs periodically.
-  - **Real-time sync**: trigger syncs immediately when a change is detected.
-- The plugin supports conflict handling methods:
-  - Smart merge
-  - Latest survive
-  - Use remote
-  - Use local
-  - Skip
+- WebDAV (`WebDAV` official module).
+- S3 (work in progress).
+- Google Drive (planned).
+- You can effortlessly expand this list by creating custom modules. Contributions welcome!
+
+🧩 **Extensible Architecture**:
+
+- You can add backends, optimizers, sync triggers, i18n resources, decision strategies, setting entries, custom file processing, and all invoke operations possible in custom modules.
+- Documentation (in-progress), AI agent skills (in-progress), and SDK with debug and testing kit are provided.
+- Plugin provides dedicated module discovery and management panel UI.
+- Repo accepts any module contribution as long as it respects [contribution guide](./CONTRIBUTING.md).
+
+⚡ **Lightening Fast**:
+
+- Incremental syncing never uploads the full vault each time.
+- Innovative [**Anchored Asymmetric Storage™**](./blueprint/asymmetric-storage.md) technology substantially accelerates syncing.
+- Real-time sync uses cached remote states, allowing it to complete within milliseconds.
+- **40 times** smaller size than Remotely Save, **20 times** faster startup time.
+- Handles vaults with more than 3000 files and gigabytes smoothly.
+- Highly optimized core sync timing never wastes one millisecond.
+- Extensible optimizer slot ensures every request is optimized for your own service.
 
 🔐 **Client-side Encryption**:
 
-- This plugin supports encrypting your files before uploading.
+- Provided by `Encryption` official module.
 - It prevents unauthorized file access, and detects unintended file modification and movement at remote side.
-- The encryption pipeline assumes stricter threat model, and achieves **theoretically higher security, faster performance and smaller plugin size** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
-
-⚡ **Maximum Performance**:
-
-- Most sync operations are performed via parallelized network requests.
-- Real-time sync uses cached remote states by default, allowing it to complete syncing within seconds.
-- **10 times** smaller size than Remotely Save, **8 times** faster startup loading time.
-
-🧰 **Detailed Config**:
-
-- The plugin allows users to adjust various parameters to adapt for various services:
-  - **Max concurrent WebDAV requests**: deal with service rate limiting.
-  - **Min time between WebDAV requests**: deal with service rate limiting.
-  - **Skip large files**: handle low storage space.
-  - **Max concurrent sync tasks**: control CPU and disk usage.
-  - **Max concurrent throughput**: control memory usage and prevent crashes.
-
-📦 **Production-Level Scalability**:
-
-- Handles vaults with more than 3000 files smoothly.
-- Load balancing and download chunking allows the plugin to handle gigabytes at once.
-- Large file downloading is resumable.
-
-🎨 **Excellent UI and Observability**:
-
-- Four ways (modals, status bar, notices, logs) to keep you aware of the syncing progress.
-- File changes are rendered as a file tree to allow granular selective syncing.
-- Log utility outputs human-readable markdown documents.
+- Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
 
 ## Install & Setup
 
-You can install it from Obsidian plugin registry:
+Sync Engine v3 is in beta testing, you can install via BRAT:
 
-1. Go to **Community plugins** and search for `WebDAV Sync`
-2. Find the one made by `Hēsperus`
-3. Install and enable it
+1. Go to **Community plugins** and search for `BRAT`.
+2. Install and enable it.
+3. Click **Add beta plugin** and fill `https://github.com/hesprs/obsidian-webdav-sync` into _repository_.
+4. Select _Latest_ and install + enable Sync Engine.
 
 Configuration:
 
-1. Enter WebDAV server URL
-2. Enter account + credential
-3. Click **Check connection**
-4. Select remote directory
-5. Start sync
+1. Go to plugin settings, find **Module management**, open the panel.
+2. Browse and install needed translations and backends.
+3. Configure your backend, automatic connectivity check is shown as a icon inside **Storage backend entry**.
+4. Start your first sync.
 
 ## Common Questions
-
-<details><summary>Why the plugin prompts me to input "ID" and "Secret" to add a WebDAV credential?</summary>
-
-It might be confusing that it requires an `ID` + `Secret` pair to configure your password only. Actually, this is the new Keychain feature of Obsidian. When adding a new secret, the `Secret` is the place to input your true password, and the ID it requested is like a name to a person, whose only purpose it to help Obsidian distinguish secrets and represent them without using the secret directly.
-
-So to add a secret and use it in the Credential field, you can type anything you like to the ID field (for example, `webdav-token`), and input your true password into the Secret field. Click save and link the new secret to the plugin.
-
-</details>
-
-<details><summary>Does this plugin support syncing Obsidian config folder (.obsidian)?</summary>
-
-Yes, but this folder is excluded from syncing by default. To sync specific files or folders inside, (for example, Obsidian settings), you can go to plugin settings - `Filter Rules` - `Inclusion rules` and add a new rule `.obsidian/app.json`.
-
-To sync the entire folder, which includes all settings, CSS snippets, and plugins, go to plugin settings - `Filter Rules` - `Exclusion rules`, and remove `.obsidian`.
-
-</details>
-
-<details><summary>Why 401 unauthorized error happens?</summary>
-
-The most likely cause of this error is the rate limit of your WebDAV provider. You can adjust the rate control in the plugin settings.
-
-Detailed solution is in [this issue](https://github.com/hesprs/obsidian-webdav-sync/issues/57).
-
-</details>
 
 <details><summary>What should I do if I get an error during syncing?</summary>
 
@@ -166,28 +137,20 @@ If the error persists after retrying, please [open an issue](https://github.com/
 
 <details><summary>How should I manage my WebDAV storage when using this plugin?</summary>
 
-According to this plugin's [file handling strategy](https://hesprs.github.io/projects/obsidian-webdav-sync#technical-breakdown), all remote changes will be propagated to all vaults. So it's generally not recommended to manually manage your WebDAV storage unless you intend to add / remove these files.
-
-The only scenario you may need to manually delete some files happens when you exclude some files that were previously synced, now they will not be detected but remain on your WebDAV. These files are kept on remote to prevent false deletion. If you are sure that you have excluded these files in ALL your devices, you can manually clean up these files on your WebDAV.
+According to this plugin's [file handling strategy](https://hesprs.github.io/projects/obsidian-webdav-sync#technical-breakdown), all remote changes will be propagated to all vaults. So it's generally not recommended to manually manage your WebDAV storage unless you intend to add / remove these files. Manual management is more discouraged when you have encryption or asymmetric storage enabled.
 
 </details>
 
-## Development Roadmap
+## Roadmap
 
-Below is a list of planned features and improvements, the faster this plugin is adopted and the star ⭐ grows, the faster the development will be. Also, we welcome contributors that would like to help us with the development.
+Below is a list of planned features and improvements, the faster this plugin is adopted and the star ⭐ grows, the faster the development will be. Also, we welcome contributors that would like to help us with the development of either modules or core.
 
-- [x] v1.2: Enhance observability of sync progress
-- [x] v1.3: Allow users to adjust rate and concurrency limits
-- [x] v2.3: Support syncing files in the Obsidian config folder (`.obsidian/`)
-- [x] v2.3: Saving WebDAV credentials in Obsidian Keychain
-- [x] v2.4: Implement auto load balancer and download chunking to prevent Obsidian crash on large size files
-- [x] v2.4, v2.5.5: Refurbish sync selection UI
-- [x] v2.5: Implement encryption like the one in Remotely Save
 - [x] v3.0: Rewrite entirely, dynamic module loading, module store, asymmetric storage, and rebrand
+- [ ] v3.1: Extensible conflict resolution
 
 ## License
 
 The source code of Sync Engine and modules in this repository are licensed under the [MIT License](https://mit-license.org/).<br>
 The documents in `blueprint/` directory and documentation website are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
 
-Copyright ©️ 2026 Hēsperus and all contributors
+Copyright ©️ 2026 Hēsperus and All Contributors

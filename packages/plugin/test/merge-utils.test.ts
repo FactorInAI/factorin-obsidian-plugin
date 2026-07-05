@@ -1,4 +1,4 @@
-import { arrayBufferEquals, textToArrayBuffer } from '@repo/shared';
+import { arrayBufferEquals, textToArrayBuffer } from '@repo/shared/binary';
 import { expect, test } from 'bun:test';
 import type { IntelligentMergeParams, LatestTimestampParams } from '@/sync/utils/merge';
 import {

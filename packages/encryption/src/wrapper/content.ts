@@ -1,4 +1,5 @@
-import { sha256Digest, textToArrayBuffer } from '@repo/shared';
+import { textToArrayBuffer } from '@repo/shared/binary';
+import { sha256Digest } from '@repo/shared/crypto';
 import { argon2id } from 'hash-wasm';
 import {
 	AES_GCM_TAG_LENGTH,

@@ -1,4 +1,5 @@
-import { sha256Digest, textToArrayBuffer } from '@repo/shared';
+import { textToArrayBuffer } from '@repo/shared/binary';
+import { sha256Digest } from '@repo/shared/crypto';
 
 const EMPTY_SALT = new ArrayBuffer(0);
 

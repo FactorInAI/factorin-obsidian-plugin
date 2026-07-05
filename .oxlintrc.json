@@ -85,8 +85,7 @@
 		"Bun": "readonly",
 		"process": "readonly",
 		"activeWindow": "readonly",
-		"createFragment": "readonly",
-		"sleep": "readonly"
+		"createFragment": "readonly"
 	},
 	"overrides": [
 		{

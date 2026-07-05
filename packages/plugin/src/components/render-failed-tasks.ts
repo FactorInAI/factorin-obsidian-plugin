@@ -7,14 +7,14 @@ function renderFailedTaskRow(
 	{ name, key, error, prettyName, isDir }: FailedTaskInfo,
 ) {
 	const row = itemEl.createDiv();
-	const main = row.createDiv({ cls: 'break-words flex items-center gap-2' });
-	const icon = main.createSpan({ cls: 'sync-engine-icon color-[var(--color-red)]' });
+	const main = row.createDiv('break-words flex items-center gap-2');
+	const icon = main.createSpan('w-4 h-4 color-[--color-red]');
 	setIcon(icon, getTaskIcon(name, isDir));
 	setTooltip(icon, prettyName);
 
-	main.createSpan({ cls: 'text-[var(--text-muted)]', text: prettyName });
+	main.createSpan({ cls: 'text-[--text-muted]', text: prettyName });
 	main.createSpan({ cls: 'font-semibold truncate', text: key });
-	row.createDiv({ cls: 'text-[var(--text-muted)] break-words mt-1', text: error });
+	row.createDiv({ cls: 'text-[--text-muted] break-words mt-1', text: error });
 }
 
 export default function renderFailedTasks(
@@ -22,7 +22,7 @@ export default function renderFailedTasks(
 	failedTasks: Array<FailedTaskInfo>,
 ): void {
 	detailContainer.empty();
-	const tasksContainer = detailContainer.createDiv({ cls: 'w-100% flex flex-col gap-3 p-1.5' });
+	const tasksContainer = detailContainer.createDiv('w-100% flex flex-col gap-3 p-1.5');
 	detailContainer.removeClass('hidden');
 	failedTasks.forEach((task) => renderFailedTaskRow(tasksContainer, task));
 }

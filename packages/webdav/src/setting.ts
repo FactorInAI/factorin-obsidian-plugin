@@ -1,6 +1,6 @@
 import type { WebdavSettings } from '@';
 import type { Translate, Translations } from '@hesprs/sync-engine-sdk';
-import { normalizeBaseDir } from '@repo/shared';
+import { normalizeBaseDir } from '@repo/shared/path';
 import { App, SecretComponent, Setting } from 'obsidian';
 import handleInput from './handle-input';
 

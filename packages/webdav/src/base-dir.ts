@@ -6,7 +6,7 @@ import type {
 	WrappedRemoteFs,
 	MaybePromise,
 } from '@hesprs/sync-engine-sdk';
-import { normalizeBaseDir } from '@repo/shared';
+import { normalizeBaseDir } from '@repo/shared/path';
 
 function joinUnifiedKey(baseDir: string, key: string) {
 	const joined = `${baseDir}${key}`;

@@ -15,11 +15,11 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 ### Threat Model & Constraints
 
 - This algorithm assumes client devices share the same password. So no asymmetric encryption or credential sharing needed.
-- This algorithm assumes zero trust on WebDAV server and transmission layer, it should prevent:
+- This algorithm assumes zero trust on server and transmission layer, it should prevent:
   - unauthorized access
   - unauthorized modification
 - Only end clients are trusted.
-- No central server to store salts or nonce, no extra meta file creation on WebDAV.
+- No central server to store salts or nonce, no extra meta file creation.
 - Encrypted file names must be deterministic.
 - Impossible or huge-cost-little-gain to achieve in this context:
   - prevent file being rolling back to previous version by malicious server
@@ -57,7 +57,7 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 
 ## Enabling and Disabling
 
-The function is toggled via settings "Encryption" toggling. It allows users to set encryption password via Obsidian keychain, like WebDAV token. The toggle button triggers a modal informing users that:
+The function is toggled via settings "Encryption" toggling. It allows users to set encryption password via Obsidian keychain. The toggle button triggers a modal informing users that:
 
 - all subsequent uploads will be encrypted.
 - ensure all devices have password and have "Encryption" enabled.

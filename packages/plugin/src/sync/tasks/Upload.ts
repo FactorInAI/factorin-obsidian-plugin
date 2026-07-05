@@ -1,4 +1,4 @@
-import { arrayBufferToText } from '@repo/shared';
+import { arrayBufferToText } from '@repo/shared/binary';
 import type { OptionsWithLocalFileStat } from '../decision/interface';
 import isMergeablePath from '../utils/is-mergeable-path';
 import { BaseTask } from './interface';

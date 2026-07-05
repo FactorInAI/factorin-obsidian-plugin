@@ -60,7 +60,7 @@ const en: Translations = {
 	clearAllRecords: 'Clear all records',
 	clearRecords: 'Clear records',
 	clearRecordsDescription:
-		'WebDAV sync records sync states to resolve sync operations between local and remote files. This option allows you to selectively clear records. Warning: this action is likely to cause data loss.',
+		'Sync Engine records sync states to resolve sync operations between local and remote files. This option allows you to selectively clear records. Warning: this action is likely to cause data loss.',
 	clearVaultRecords: 'Clear vault records',
 	completed: 'Completed',
 	completedNoop: 'Already synced',
@@ -126,7 +126,7 @@ const en: Translations = {
 	maxFileSizePlaceholder: 'Enter size limit (e.g. 10MB, 0.5GB)',
 	maxMemoryConsumption: 'Max memory consumption',
 	maxMemoryConsumptionDescription:
-		'Limit the amount of memory used during synchronization. This option is useful for services with memory limitations. Alter the memory limit in the field.',
+		'Limit the amount of memory used during synchronization. This option is useful for devices with memory limitations. Alter the memory limit in the field.',
 	maxMemoryConsumptionPlaceholder: 'Enter memory limit (e.g. 1GB, 200MB)',
 	maxRequestConcurrency: 'Max request concurrency',
 	maxRequestConcurrencyDescription:
@@ -193,7 +193,8 @@ const en: Translations = {
 	stopSync: 'Stop sync',
 	syncProgress: 'Sync progress',
 	syncStrategy: 'Sync strategy',
-	syncStrategyDescription: 'Select the synchronization strategy to resolve file changes.',
+	syncStrategyDescription:
+		'Select the synchronization strategy to resolve file changes. More strategies can be found in modules.',
 	toggleWithoutMigration: 'Toggle without migration',
 	unmergeableStrategy: 'Unmergeable conflict strategy',
 	unmergeableStrategyDescription:

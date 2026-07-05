@@ -36,6 +36,7 @@ export type {
 	RemoteOptimizerEntry,
 	SettingEntry,
 } from '@/modules/Registrar';
+export type { ModuleMeta } from '@/modules/Extensibility';
 export type { SyncTerminateReason } from '@/modules/Sync';
 export type * from '@/fs/interface';
 export type SelectFromContext<O extends object> = Context extends O ? O : never;
