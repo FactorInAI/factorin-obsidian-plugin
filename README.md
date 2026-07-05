@@ -5,7 +5,7 @@
     <br />
 </h1>
 
-<h4 align="center">Next generation syncing plugin for Obsidian vault. Free · Performant · Extensible.</h4>
+<h4 align="center">Next-generation syncing plugin for Obsidian vault. Free · Performant · Extensible.</h4>
 
 <p align="center">
     <a href="https://github.com/hesprs/obsidian-webdav-sync/releases/latest">

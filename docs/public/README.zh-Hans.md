@@ -5,7 +5,7 @@
     <br />
 </h1>
 
-<h4 align="center">面向 Obsidian 库的下一代同步插件。免费 · 高效 · 可扩展。</h4>
+<h4 align="center">面向 Obsidian vault 的下一代同步插件。免费 · 高效 · 可扩展。</h4>
 
 <p align="center">
     <a href="https://github.com/hesprs/obsidian-webdav-sync/releases/latest">
@@ -44,7 +44,7 @@
 
 ## 简介
 
-Sync Engine 是一款革命性的库同步解决方案。它不仅是一个同步插件，更是一个人人都可以基于此进行构建的模块化平台。
+Sync Engine 是一款革命性的 vault 同步解决方案。它不仅是一个同步插件，更是一个人人都可以基于此进行构建的模块化平台。
 
 核心部分提供了基础架构，而所有的后端（WebDAV, S3, GDrive）和功能（i18n、优化、同步策略）都源自可组合的模块。您和您的 AI Agent 可以通过便捷的 SDK 构建自己的模块、扩展插件功能、为社区做贡献，而这一切都无需修改任何核心源码。
 

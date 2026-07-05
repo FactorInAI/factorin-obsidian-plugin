@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: Build plugin
-        run: bun run build
+        run: bun run build -F @hesprs/sync-engine-sdk
 
       - name: Attest plugin artifacts
         uses: actions/attest@v4.1.0
