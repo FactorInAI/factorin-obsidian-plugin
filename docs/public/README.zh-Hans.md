@@ -93,7 +93,7 @@ Sync Engine 完全免费（MIT License）、可扩展、社区驱动、人工精
 ⚡ **闪电般的速度**：
 
 - 增量同步，绝不在每次同步时上传整个库。
-- 创新的 [**Anchored Asymmetric Storage™（锚定非对称存储）**](./blueprint/asymmetric-storage.md) 技术可大幅提升同步速度。
+- 创新的 [**Anchored Asymmetric Storage™（锚定非对称存储）**](../../blueprint/asymmetric-storage.md) 技术可大幅提升同步速度。
 - 实时同步复用缓存的远程状态，使其能够在毫秒内完成。
 - 体积比 Remotely Save 小 **40 倍**，启动速度快 **20 倍**。
 - 流畅处理拥有超过 3000 个文件及数 GB 大小的库。
