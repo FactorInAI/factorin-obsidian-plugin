@@ -34,15 +34,13 @@ export default class Webdav {
 			app: App;
 			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => void;
 			registerSetting: (entry: SettingEntry) => () => void;
-			registerI18n: (
-				lang: ObsidianLanguageCode,
-				translations: TranslationResource,
-			) => () => void;
+			registerI18n: (lang: ObsidianLanguageCode, translations: TranslationResource) => void;
 		}>,
 	) {
 		if (!this.moduleSettings.baseDirectory)
 			this.moduleSettings.baseDirectory = `${ctx.app.vault.getName()}/`;
-		this.cleanup.push(ctx.registerI18n('en', en), ctx.registerI18n('zh', zh));
+		ctx.registerI18n('en', en);
+		ctx.registerI18n('zh', zh);
 	}
 
 	readonly moduleSettings: WebdavSettings = {

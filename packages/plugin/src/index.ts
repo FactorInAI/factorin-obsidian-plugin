@@ -1,10 +1,9 @@
 import './global.css';
 import type { Command, EventRef, App } from 'obsidian';
 import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
-import { getLanguage, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
 import { ConflictStrategy, UnmergeableStrategy } from '@/types';
-import type { ObsidianLanguageCode } from './modules/I18n';
 import type { AddRibbonIcon } from './modules/Observability';
 import type { GlobMatchOptions } from './types';
 import Bootstrap from './modules/Bootstrap';
@@ -29,9 +28,9 @@ function createGlobMatchOptions(expr: string) {
 
 const internalModules = [
 	EventBus,
+	I18n,
 	Extensibility,
 	Registrar,
-	I18n,
 	Sync,
 	Observability,
 	Scheduler,
@@ -123,7 +122,6 @@ export default class SyncEngine extends Plugin {
 		}).__assign__({ settings: this.settings });
 		this.settings = this.context.settings;
 		await this.context.loadAllModules();
-		this.context.loadI18n(getLanguage() as ObsidianLanguageCode);
 		this.context.addSettingTab(this);
 		for (const module of this.allModules) {
 			const instance = this.context.__getModule__(module);

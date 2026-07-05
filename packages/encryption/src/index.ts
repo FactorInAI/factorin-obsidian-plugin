@@ -26,13 +26,11 @@ export default class Encryption {
 			app: App;
 			memoryDB: EncryptionDB;
 			registerSetting: (entry: SettingEntry) => () => void;
-			registerI18n: (
-				locale: ObsidianLanguageCode,
-				resource: TranslationResource,
-			) => () => void;
+			registerI18n: (locale: ObsidianLanguageCode, resource: TranslationResource) => void;
 		}>,
 	) {
-		this.cleanup.push(ctx.registerI18n('en', en), ctx.registerI18n('zh', zh));
+		ctx.registerI18n('en', en);
+		ctx.registerI18n('zh', zh);
 	}
 
 	moduleSettings: EncryptionSettings = {

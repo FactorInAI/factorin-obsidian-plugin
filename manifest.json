@@ -4,7 +4,7 @@
 	"version": "3.0.0-beta-1",
 	"minAppVersion": "1.12.3",
 	"authorUrl": "https://hesprs.github.io",
-	"description": "Next generation syncing for your vault. Designed for maximum performance and extensibility.",
+	"description": "Next-generation syncing for your vault. Designed for maximum performance and extensibility.",
 	"author": "Hēsperus",
 	"isDesktopOnly": false
 }
