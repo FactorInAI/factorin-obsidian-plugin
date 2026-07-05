@@ -3,6 +3,9 @@ name: Deploy modules and docs to GitHub Pages
 on:
   push:
     branches: [feat/fs]
+    paths:
+      - docs/**
+      - packages/**
   workflow_dispatch:
 
 permissions:

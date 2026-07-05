@@ -14,9 +14,6 @@
     <a href="https://github.com/hesprs/obsidian-webdav-sync/actions">
         <img src="https://img.shields.io/github/actions/workflow/status/hesprs/obsidian-webdav-sync/ci.yml?style=flat&logo=github&logoColor=white&label=CI&labelColor=d4ab00&color=333333" alt="ci">
     </a>
-    <a href="https://www.codefactor.io/repository/github/hesprs/obsidian-webdav-sync">
-        <img src="https://img.shields.io/codefactor/grade/github/hesprs/obsidian-webdav-sync?style=flat&logo=codefactor&logoColor=white&label=Code%20Quality&labelColor=17b37a&color=333333" alt="Code Quality" />
-    </a>
     <a href="https://sync.consensia.cc">
         <img src="https://img.shields.io/badge/Documentation-Ready-333333?labelColor=5C73E7&logo=vitepress&logoColor=white" alt="Documentation" />
     </a>
