@@ -119,7 +119,7 @@ Configuration:
 
 1. Go to plugin settings, find **Module management**, open the panel.
 2. Browse and install needed translations and backends.
-3. Configure your backend, automatic connectivity check is shown as a icon inside **Storage backend entry**.
+3. Configure your backend, automatic connectivity check is shown as an icon inside **Storage backend** entry.
 4. Start your first sync.
 
 ## Common Questions

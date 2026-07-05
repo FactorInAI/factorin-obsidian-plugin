@@ -92,18 +92,16 @@ export default class I18n {
 		getLanguage(),
 		getLanguage().split('-')[0],
 	] as Array<ObsidianLanguageCode>);
-	readonly i18n: Record<string, string | Fragment> = {};
+	readonly i18n = {};
 
 	private readonly registerI18n = (code: ObsidianLanguageCode, resource: TranslationResource) => {
 		if (code === DEFAULT_LANGUAGE && !this.targetLangs.has(DEFAULT_LANGUAGE))
-			for (const [key, value] of Object.entries(resource)) this.i18n[key] ??= value;
+			for (const [key, value] of Object.entries(resource))
+				(this.i18n as Record<string, string | Fragment>)[key] ??= value;
 		else if (this.targetLangs.has(code)) Object.assign(this.i18n, resource);
 	};
 
-	private readonly translate: Translate<Translations> = ((
-		key: keyof Translations,
-		params?: InterpolationValues,
-	) => {
+	private readonly translate: Translate<Translations> = ((key, params) => {
 		const i18n = this.i18n as Translations;
 		const value = i18n[key];
 		if (typeof value === 'string') {

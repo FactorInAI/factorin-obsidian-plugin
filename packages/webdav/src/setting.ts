@@ -17,6 +17,8 @@ export type WebdavTranslations = {
 	baseDirectory: string;
 	baseDirectoryDescription: string;
 	baseDirectoryPlaceholder: string;
+	depthInfinity: string;
+	depthInfinityDescription: string;
 };
 
 export default function webdavSetting(
@@ -95,6 +97,16 @@ export default function webdavSetting(
 				saveSettings,
 				settings,
 				text,
+			});
+		});
+
+	new Setting(el)
+		.setName(translate('depthInfinity'))
+		.setDesc(translate('depthInfinityDescription'))
+		.addToggle((toggle) => {
+			toggle.setValue(settings.depthInfinity).onChange((value) => {
+				settings.depthInfinity = value;
+				void saveSettings();
 			});
 		});
 }
