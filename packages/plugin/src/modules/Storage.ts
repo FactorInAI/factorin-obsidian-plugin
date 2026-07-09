@@ -3,7 +3,6 @@ import { deleteMemoryDB, openIndexedDB, openMemoryDB } from 'uni-kv';
 import type { General, RecordStat } from '@/types';
 
 export type IndexedDBSchema = Record<string, RecordStat>;
-export type IndexedDBMeta = { version: number };
 export type RecordStore = StoreAsync<RecordStat>;
 
 export const SYNC_STATE_STORE_NAME = 'sync-state';
@@ -11,7 +10,7 @@ export const STORAGE_NAME = 'sync-engine';
 
 export default class Storage {
 	private readonly memoryDB = openMemoryDB<General, General>(STORAGE_NAME);
-	private readonly indexedDB = openIndexedDB<IndexedDBSchema, IndexedDBMeta>(STORAGE_NAME);
+	private readonly indexedDB = openIndexedDB<IndexedDBSchema, {}>(STORAGE_NAME);
 
 	constructor(private readonly ctx: { getNamespace: () => string }) {}
 

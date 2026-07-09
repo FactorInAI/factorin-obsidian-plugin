@@ -2,7 +2,7 @@ import UnoCSS from '@unocss/postcss';
 import postcssMergeRules from 'postcss-merge-rules';
 import { defineConfig } from 'tsdown';
 import solid from 'unplugin-solid/rolldown';
-import pkg from './package.json' with { type: 'json' };
+import man from '../../manifest.json' with { type: 'json' };
 
 const dev = process.env.MODE === 'dev';
 const buildingPlugin = process.env.BUILD === 'plugin';
@@ -45,7 +45,7 @@ const pluginConfig = defineConfig({
 		transformer: 'postcss',
 	},
 	define: {
-		'Bun.env.VERSION': JSON.stringify(pkg.version),
+		'Bun.env.VERSION': JSON.stringify(man.version),
 	},
 	dts: false,
 	entry: { main: 'src/index.ts' },
