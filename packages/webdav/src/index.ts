@@ -8,6 +8,7 @@ import type {
 	Context,
 	ObsidianLanguageCode,
 	TranslationResource,
+	Settings,
 } from '@hesprs/sync-engine-sdk';
 import type { App } from 'obsidian';
 import type { WebdavTranslations } from './setting';
@@ -51,6 +52,8 @@ export default class Webdav {
 		username: '',
 	};
 
+	declare settings: Settings;
+
 	readonly start = () => {
 		const {
 			translate,
@@ -77,7 +80,7 @@ export default class Webdav {
 			}),
 			registerRemoteFsWrapper({
 				apply: (fs) => baseDirWrapper(fs, this.moduleSettings.baseDirectory),
-				fsBind: 'webdav',
+				condition: () => this.settings.remoteFs === 'webdav',
 				order: 6318,
 			}),
 			registerSetting({

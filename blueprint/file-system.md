@@ -46,7 +46,7 @@ The WebDAV abstraction should not use any external libraries. Only use Obsidian 
 
 `read()`: `GET` request to constructed URL
 
-`readStream()`: `GET` with byte range header, each request fixed at 1MiB, multiplex max 4 requests during streaming. When multiplexed response arrives, sort and feed to stream. When back pressure detected, stop making new requests.
+`readStream()`: `GET` with byte range header, each request fixed at 2MiB, multiplex max 8 concurrent requests during streaming. When multiplexed response arrives, sort and feed to stream. When back pressure detected, stop making new requests.
 
 `write()`: `PUT` request to constructed URL. Try to find `Etag` in the response header. If found, return it. If not found, `this.stat()` immediately to the file just uploaded and return `uid`.
 

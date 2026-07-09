@@ -1,4 +1,4 @@
-import { testKit } from '@hesprs/sync-engine-sdk';
+import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { beforeEach, expect, mock, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import type { EncryptionDBMeta, EncryptionDBSchema } from '@/wrapper';

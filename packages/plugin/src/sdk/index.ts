@@ -1,8 +1,6 @@
 import type { Context } from '@';
 
-export { default as testKit } from './test-utils';
 export { default as digOriginal } from '@/fs/utils/dig-original';
-export { default as debugWrapper } from './debug-wrapper';
 export { default as MigrationModal } from '@/components/MigrationModal';
 
 export type {
@@ -24,9 +22,8 @@ export type {
 	Stat,
 	MaybePromise,
 } from '@/types';
+export type { ConflictResolver, ConflictResolverPayload, TaskFactory, TaskNames } from '@/sync';
 export type {
-	IndexedDBMeta,
-	IndexedDBSchema,
 	DeciderEntry,
 	RemoteFsEntry,
 	LocalFsWrapperEntry,
@@ -35,7 +32,9 @@ export type {
 	RemoteListGetter,
 	RemoteOptimizerEntry,
 	SettingEntry,
+	ConflictResolverEntry,
 } from '@/modules/Registrar';
+export type { RecordStore } from '@/modules/Storage';
 export type { ModuleMeta } from '@/modules/Extensibility';
 export type { SyncTerminateReason } from '@/modules/Sync';
 export type * from '@/fs/interface';

@@ -147,7 +147,7 @@ export default class Extensibility {
 			dispatch('moduleLoaded', name);
 		} catch (error) {
 			const message = toErrorMessage(error);
-			dispatch('error', `Module \`${name}\` failed to load: ${message}`);
+			dispatch('errorGeneral', `Module \`${name}\` failed to load: ${message}`);
 			new Notice(`${translate('failedToLoadModule', { name })}: ${message}`);
 		}
 	};
@@ -173,7 +173,7 @@ export default class Extensibility {
 		try {
 			const legacyVersion = this.discoveredModules.get(name);
 			if (legacyVersion === version) return;
-			dispatch('log', `Downloading module \`${name}\` of version \`${version}\`.`);
+			dispatch('logGeneral', `Downloading module \`${name}\` of version \`${version}\`.`);
 			const { adapter } = app.vault;
 			const { arrayBuffer: module } = await requestUrl(url);
 			const isRunning = this.loadedModules.has(name);
@@ -191,7 +191,7 @@ export default class Extensibility {
 			if (waitIdle) isIdle(true);
 		} catch (error) {
 			const message = toErrorMessage(error);
-			dispatch('error', `Failed to download module \`${name}\`: ${message}`);
+			dispatch('errorGeneral', `Failed to download module \`${name}\`: ${message}`);
 			new Notice(`${translate('failedToDownloadModule', { name })}: ${message}`);
 		}
 	};
@@ -226,7 +226,10 @@ export default class Extensibility {
 						throw new Error('Wrong source schema!');
 					} catch (error) {
 						const message = toErrorMessage(error);
-						dispatch('error', `Failed to fetch source from \`${url}\`: ${message}`);
+						dispatch(
+							'errorGeneral',
+							`Failed to fetch source from \`${url}\`: ${message}`,
+						);
 						new Notice(`${translate('failedToFetchSource', { url })}: ${message}`);
 						return [];
 					}
@@ -242,7 +245,7 @@ export default class Extensibility {
 		});
 		const moduleList = [...modules.values()];
 		dispatch(
-			'log',
+			'logGeneral',
 			`Discovered ${moduleList.length} module(s) from ${moduleSources.length} source(s).`,
 		);
 		return moduleList;
@@ -275,7 +278,7 @@ export default class Extensibility {
 
 	readonly dispose = () => {
 		window.clearTimeout(this.autoUpdateTimeout);
-		(window as General).syncEngineApiBridge = undefined;
+		delete (window as General).syncEngineApiBridge;
 		this.loadedModules.clear();
 	};
 

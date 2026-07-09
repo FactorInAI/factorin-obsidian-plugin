@@ -1,4 +1,4 @@
-import obsidianBridge from '@hesprs/sync-engine-sdk/obsidian-bridge';
+import { obsidianBridge } from '@hesprs/sync-engine-sdk/dev';
 import { defineConfig } from 'tsdown';
 
 const dev = process.env.MODE === 'dev';
@@ -6,7 +6,7 @@ const dev = process.env.MODE === 'dev';
 export default defineConfig({
 	clean: !dev,
 	dts: false,
-	entry: { 'I18n 简体中文': 'src/index.ts' },
+	entry: { 'Smart Merge': 'src/index.ts' },
 	minify: true,
 	outDir: 'dist',
 	outExtensions: () => ({ js: '.js' }),

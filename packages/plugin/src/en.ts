@@ -76,9 +76,9 @@ const en: Translations = {
 	confirmTasksInSync: 'Confirm operations in manual sync',
 	confirmTasksInSyncDescription:
 		'Show pending operations and execute after confirmation (does not affect auto-sync).',
-	conflictStrategy: 'Conflict resolution strategy',
-	conflictStrategyDescription:
-		'Choose how to resolve file conflicts when both local and remote files are modified since last sync.',
+	conflictResolveStrategy: 'Conflict resolve strategy',
+	conflictResolveStrategyDescription:
+		'Select how to resolve the conflict when both remote and local have been modified since last sync. More strategies can be found in modules.',
 	controls: 'Controls',
 	createLocalDir: 'Create local folder',
 	createRemoteDir: 'Create remote folder',
@@ -125,7 +125,7 @@ const en: Translations = {
 	invalidValue: 'Invalid value, reverted to original.',
 	keepLocal: 'Keep local',
 	keepRemote: 'Keep remote',
-	latestTimestamp: 'Latest survive',
+	latestSurvive: 'Latest survives',
 	loadingModules: 'Loading modules…',
 	maxFileSize: 'Max file size',
 	maxFileSizeDescription:
@@ -139,7 +139,6 @@ const en: Translations = {
 	maxRequestConcurrencyDescription:
 		'Limit the number of simultaneous requests during synchronization. This option is useful for services with request rate limits. Alter the concurrency limit in the field.',
 	maxRequestConcurrencyPlaceholder: 'Enter concurrency limit',
-	merge: 'Merge',
 	migrationDescription:
 		'Migration may take seconds to minutes depending on the vault size. If you have migrated the remote on other devices, you can skip the migration.\n\nStart migration now?',
 	migrationPhase1Description: 'Ensure local state is up-to-date',
@@ -180,6 +179,7 @@ const en: Translations = {
 	removeLocal: 'Remove local',
 	removeRecord: 'Remove record',
 	removeRemote: 'Remove remote',
+	resolveConflict: 'Resolve conflict',
 	save: 'Save',
 	scheduledSync: 'Scheduled sync',
 	scheduledSyncDescription:
@@ -203,14 +203,9 @@ const en: Translations = {
 	syncStrategyDescription:
 		'Select the synchronization strategy to resolve file changes. More strategies can be found in modules.',
 	toggleWithoutMigration: 'Toggle without migration',
-	unmergeableStrategy: 'Unmergeable conflict strategy',
-	unmergeableStrategyDescription:
-		'Choose the alternative strategy for files that are not resolvable by merging (all non-markdown files).',
 	updateAvailable: 'Update available',
 	updateModule: 'Update module',
 	upload: 'Upload',
-	useGitStyle: 'Use Git-style conflict markers',
-	useGitStyleDescription: 'Use  <<<<<<< and  >>>>>>> markers for conflicts instead of HTML tags',
 	vaultRecordsCleared: 'Vault records cleared',
 	walkingRemote: 'Discovering remote files',
 };

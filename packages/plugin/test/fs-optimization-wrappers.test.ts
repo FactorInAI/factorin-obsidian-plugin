@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { BatchOptimizer, LocalFs, RemoteFs } from '@/fs';
 import { localOptimizationWrapper, remoteOptimizationWrapper } from '@/fs';
-import { testKit } from '@/sdk';
+import { testKit } from '@/sdk/dev';
 
 const { bytes, deferred, flush, localFs, remoteFs, stream } = testKit;
 

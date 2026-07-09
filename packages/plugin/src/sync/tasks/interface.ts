@@ -1,12 +1,12 @@
 import type { RemoteFs, LocalFs } from '@/fs';
-import type { SyncRecord } from '@/storage';
-import type { MaybePromise } from '@/types';
+import type { RecordStore } from '@/modules/Storage';
+import type { FileStat, MaybePromise } from '@/types';
 import type { TaskOptions } from '../decision/interface';
 
 export type BaseTaskOptions = {
 	localFs: LocalFs;
 	remoteFs: RemoteFs;
-	record: SyncRecord;
+	record: RecordStore;
 };
 
 export type TaskNames =
@@ -15,12 +15,23 @@ export type TaskNames =
 	| 'createLocalDir'
 	| 'createRemoteDir'
 	| 'download'
-	| 'merge'
+	| 'resolveConflict'
 	| 'removeLocal'
 	| 'removeRemote'
 	| 'upload'
 	| 'moveLocal'
 	| 'moveRemote';
+
+export type ConflictResolverPayload = {
+	local: FileStat;
+	remote: FileStat;
+	key: string;
+	localFs: LocalFs;
+	remoteFs: RemoteFs;
+	record: RecordStore;
+};
+
+export type ConflictResolver = (payload: ConflictResolverPayload) => MaybePromise<void>;
 
 export abstract class BaseTask<T extends TaskOptions = TaskOptions> {
 	constructor(readonly options: BaseTaskOptions & T) {
@@ -33,7 +44,7 @@ export abstract class BaseTask<T extends TaskOptions = TaskOptions> {
 	}
 	protected readonly remoteFs: RemoteFs;
 	protected readonly localFs: LocalFs;
-	protected readonly record: SyncRecord;
+	protected readonly record: RecordStore;
 	declare name: TaskNames;
 	declare prettyName: string;
 	readonly key: string;
@@ -63,7 +74,7 @@ export function getTaskIcon(name: TaskNames, isDir: boolean): string {
 	if (name === 'createLocalDir') return 'folder-down';
 	if (name === 'download') return 'file-down';
 	if (name === 'upload') return 'file-up';
-	if (name === 'merge') return 'combine';
+	if (name === 'resolveConflict') return 'combine';
 	if (name === 'removeLocal' || name === 'removeRemote') return isDir ? 'folder-x' : 'file-x';
 	if (name === 'moveLocal' || name === 'moveRemote')
 		return isDir ? 'folder-output' : 'file-output';
@@ -72,7 +83,7 @@ export function getTaskIcon(name: TaskNames, isDir: boolean): string {
 
 export function getTaskColor(name: TaskNames): string {
 	switch (name) {
-		case 'merge': {
+		case 'resolveConflict': {
 			return YELLOW_COLOR;
 		}
 		case 'removeLocal':

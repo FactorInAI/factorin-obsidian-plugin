@@ -2,7 +2,6 @@ import type { Events } from '@';
 import { apiVersion, Platform } from 'obsidian';
 import { ref } from 'synthkernel';
 import type { General } from '@/types';
-import { VERSION } from '@/consts';
 import formatDateTime from '@/utils/format-date';
 import { formatTime } from '@/utils/unit-converter';
 
@@ -17,6 +16,7 @@ const OS = {
 	Windows: Platform.isWin,
 };
 const MAX_SYNC_LOGS = 100;
+const VERSION = Bun.env.VERSION ?? '2.1.0';
 
 export type Dispatch<O extends object> = <K extends keyof O>(
 	...[key, payload]: undefined extends O[K] ? [K] : [K, O[K]]
@@ -37,43 +37,54 @@ type SyncStats = {
 };
 
 export default class EventBus {
-	declare readonly events: { log: string; error: string };
+	declare readonly events: {
+		logSync: string;
+		logGeneral: string;
+		errorSync: string;
+		errorGeneral: string;
+	};
 	private readonly cleanupCallbacks: Array<() => void> = [];
 	private readonly isIdle = ref(true);
 	private readonly syncLogs: Array<SyncStats> = [];
 	private readonly generalLogs: Array<string> = [];
 
 	constructor() {
-		const { cleanupCallbacks, on, syncLogs, putLog, getThisSync, isIdle } = this;
+		const { cleanupCallbacks, on, syncLogs, putSyncLog, putGeneralLog, getThisSync, isIdle } =
+			this;
 		cleanupCallbacks.push(
 			on('syncStarted', ({ trigger }) => {
 				isIdle(false);
 				syncLogs.push({ logs: [], started: Date.now(), trigger });
 				if (syncLogs.length > MAX_SYNC_LOGS) syncLogs.shift();
-				putLog(`Sync triggered by \`${trigger}\` started.`);
+				putSyncLog(`Sync triggered by \`${trigger}\` started.`);
 			}),
-			on('log', (log) => putLog(log)),
-			on('error', (log) => putLog(log, 'error')),
+			on('logSync', (log) => putSyncLog(log)),
+			on('errorSync', (log) => putSyncLog(log, 'error')),
 			on('executionStarted', (tasks) => {
 				getThisSync().totalTasks = tasks.length;
-				putLog(`Execution of ${tasks.length} sync task(s) started.`);
+				putSyncLog(`Execution of ${tasks.length} sync task(s) started.`);
 			}),
 			on('taskCompleted', ({ key, name }) => {
 				const thisSync = getThisSync();
 				if (!thisSync.succeededTasks) thisSync.succeededTasks = 1;
 				else thisSync.succeededTasks += 1;
-				putLog(`Task \`${name}\` of \`${key}\` succeeded.`);
+				putSyncLog(`Task \`${name}\` of \`${key}\` succeeded.`);
 			}),
 			on('taskFailed', ({ key, name, error }) => {
 				const thisSync = getThisSync();
 				if (!thisSync.failedTasks) thisSync.failedTasks = 1;
 				else thisSync.failedTasks += 1;
-				putLog(`Task \`${name}\` of \`${key}\` failed with error: \`${error}\`.`, 'error');
+				putSyncLog(
+					`Task \`${name}\` of \`${key}\` failed with error: \`${error}\`.`,
+					'error',
+				);
 			}),
-			on('tasksConfirmed', (tasks) => putLog(`Confirmed ${tasks.length} task(s).`)),
-			on('syncCanceled', () => putLog('Sync is forced to stop.')),
+			on('tasksConfirmed', (tasks) => putSyncLog(`Confirmed ${tasks.length} task(s).`)),
+			on('syncCanceled', () => putSyncLog('Sync is forced to stop.')),
 			on('deleteConfirmed', ({ reupload, delete: { length } }) =>
-				putLog(`Confirmed to delete ${length} files, reupload ${reupload.length} files.`),
+				putSyncLog(
+					`Confirmed to delete ${length} files, reupload ${reupload.length} files.`,
+				),
 			),
 			on('syncTerminated', (reason) => {
 				const { result } = reason;
@@ -81,25 +92,29 @@ export default class EventBus {
 				thisSync.outcome = result;
 				thisSync.ended = Date.now();
 				if (result === 'failed')
-					putLog(`Sync ended with error: \`${reason.error}\`.`, 'error');
-				else putLog(`Sync ended with result: \`${result}\`.`);
+					putSyncLog(`Sync ended with error: \`${reason.error}\`.`, 'error');
+				else putSyncLog(`Sync ended with result: \`${result}\`.`);
 				isIdle(true);
 			}),
 			on('migrationProgress', ({ completed }) => {
-				if (completed === 0) putLog('Migration started.');
+				if (completed === 0) putGeneralLog('Migration started.');
 			}),
-			on('migrationFailed', (error) => putLog(`Migration failed: \`${error}\`.`, 'error')),
-			on('moduleLoaded', (name) => putLog(`Module \`${name}\` loaded.`)),
-			on('moduleUnloaded', (name) => putLog(`Module \`${name}\` unloaded.`)),
+			on('migrationFailed', (error) =>
+				putGeneralLog(`Migration failed: \`${error}\`.`, 'error'),
+			),
+			on('moduleLoaded', (name) => putGeneralLog(`Module \`${name}\` loaded.`)),
+			on('moduleUnloaded', (name) => putGeneralLog(`Module \`${name}\` unloaded.`)),
 		);
 	}
 
 	private readonly getThisSync = () => this.syncLogs.at(-1) as SyncStats;
-	private readonly putLog = (log: string, level: 'info' | 'error' = 'info') => {
+	private readonly putSyncLog = (log: string, level: 'info' | 'error' = 'info') => {
 		const message = `- \`${level.toLocaleUpperCase()}\` - ${log}`;
-		if (this.isIdle())
-			this.generalLogs.push(`- ${formatDateTime(Date.now(), true)} ${message}`);
-		else this.getThisSync().logs.push(message);
+		this.getThisSync().logs.push(message);
+	};
+	private readonly putGeneralLog = (log: string, level: 'info' | 'error' = 'info') => {
+		const message = `- \`${level.toLocaleUpperCase()}\` - ${log}`;
+		this.generalLogs.push(`- ${formatDateTime(Date.now(), true)} ${message}`);
 	};
 
 	private readonly subscribers: { [K in keyof Events]?: Set<(event: Events[K]) => void> } = {};

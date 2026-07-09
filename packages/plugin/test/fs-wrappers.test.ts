@@ -5,7 +5,7 @@ import {
 	remoteCancellationWrapper,
 	retryWrapper,
 } from '@/fs';
-import { testKit } from '@/sdk';
+import { testKit } from '@/sdk/dev';
 import { syncCancelledError } from '@/sync';
 // oxlint-disable-next-line import/no-namespace
 import * as sleepModule from '@/utils/sleep';

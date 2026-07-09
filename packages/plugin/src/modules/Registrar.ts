@@ -1,34 +1,24 @@
 import type { Events } from '@';
 import type { App, Plugin } from 'obsidian';
-import type { DatabaseSync } from 'uni-kv';
+import type { StoreAsync } from 'uni-kv';
+import { hash } from '@repo/shared/crypto';
 import { PluginSettingTab } from 'obsidian';
-import { deleteMemoryDB, openIndexedDB, openMemoryDB } from 'uni-kv';
 import type { BatchOptimizer, LocalFs, RemoteFs, RootRemoteFs } from '@/fs';
-import type { Decider } from '@/sync';
-import type { General, MaybePromise, RecordStat, Stat } from '@/types';
-import { STORAGE_NAME } from '@/consts';
+import type { ConflictResolver, Decider } from '@/sync';
+import type { MaybePromise, RecordStat, Stat } from '@/types';
 import { VaultFs } from '@/fs';
-import { SyncRecord } from '@/storage';
-import getNamespace from '@/utils/get-namespace';
 import type { On } from './EventBus';
-
-export type IndexedDBSchema = {
-	'base-text': string;
-	'sync-state': RecordStat;
-};
-
-export type IndexedDBMeta = {
-	version: number;
-};
+import type { RecordStore } from './Storage';
 
 export type LocalFsWrapperEntry = {
 	order: number;
 	apply: (fs: LocalFs) => LocalFs;
+	condition?: () => boolean;
 };
 export type RemoteFsWrapperEntry = {
 	order: number;
 	apply: (fs: RemoteFs) => RemoteFs;
-	fsBind?: string;
+	condition?: () => boolean;
 };
 export type RemoteFsEntry = { instantiate: () => RootRemoteFs; prettyName: string };
 export type DeciderEntry = { decider: Decider; prettyName: string };
@@ -37,17 +27,22 @@ export type SyncTriggerEntry = {
 	getRemoteList?: RemoteListGetter;
 	priority: number;
 };
-export type RemoteOptimizerEntry = { optimizer: BatchOptimizer<RemoteFs>; fsBind?: string };
+export type RemoteOptimizerEntry = {
+	optimizer: BatchOptimizer<RemoteFs>;
+	condition?: () => boolean;
+};
 export type SettingEntry = {
 	order: number;
 	render: (el: HTMLElement) => void;
 };
+export type ConflictResolverEntry = {
+	prettyName: string;
+	resolver: ConflictResolver;
+};
 
-export type Infras = { localFs: LocalFs; remoteFs: RemoteFs; record: SyncRecord };
+export type Infras = { localFs: LocalFs; remoteFs: RemoteFs; record: RecordStore };
 
 export default class Registrar {
-	private readonly memoryDB = openMemoryDB<General, General>(STORAGE_NAME);
-	private readonly indexedDB = openIndexedDB<IndexedDBSchema, IndexedDBMeta>(STORAGE_NAME);
 	private settingTab?: SettingTab;
 	private readonly cleanupCallbacks: Array<() => void> = [];
 
@@ -59,10 +54,17 @@ export default class Registrar {
 	private readonly deciderRegistry = new Map<string, DeciderEntry>();
 	private readonly syncTriggerRegistry = new Map<string, SyncTriggerEntry>();
 	private readonly settingRegistry = new Set<SettingEntry>();
+	private readonly conflictResolverRegistry = new Map<string, ConflictResolverEntry>();
 
-	declare readonly settings: { remoteFs: string; decider: string };
+	declare readonly settings: { remoteFs: string; decider: string; conflictResolver: string };
 
-	constructor(private readonly ctx: { app: App; on: On<Events> }) {
+	constructor(
+		private readonly ctx: {
+			app: App;
+			on: On<Events>;
+			getRecordStore: (namespace?: string) => StoreAsync<RecordStat>;
+		},
+	) {
 		this.cleanupCallbacks.push(
 			ctx.on('moduleLoaded', this.rerenderSettingTab),
 			ctx.on('moduleUnloaded', this.rerenderSettingTab),
@@ -85,11 +87,7 @@ export default class Registrar {
 		this.deciderRegistry.set(id, entry);
 		return () => this.deciderRegistry.delete(id);
 	};
-	private readonly registerRemoteOptimizer = (
-		optimizer: BatchOptimizer<RemoteFs>,
-		fsBind?: string,
-	) => {
-		const entry: RemoteOptimizerEntry = { fsBind, optimizer };
+	private readonly registerRemoteOptimizer = (entry: RemoteOptimizerEntry) => {
 		this.remoteOptimizerRegistry.add(entry);
 		return () => this.remoteOptimizerRegistry.delete(entry);
 	};
@@ -105,10 +103,15 @@ export default class Registrar {
 		this.settingRegistry.add(entry);
 		return () => this.settingRegistry.delete(entry);
 	};
+	private readonly registerConflictResolver = (id: string, entry: ConflictResolverEntry) => {
+		this.conflictResolverRegistry.set(id, entry);
+		return () => this.conflictResolverRegistry.delete(id);
+	};
 
 	private readonly createLocalFs = () => {
 		const wrappers: Record<number, (fs: LocalFs) => LocalFs> = {};
-		for (const { apply, order } of this.localFsWrapperRegistry) wrappers[order] = apply;
+		for (const { apply, order, condition } of this.localFsWrapperRegistry)
+			if (!condition || condition()) wrappers[order] = apply;
 		let fs: LocalFs = new VaultFs(this.ctx.app.vault);
 		for (const apply of Object.values(wrappers)) fs = apply(fs);
 		return fs;
@@ -117,8 +120,8 @@ export default class Registrar {
 	private readonly createRemoteFs = () => {
 		const wrappers: Record<number, (fs: RemoteFs) => RemoteFs> = {};
 		const { remoteFs } = this.settings;
-		for (const { apply, order, fsBind } of this.remoteFsWrapperRegistry)
-			if (!fsBind || fsBind === remoteFs) wrappers[order] = apply;
+		for (const { apply, order, condition } of this.remoteFsWrapperRegistry)
+			if (!condition || condition()) wrappers[order] = apply;
 		const entry = this.remoteFsRegistry.get(remoteFs);
 		if (!entry) {
 			if (!remoteFs) throw new Error('Please install a backend!');
@@ -145,13 +148,20 @@ export default class Registrar {
 	private readonly getRemoteOptimizer = () => {
 		let remote: BatchOptimizer<RemoteFs> | undefined;
 		let isBounded = false;
-		for (const { optimizer, fsBind } of this.remoteOptimizerRegistry)
-			if (fsBind) {
+		for (const { optimizer, condition } of this.remoteOptimizerRegistry)
+			if (condition?.()) {
 				isBounded = true;
 				remote = optimizer;
 			} else if (!isBounded) remote = optimizer;
 		if (!remote) throw new Error('No remote optimizer registered!');
 		return remote;
+	};
+
+	private readonly getConflictResolver = () => {
+		const id = this.settings.conflictResolver;
+		const resolver = this.conflictResolverRegistry.get(id);
+		if (!resolver) throw new Error(`Conflict resolution strategy "${id}" not installed!`);
+		return resolver.resolver;
 	};
 
 	private readonly reduceSyncTrigger = (triggers: Array<string>) => {
@@ -170,11 +180,17 @@ export default class Registrar {
 	private readonly getRemoteListGetter = (trigger: string) =>
 		this.syncTriggerRegistry.get(trigger)?.getRemoteList;
 
-	private readonly initializeSync = async () => {
+	private readonly getNamespace = (localFs?: LocalFs, remoteFs?: RemoteFs) => {
+		localFs ??= this.createLocalFs();
+		remoteFs ??= this.createRemoteFs();
+		return hash(`${localFs.getUid()}~~${remoteFs.getUid()}`);
+	};
+
+	private readonly initializeSync = (): Infras => {
 		const localFs = this.createLocalFs();
 		const remoteFs = this.createRemoteFs();
-		const stateKey = getNamespace(localFs, remoteFs);
-		const record = new SyncRecord(stateKey, await this.indexedDB);
+		const namespace = this.getNamespace(localFs, remoteFs);
+		const record = this.ctx.getRecordStore(namespace);
 		return { localFs, record, remoteFs };
 	};
 
@@ -186,17 +202,19 @@ export default class Registrar {
 
 	root = {
 		addSettingTab: this.addSettingTab,
+		conflictResolverRegistry: this.conflictResolverRegistry,
 		createLocalFs: this.createLocalFs,
 		createRemoteFs: this.createRemoteFs,
 		deciderRegistry: this.deciderRegistry,
+		getConflictResolver: this.getConflictResolver,
 		getDecider: this.getDecider,
 		getLocalOptimizer: this.getLocalOptimizer,
+		getNamespace: this.getNamespace,
 		getRemoteListGetter: this.getRemoteListGetter,
 		getRemoteOptimizer: this.getRemoteOptimizer,
-		indexedDB: this.indexedDB,
 		initializeSync: this.initializeSync,
-		memoryDB: this.memoryDB as DatabaseSync<General, General>,
 		reduceSyncTrigger: this.reduceSyncTrigger,
+		registerConflictResolver: this.registerConflictResolver,
 		registerDecider: this.registerDecider,
 		registerLocalFsWrapper: this.registerLocalFsWrapper,
 		registerLocalOptimizer: this.registerLocalOptimizer,
@@ -209,11 +227,7 @@ export default class Registrar {
 		rerenderSettingTab: this.rerenderSettingTab,
 	};
 
-	dispose() {
-		deleteMemoryDB(STORAGE_NAME);
-		this.cleanupCallbacks.splice(0).forEach((fn) => fn());
-		void this.indexedDB.then((db) => db.dispose());
-	}
+	readonly dispose = () => this.cleanupCallbacks.splice(0).forEach((fn) => fn());
 }
 
 class SettingTab extends PluginSettingTab {

@@ -37,7 +37,7 @@ export default class MigrationModal extends Modal {
 			dispatch: Dispatch<Events>;
 			translate: Translate<MigrationModalTranslations>;
 			requestSync: (trigger: string) => Promise<SyncTerminateReason>;
-			initializeSync: () => Promise<Infras>;
+			initializeSync: () => Infras;
 		},
 		private readonly options: {
 			content: string | DocumentFragment;
@@ -138,8 +138,8 @@ export default class MigrationModal extends Modal {
 			total: 3,
 		});
 		try {
-			const { record, remoteFs } = await initializeSync();
-			await Promise.all([record.drop(), remoteFs.delete('/'), this.options.apply()]);
+			const { record, remoteFs } = initializeSync();
+			await Promise.all([record.clear(), remoteFs.delete('/'), this.options.apply()]);
 		} catch (error) {
 			const message = toErrorMessage(error);
 			dispatch('migrationFailed', message);

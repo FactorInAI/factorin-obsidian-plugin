@@ -65,8 +65,8 @@ const CHECK_CONNECTION_BODY = `<?xml version="1.0" encoding="utf-8"?>
   <D:propname/>
 </D:propfind>`;
 
-const READ_CHUNK_SIZE = 1 * 1024 * 1024;
-const READ_MAX_CONCURRENT = 4;
+const READ_CHUNK_SIZE = 2 * 1024 * 1024;
+const READ_MAX_CONCURRENT = 8;
 
 function getAuthorization(username: string, password: string) {
 	return `Basic ${btoa(`${username}:${password}`)}`;

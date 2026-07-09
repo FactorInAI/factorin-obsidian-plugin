@@ -82,7 +82,7 @@ export default class SourceEditorModal extends Modal {
 						const validSources = sources.flatMap((source) => {
 							const trimmedSource = source.trim();
 							if (!trimmedSource || !isValidModuleSource(trimmedSource)) return [];
-							return [trimmedSource];
+							return trimmedSource;
 						});
 						this.onSave(validSources);
 						if (validSources.length !== sources.length)

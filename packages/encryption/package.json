@@ -9,7 +9,7 @@
 		"build": "tsdown",
 		"lint": "oxlint --fix --silent --type-aware && oxfmt",
 		"check": "tsc && oxlint --format agent --type-aware && oxfmt --check",
-		"tests": "bun --preload=./test/mocks test --isolate"
+		"tests": "bun test"
 	},
 	"dependencies": {
 		"obsidian": "latest"

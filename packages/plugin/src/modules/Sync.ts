@@ -1,15 +1,7 @@
-import type { Events, Settings, Translations } from '@';
+import type { Events, Translations } from '@';
 import type { LocalFs } from '@/fs';
-import type { Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
-import type {
-	ConflictStrategy,
-	GlobMatchOptions,
-	Progress,
-	Stat,
-	StatsMap,
-	TogglableValue,
-	UnmergeableStrategy,
-} from '@/types';
+import type { ConflictResolver, Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
+import type { GlobMatchOptions, Progress, Stat, StatsMap, TogglableValue } from '@/types';
 import {
 	RemoveLocal,
 	CreateRemoteDir,
@@ -43,11 +35,12 @@ export default class Sync {
 	constructor(
 		private readonly ctx: {
 			dispatch: Dispatch<Events>;
-			initializeSync: () => Promise<Infras>;
+			initializeSync: () => Infras;
 			getDecider: () => Decider;
 			on: On<Events>;
 			translate: Translate<Translations>;
 			getRemoteListGetter: (trigger: string) => RemoteListGetter | undefined;
+			getConflictResolver: () => ConflictResolver;
 		},
 	) {
 		this.dispatch = ctx.dispatch;
@@ -69,11 +62,8 @@ export default class Sync {
 		maxFileSize: TogglableValue;
 		exclusionRules: Array<GlobMatchOptions>;
 		inclusionRules: Array<GlobMatchOptions>;
-		conflictStrategy: ConflictStrategy;
-		unmergeableStrategy: UnmergeableStrategy;
 		confirmDeleteInAutoSync: boolean;
 		confirmTasksInSync: boolean;
-		useGitStyle: boolean;
 	};
 
 	private readonly postProcess = (stats: Array<Stat>) =>
@@ -130,7 +120,7 @@ export default class Sync {
 		try {
 			this.dispatch('syncStarted', { isCancelled, trigger });
 
-			const infras = await this.ctx.initializeSync();
+			const infras = this.ctx.initializeSync();
 			const { record, localFs, remoteFs } = infras;
 			const traverseRemote = async () => {
 				try {
@@ -139,8 +129,8 @@ export default class Sync {
 					);
 				} catch (error) {
 					if (await remoteFs.exists('/')) throw error;
-					this.dispatch('log', 'Remote root deleted, recreating.');
-					await Promise.all([remoteFs.mkdir('/', true), record.drop()]);
+					this.dispatch('logSync', 'Remote root deleted, recreating.');
+					await Promise.all([remoteFs.mkdir('/', true), record.clear()]);
 					return [];
 				}
 			};
@@ -148,32 +138,32 @@ export default class Sync {
 				(await this.ctx.getRemoteListGetter(trigger)?.(infras)) ?? (await traverseRemote());
 			const [localList, remoteList] = await Promise.all([localFs.list('/'), getRemoteList()]);
 			if (cancelled) throw syncCancelledError;
-			const records = await record.getRecords();
+			const records = new Map(await record.entries());
 			const localStats = this.postProcess(localList);
 			const remoteStats = this.postProcess(remoteList);
 			this.dispatch(
-				'log',
+				'logSync',
 				`Local ${localStats.size} item(s), remote ${remoteStats.size} item(s), record ${records.size} item(s).`,
 			);
 
 			if (cancelled) throw syncCancelledError;
-			const taskFactory = createTaskFactory(
-				{ localFs, record, remoteFs },
-				this.ctx.translate,
-			);
+			const taskFactory = createTaskFactory({
+				baseOptions: infras,
+				resolver: this.ctx.getConflictResolver(),
+				translate: this.ctx.translate,
+			});
 			tasks = this.ctx.getDecider()({
 				localStats,
-				logger: (log: string) => this.dispatch('log', log),
+				logger: (log: string) => this.dispatch('logSync', log),
 				records,
 				remoteStats,
-				settings: this.settings as Settings,
 				taskFactory,
 			});
 			if (tasks.length === 0) {
 				terminateReason = { result: 'noop' };
 				return terminateReason;
 			}
-			this.dispatch('log', `Planning finished with ${tasks.length} task(s).`);
+			this.dispatch('logSync', `Planning finished with ${tasks.length} task(s).`);
 
 			const [nonDisplayableTasks, displayableTasks] = partition(
 				tasks,
@@ -247,7 +237,7 @@ export default class Sync {
 				const local = await localFs.stat(options.key);
 				if (!local) {
 					this.dispatch(
-						'log',
+						'logSync',
 						`Local file \`${options.key}\` not found during reupload.`,
 					);
 					return;
@@ -268,12 +258,20 @@ function toMap(stats: Array<Stat>): StatsMap {
 	return res;
 }
 
-function createTaskFactory(
-	baseOptions: Infras,
-	translate: (name: TaskNames) => string,
-): TaskFactory {
+function createTaskFactory({
+	baseOptions,
+	translate,
+	resolver,
+}: {
+	baseOptions: Infras;
+	translate: (name: TaskNames) => string;
+	resolver: ConflictResolver;
+}): TaskFactory {
 	return (<N extends TaskNames>(name: N, options: TaskOptionsMap[N]) => {
-		const task = new taskMap[name]({ ...options, ...baseOptions } as never);
+		const task =
+			name === 'resolveConflict'
+				? new taskMap[name]({ ...options, ...baseOptions, resolver } as never)
+				: new taskMap[name]({ ...options, ...baseOptions } as never);
 		task.name = name;
 		task.prettyName = translate(name);
 		return task;

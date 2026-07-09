@@ -1,6 +1,6 @@
 import type { Progress, RootRemoteFs } from '@hesprs/sync-engine-sdk';
 import type { requestUrl } from 'obsidian';
-import { testKit } from '@hesprs/sync-engine-sdk';
+import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { beforeEach, expect, mock, test } from 'bun:test';
 import type { WebdavFsOptions } from '@/webdav/fs';
 import WebdavFs from '@/webdav/fs';
@@ -315,7 +315,7 @@ test('readStream reorders out-of-order ranged responses', async () => {
 	expect(toBytes(await collected)).toStrictEqual([1, 1, 2, 2, 3, 3]);
 });
 
-test('readStream uses 1 MiB ranges from stat size', async () => {
+test('readStream uses 2 MiB ranges from stat size', async () => {
 	setXmlResponse([
 		{
 			href: 'https://dav.example.com/dav/Notes/file.bin',
@@ -345,10 +345,9 @@ test('readStream uses 1 MiB ranges from stat size', async () => {
 	const collected = collectStream(await webdav.fs.readStream('Notes/file.bin'));
 	await flush();
 	expect(ranges).toStrictEqual([
-		'bytes=0-1048575',
-		'bytes=1048576-2097151',
-		'bytes=2097152-3145727',
-		'bytes=3145728-4194303',
+		'bytes=0-2097151',
+		'bytes=2097152-4194303',
+		'bytes=4194304-5242880',
 	]);
 
 	const makeResponse = (byte: number): RequestUrlResponse => ({
@@ -357,25 +356,18 @@ test('readStream uses 1 MiB ranges from stat size', async () => {
 		text: '',
 	});
 
-	pending.get('bytes=3145728-4194303')?.resolve(makeResponse(4));
-	pending.get('bytes=2097152-3145727')?.resolve(makeResponse(3));
-	pending.get('bytes=1048576-2097151')?.resolve(makeResponse(2));
-	pending.get('bytes=0-1048575')?.resolve(makeResponse(1));
+	pending.get('bytes=4194304-5242880')?.resolve(makeResponse(3));
+	pending.get('bytes=2097152-4194303')?.resolve(makeResponse(2));
+	pending.get('bytes=0-2097151')?.resolve(makeResponse(1));
 
 	await flush();
 	expect(ranges).toStrictEqual([
-		'bytes=0-1048575',
-		'bytes=1048576-2097151',
-		'bytes=2097152-3145727',
-		'bytes=3145728-4194303',
-		'bytes=4194304-5242879',
-		'bytes=5242880-5242880',
+		'bytes=0-2097151',
+		'bytes=2097152-4194303',
+		'bytes=4194304-5242880',
 	]);
 
-	pending.get('bytes=4194304-5242879')?.resolve(makeResponse(5));
-	pending.get('bytes=5242880-5242880')?.resolve(makeResponse(6));
-
-	expect(new Uint8Array(await collected)).toStrictEqual(new Uint8Array([1, 2, 3, 4, 5, 6]));
+	expect(new Uint8Array(await collected)).toStrictEqual(new Uint8Array([1, 2, 3]));
 });
 
 test('readStream waits for consumer demand before scheduling', async () => {

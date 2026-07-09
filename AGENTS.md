@@ -11,6 +11,7 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 - `bun tests -F <package-name> -- <test path>`: run tests in specific file.
 - `bun <command> -F <package-name>`: run command targeting a specific package.
 - `cd packages/plugin && bun synthkernel <file-name> <type-alias>`: inspect the final flattened content of a type alias in a file, use when dealing when complex merged types.
+- `bun -e '<code>'` run TS code directly, can import from codebase, use double quote inside code.
 
 ## Packages
 
@@ -19,6 +20,8 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 - Encryption module: `packages/encryption/`, package name `encryption`.
 - Shared utils: `packages/shared/`, package name `@repo/shared`.
 - Documentation site: `docs/`, package name `docs`.
+- I18n modules for the main plugin: `packages/i18n/`, package name `i18n`.
+- Smart merge module: `packages/smart-merge/`, package name `smart-merge`.
 
 ## Code Quality
 

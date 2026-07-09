@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import type { InputAtom, OutputAtom } from '@/fs';
-import type { MaybePromise } from '@/sdk';
+import type { MaybePromise } from '@/types';
 import { hierarchalOptimizer } from '@/fs';
-import { testKit } from '@/sdk';
+import { testKit } from '@/sdk/dev';
 
 const { deferred, flush } = testKit;
 

@@ -28,6 +28,10 @@
 	background-color: rgb(0, 132, 255);
 }
 
+.conflict.deleted {
+	background-color: rgb(246, 5, 34);
+}
+
 @container (max-width: 340px) {
 	.sync-engine-togglable-value {
 		flex-direction: column;

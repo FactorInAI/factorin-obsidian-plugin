@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import type { MemoryControlSharedState } from '@/fs';
 import { localMemoryControlWrapper, remoteMemoryControlWrapper } from '@/fs';
-import { testKit } from '@/sdk';
+import { testKit } from '@/sdk/dev';
 
 const { flush, bytes, localFs, remoteFs, deferred, stream } = testKit;
-const FOUR_MIB = 4 * 1024 * 1024;
+const SIXTEEN_MIB = 16 * 1024 * 1024;
 
 function createSharedState(maxMemory: number, memoryConsumption = 0): MemoryControlSharedState {
 	return {
@@ -57,16 +57,16 @@ test('remote memory wrapper resumes queued reads after write completes', async (
 	await Promise.all([firstQueuedRead, secondQueuedRead]);
 });
 
-test('remote memory wrapper reserves fixed 4 MiB for readStream', async () => {
-	const state = createSharedState(FOUR_MIB + 1);
+test('remote memory wrapper reserves fixed 16 MiB for readStream', async () => {
+	const state = createSharedState(SIXTEEN_MIB + 1);
 	const remote = remoteFs();
 	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 1);
-	await wrapper.readStream('large.md', FOUR_MIB * 2);
+	await wrapper.readStream('large.md', SIXTEEN_MIB * 2);
 
-	expect(remote.calls.readStream).toStrictEqual([['large.md', FOUR_MIB * 2]]);
-	expect(state.memoryConsumption).toBe(FOUR_MIB + 1);
+	expect(remote.calls.readStream).toStrictEqual([['large.md', SIXTEEN_MIB * 2]]);
+	expect(state.memoryConsumption).toBe(SIXTEEN_MIB + 1);
 });
 
 test('vault memory wrapper releases budget only after writeStream fully drains', async () => {

@@ -68,8 +68,8 @@ class DebugRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function baseDirWrapper(original: RemoteFs, log: (content: string) => void): WrappedRemoteFs {
+function debugWrapper(original: RemoteFs, log: (content: string) => void): WrappedRemoteFs {
 	return new DebugRemoteFs(original, log);
 }
 
-export default baseDirWrapper satisfies RemoteFsWrapper<(content: string) => void>;
+export default debugWrapper satisfies RemoteFsWrapper<(content: string) => void>;

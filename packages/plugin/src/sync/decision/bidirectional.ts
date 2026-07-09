@@ -1,12 +1,10 @@
 import type { FileStat, FolderStat, Stat } from '@/types';
-import { ConflictStrategy, UnmergeableStrategy } from '@/types';
 import type { BaseTask } from '../tasks/interface';
 import type { DeciderInput } from './interface';
 import isChanged from '../utils/is-changed';
-import isMergeablePath from '../utils/is-mergeable-path';
 
 export default function bidirectionalDecider(input: DeciderInput): Array<BaseTask> {
-	const { localStats, remoteStats, records, taskFactory, settings, logger } = input;
+	const { localStats, remoteStats, records, taskFactory, logger } = input;
 
 	const tasks: Array<BaseTask> = [];
 	const files: Array<{
@@ -35,40 +33,6 @@ export default function bidirectionalDecider(input: DeciderInput): Array<BaseTas
 		else if (remote && local) fileFolders.push({ key, local, remote });
 		else removeRecords.push(key);
 	});
-
-	const routeConflict = (params: {
-		local: FileStat;
-		remote: FileStat;
-		key: string;
-		strategy: ConflictStrategy;
-		unmergeableStrategy: UnmergeableStrategy;
-	}) => {
-		function commonRoutes(strategy: UnmergeableStrategy | ConflictStrategy) {
-			if (strategy === UnmergeableStrategy.Skip) return;
-			if (strategy === UnmergeableStrategy.KeepLocal) {
-				tasks.push(taskFactory('upload', { key, local }));
-				return true;
-			}
-			if (strategy === UnmergeableStrategy.KeepRemote) {
-				tasks.push(taskFactory('download', { key, remote }));
-				return true;
-			}
-			if (strategy === UnmergeableStrategy.LatestTimeStamp) {
-				if (local.mtime >= remote.mtime) {
-					tasks.push(taskFactory('upload', { key, local }));
-					return true;
-				}
-				tasks.push(taskFactory('download', { key, remote }));
-				return true;
-			}
-			return false;
-		}
-		const { local, remote, key, strategy, unmergeableStrategy } = params;
-		if (strategy === ConflictStrategy.DiffMatchPatch && !isMergeablePath(local.key))
-			commonRoutes(unmergeableStrategy);
-		else if (!commonRoutes(strategy))
-			tasks.push(taskFactory('merge', { key, local, remote, settings }));
-	};
 
 	// * Sync files
 	for (const { local, remote, key } of files) {
@@ -132,13 +96,7 @@ export default function bidirectionalDecider(input: DeciderInput): Array<BaseTas
 			NORECORD_REMOTE_LOCAL_CONFLICT: () => {
 				if (!remote || !local) return;
 				logger(`Decider: conflict \`${key}\`, reason: local remote exist, no record.`);
-				routeConflict({
-					key,
-					local,
-					remote,
-					strategy: settings.conflictStrategy,
-					unmergeableStrategy: settings.unmergeableStrategy,
-				});
+				tasks.push(taskFactory('resolveConflict', { key, local, remote }));
 			},
 			NORECORD_REMOTE_LOCAL_RECORD: () => {
 				if (!local || !remote) return;
@@ -164,13 +122,7 @@ export default function bidirectionalDecider(input: DeciderInput): Array<BaseTas
 			RECORD_REMOTE_LOCAL_CONFLICT: () => {
 				if (!remote || !local) return;
 				logger(`Decider: conflict \`${key}\`, reason: local remote changed.`);
-				routeConflict({
-					key,
-					local,
-					remote,
-					strategy: settings.conflictStrategy,
-					unmergeableStrategy: settings.unmergeableStrategy,
-				});
+				tasks.push(taskFactory('resolveConflict', { key, local, remote }));
 			},
 			RECORD_REMOTE_LOCAL_PULL: () => {
 				if (!remote || !local) return;

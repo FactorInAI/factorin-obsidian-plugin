@@ -5,7 +5,7 @@ import type { RootLocalFs } from '@/fs';
 import type { HarnessState } from '@/sdk/test-utils';
 import type { MaybePromise } from '@/types';
 import { VaultFs } from '@/fs';
-import { testKit } from '@/sdk';
+import { testKit } from '@/sdk/dev';
 
 const { stream } = testKit;
 

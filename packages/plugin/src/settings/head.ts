@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'uni-kv';
 import { ExtraButtonComponent, Notice, Setting } from 'obsidian';
 import type { RemoteFs } from '@/fs';
 import type { Translate } from '@/modules/I18n';
-import type { DeciderEntry, RemoteFsEntry } from '@/modules/Registrar';
+import type { ConflictResolverEntry, DeciderEntry, RemoteFsEntry } from '@/modules/Registrar';
 import type { General } from '@/types';
 import toErrorMessage from '@/utils/to-error-message';
 
@@ -22,6 +22,8 @@ export type HeadSettingTranslations = {
 	checkConnectionFailed: string;
 	checkConnectionSuccess: string;
 	checkConnection: string;
+	conflictResolveStrategy: string;
+	conflictResolveStrategyDescription: string;
 };
 
 export default function headSettings(
@@ -33,6 +35,7 @@ export default function headSettings(
 		openModuleManagement: () => void;
 		remoteFsRegistry: Map<string, RemoteFsEntry>;
 		deciderRegistry: Map<string, DeciderEntry>;
+		conflictResolverRegistry: Map<string, ConflictResolverEntry>;
 		createRemoteFs: () => RemoteFs;
 		memoryDB: DatabaseSync<General, { lastCheckedFs: string }>;
 	},
@@ -46,6 +49,7 @@ export default function headSettings(
 		deciderRegistry,
 		createRemoteFs,
 		memoryDB,
+		conflictResolverRegistry,
 	} = ctx;
 
 	let statusButton: ExtraButtonComponent | undefined;
@@ -159,6 +163,18 @@ export default function headSettings(
 				dropdown.addOption(key, prettyName);
 			dropdown.setValue(settings.decider).onChange((value) => {
 				settings.decider = value;
+				void saveSettings();
+			});
+		});
+
+	new Setting(el)
+		.setName(translate('conflictResolveStrategy'))
+		.setDesc(translate('conflictResolveStrategyDescription'))
+		.addDropdown((dropdown) => {
+			for (const [key, { prettyName }] of conflictResolverRegistry)
+				dropdown.addOption(key, prettyName);
+			dropdown.setValue(settings.conflictResolver).onChange((value) => {
+				settings.conflictResolver = value;
 				void saveSettings();
 			});
 		});

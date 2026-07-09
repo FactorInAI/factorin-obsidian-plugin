@@ -1,8 +1,6 @@
 import { Notice, Setting } from 'obsidian';
-import type { LocalFs, RemoteFs } from '@/fs';
 import type { Translate } from '@/modules/I18n';
-import { clearAllStorage, clearStorageNamespace } from '@/storage';
-import getNamespace from '@/utils/get-namespace';
+import type { RecordStore } from '@/modules/Storage';
 
 export type DevelopmentSettingTranslations = {
 	development: string;
@@ -21,8 +19,8 @@ export default function developmentSettings(
 	el: HTMLElement,
 	ctx: {
 		translate: Translate<DevelopmentSettingTranslations>;
-		createLocalFs: () => LocalFs;
-		createRemoteFs: () => RemoteFs;
+		clearRecordStores: () => Promise<void>;
+		getRecordStore: (namespace?: string) => RecordStore;
 		exportLogs: () => Promise<void>;
 	},
 ) {
@@ -52,24 +50,23 @@ export default function developmentSettings(
 }
 
 async function clearVaultRecords({
-	createLocalFs,
-	createRemoteFs,
 	translate,
+	getRecordStore,
 }: {
-	createLocalFs: () => LocalFs;
-	createRemoteFs: () => RemoteFs;
+	getRecordStore: (namespace?: string) => RecordStore;
 	translate: Translate<DevelopmentSettingTranslations>;
 }) {
-	const namespace = getNamespace(createLocalFs(), createRemoteFs());
-	await clearStorageNamespace(namespace);
+	await getRecordStore().clear();
 	new Notice(translate('vaultRecordsCleared'));
 }
 
 async function clearAllRecords({
 	translate,
+	clearRecordStores,
 }: {
 	translate: Translate<DevelopmentSettingTranslations>;
+	clearRecordStores: () => Promise<void>;
 }) {
-	await clearAllStorage();
+	await clearRecordStores();
 	new Notice(translate('allRecordsCleared'));
 }

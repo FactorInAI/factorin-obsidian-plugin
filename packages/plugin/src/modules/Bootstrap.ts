@@ -31,14 +31,21 @@ import featuresSettings from '@/settings/features';
 import filterSettings from '@/settings/filter';
 import headSettings from '@/settings/head';
 import miscellaneousSettings from '@/settings/miscellaneous';
-import { bidirectionalDecider } from '@/sync';
+import {
+	bidirectionalDecider,
+	keepLocalResolver,
+	keepRemoteResolver,
+	latestSurviveResolver,
+} from '@/sync';
 import type { On } from './EventBus';
 import type { ObsidianLanguageCode, Translate, TranslationResource } from './I18n';
 import type {
+	ConflictResolverEntry,
 	DeciderEntry,
 	LocalFsWrapperEntry,
 	RemoteFsEntry,
 	RemoteFsWrapperEntry,
+	RemoteOptimizerEntry,
 	SettingEntry,
 	SyncTriggerEntry,
 } from './Registrar';
@@ -59,6 +66,10 @@ export default class Bootstrap {
 
 	declare readonly i18n: {
 		bidirectional: string;
+		latestSurvive: string;
+		keepLocal: string;
+		keepRemote: string;
+		skip: string;
 	} & ControlsSettingTranslations &
 		DevelopmentSettingTranslations &
 		FeaturesSettingTranslations &
@@ -93,9 +104,10 @@ export default class Bootstrap {
 			getLocalOptimizer: () => BatchOptimizer<LocalFs>;
 			getRemoteOptimizer: () => BatchOptimizer<RemoteFs>;
 			registerLocalOptimizer: (optimizer: BatchOptimizer<LocalFs>) => void;
-			registerRemoteOptimizer: (optimizer: BatchOptimizer<RemoteFs>) => void;
-			registerSyncTrigger: (trigger: string, entry: SyncTriggerEntry) => void;
+			registerRemoteOptimizer: (optimizer: RemoteOptimizerEntry) => void;
+			registerSyncTrigger: (id: string, entry: SyncTriggerEntry) => void;
 			registerSetting: (entry: SettingEntry) => () => boolean;
+			registerConflictResolver: (id: string, entry: ConflictResolverEntry) => void;
 		},
 	) {
 		ctx.registerI18n('en', en);
@@ -114,6 +126,7 @@ export default class Bootstrap {
 			registerRemoteOptimizer,
 			registerSyncTrigger,
 			registerSetting,
+			registerConflictResolver,
 		} = this.ctx;
 		const { maxMemoryConsumption, maxRequestConcurrency, minRequestInterval } = this.settings;
 
@@ -131,20 +144,17 @@ export default class Bootstrap {
 		registerSyncTrigger('realtime', {
 			getRemoteList: async ({ record }) => {
 				if (!this.settings.realtimeSyncFastMode) return;
-				const stats = (await record.getRecords())
-					.entries()
-					.map(([key, stat]) => {
-						if (stat.isDir) return { isDir: true, key } as const;
-						return { isDir: false, key, mtime: 0, size: 0, uid: stat.remote } as const;
-					})
-					.toArray();
+				const stats = (await record.entries()).map(([key, stat]) => {
+					if (stat.isDir) return { isDir: true, key } as const;
+					return { isDir: false, key, mtime: 0, size: 0, uid: stat.remote } as const;
+				});
 				return stats.length ? stats : undefined;
 			},
 			priority: 1000,
 		});
 
 		registerLocalOptimizer(hierarchalOptimizer);
-		registerRemoteOptimizer(hierarchalOptimizer);
+		registerRemoteOptimizer({ optimizer: hierarchalOptimizer });
 		registerLocalFsWrapper({
 			apply: (fs) =>
 				localMemoryControlWrapper(fs, {
@@ -213,14 +223,30 @@ export default class Bootstrap {
 			order: 10_000,
 		});
 		registerRemoteFsWrapper({
-			apply: (fs) =>
-				this.settings.asymmetricStorage ? asymmetricStorageWrapper(fs, memoryDB) : fs,
+			apply: (fs) => asymmetricStorageWrapper(fs, memoryDB),
+			condition: () => this.settings.asymmetricStorage,
 			order: 11_000,
 		});
 
 		registerDecider('bidirectional', {
 			decider: bidirectionalDecider,
 			prettyName: t('bidirectional'),
+		});
+		registerConflictResolver('latestSurvive', {
+			prettyName: t('latestSurvive'),
+			resolver: latestSurviveResolver,
+		});
+		registerConflictResolver('keepLocal', {
+			prettyName: t('keepLocal'),
+			resolver: keepLocalResolver,
+		});
+		registerConflictResolver('keepRemote', {
+			prettyName: t('keepRemote'),
+			resolver: keepRemoteResolver,
+		});
+		registerConflictResolver('skip', {
+			prettyName: t('skip'),
+			resolver: () => {},
 		});
 
 		registerSetting({ order: 0, render: (el) => headSettings(el, this.ctx as Context) });

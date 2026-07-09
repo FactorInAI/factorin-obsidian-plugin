@@ -1,6 +1,4 @@
-import { arrayBufferToText } from '@repo/shared/binary';
 import type { OptionsWithLocalFileStat } from '../decision/interface';
-import isMergeablePath from '../utils/is-mergeable-path';
 import { BaseTask } from './interface';
 
 export default class Upload extends BaseTask<OptionsWithLocalFileStat> {
@@ -14,10 +12,10 @@ export default class Upload extends BaseTask<OptionsWithLocalFileStat> {
 		}
 		const remoteUid = await this.remoteFs.write(this.key, localContent);
 
-		await this.record.upsertRecord({
-			baseText: isMergeablePath(this.key) ? arrayBufferToText(localContent) : undefined,
-			key: this.key,
-			record: { isDir: false, local: this.local.uid, remote: remoteUid },
+		await this.record.set(this.key, {
+			isDir: false,
+			local: this.local.uid,
+			remote: remoteUid,
 		});
 	}
 }

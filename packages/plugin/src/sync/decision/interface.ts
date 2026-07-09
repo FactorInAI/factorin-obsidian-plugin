@@ -1,16 +1,15 @@
-import type { Settings } from '@';
 import type { FileStat, FolderStat, Stat, RecordStatsMap, StatsMap } from '@/types';
 import type { BaseTask, TaskNames } from '../tasks/interface';
 import AddRecord from '../tasks/AddRecord';
 import CreateLocalDir from '../tasks/CreateLocalDir';
 import CreateRemoteDir from '../tasks/CreateRemoteDir';
 import Download from '../tasks/Donwload';
-import Merge from '../tasks/Merge';
 import MoveLocal from '../tasks/MoveLocal';
 import MoveRemote from '../tasks/MoveRemote';
 import RemoveLocal from '../tasks/RemoveLocal';
 import RemoveRecord from '../tasks/RemoveRecord';
 import RemoveRemote from '../tasks/RemoveRemote';
+import ResolveConflict from '../tasks/ResolveConflict';
 import Upload from '../tasks/Upload';
 
 export type TaskOptions = {
@@ -48,10 +47,9 @@ export type OptionsWithBothStats = {
 	remote: Stat;
 } & TaskOptions;
 
-export type OptionsWithBothFileStatsAndSettings = {
+export type OptionsWithBothFileStats = {
 	local: FileStat;
 	remote: FileStat;
-	settings: Settings;
 } & TaskOptions;
 
 export type OptionsWithLocalStatAndOldKey = {
@@ -67,7 +65,7 @@ export type OptionsWithRemoteStatAndOldKey = {
 export type TaskOptionsMap = {
 	download: OptionsWithRemoteFileStat;
 	upload: OptionsWithLocalFileStat;
-	merge: OptionsWithBothFileStatsAndSettings;
+	resolveConflict: OptionsWithBothFileStats;
 	removeLocal: OptionsWithLocalStat;
 	removeRemote: OptionsWithRemoteStat;
 	createLocalDir: OptionsWithRemoteFolderStat;
@@ -82,12 +80,12 @@ export const taskMap = {
 	createLocalDir: CreateLocalDir,
 	createRemoteDir: CreateRemoteDir,
 	download: Download,
-	merge: Merge,
 	moveLocal: MoveLocal,
 	moveRemote: MoveRemote,
 	removeLocal: RemoveLocal,
 	removeRecord: RemoveRecord,
 	removeRemote: RemoveRemote,
+	resolveConflict: ResolveConflict,
 	upload: Upload,
 } as const;
 export type TaskFactory = <N extends TaskNames>(
@@ -102,6 +100,5 @@ export type DeciderInput = {
 	remoteStats: StatsMap;
 	records: RecordStatsMap;
 	taskFactory: TaskFactory;
-	settings: Settings;
 	logger: (log: string) => void;
 };

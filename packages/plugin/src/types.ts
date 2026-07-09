@@ -21,21 +21,6 @@ export type RecordStat = { isDir: false; local: string; remote: string } | { isD
 export type StatsMap = Map<string, Stat>;
 export type RecordStatsMap = Map<string, RecordStat>;
 
-export enum ConflictStrategy {
-	DiffMatchPatch = 'diffMatchPatch',
-	LatestTimeStamp = 'latestTimestamp',
-	KeepLocal = 'keepLocal',
-	KeepRemote = 'keepRemote',
-	Skip = 'skip',
-}
-
-export enum UnmergeableStrategy {
-	LatestTimeStamp = 'latestTimestamp',
-	KeepLocal = 'keepLocal',
-	KeepRemote = 'keepRemote',
-	Skip = 'skip',
-}
-
 export type GlobMatchOptions = {
 	expr: string;
 	options: UserOptions;

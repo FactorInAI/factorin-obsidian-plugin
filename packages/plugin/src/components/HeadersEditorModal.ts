@@ -109,7 +109,7 @@ export default class HeadersEditorModal extends Modal {
 					.onClick(() => {
 						const validHeaders = headers.flatMap((header) => {
 							if (!header.key.trim()) return [];
-							return [header];
+							return header;
 						});
 						this.onSave(validHeaders);
 						if (validHeaders.length !== headers.length)

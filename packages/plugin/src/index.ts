@@ -3,7 +3,6 @@ import type { Command, EventRef, App } from 'obsidian';
 import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
 import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
-import { ConflictStrategy, UnmergeableStrategy } from '@/types';
 import type { AddRibbonIcon } from './modules/Observability';
 import type { GlobMatchOptions } from './types';
 import Bootstrap from './modules/Bootstrap';
@@ -15,6 +14,7 @@ import Observability from './modules/Observability';
 import ProgressModal from './modules/ProgressModal';
 import Registrar from './modules/Registrar';
 import Scheduler from './modules/Scheduler';
+import Storage from './modules/Storage';
 import Sync from './modules/Sync';
 
 function createGlobMatchOptions(expr: string) {
@@ -29,6 +29,7 @@ function createGlobMatchOptions(expr: string) {
 const internalModules = [
 	EventBus,
 	I18n,
+	Storage,
 	Extensibility,
 	Registrar,
 	Sync,
@@ -64,7 +65,7 @@ export default class SyncEngine extends Plugin {
 		asymmetricStorage: true,
 		confirmDeleteInAutoSync: true,
 		confirmTasksInSync: true,
-		conflictStrategy: ConflictStrategy.DiffMatchPatch,
+		conflictResolver: 'latestSurvive',
 		customHeaders: [],
 		decider: 'bidirectional',
 		exclusionRules: [
@@ -100,8 +101,6 @@ export default class SyncEngine extends Plugin {
 		remoteFs: '',
 		scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
 		startupSync: { enabled: false, value: 5000 },
-		unmergeableStrategy: UnmergeableStrategy.LatestTimeStamp,
-		useGitStyle: false,
 	};
 
 	async onload() {

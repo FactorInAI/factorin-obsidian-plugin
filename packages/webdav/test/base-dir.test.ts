@@ -1,4 +1,4 @@
-import { testKit } from '@hesprs/sync-engine-sdk';
+import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { test, expect } from 'bun:test';
 import baseDirWrapper from '@/base-dir';
 

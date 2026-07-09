@@ -74,6 +74,7 @@ Here's ongoing polling about new directions in development! I recommend **everyo
 - Startup / periodic / save-on-change syncing.
 - Conflict resolution strategies (merge / latest survive / keep remote / keep local / skip).
 - Advanced rate / memory control options.
+- Custom headers.
 - You can extend most above features by writing modules.
 
 🖥 **Supported Backends**:

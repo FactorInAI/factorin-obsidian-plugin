@@ -1,9 +1,9 @@
 import { isSub } from '@repo/shared/path';
 import type { RecordStatsMap, StatsMap } from '@/types';
 import type { BaseTask } from '../tasks/interface';
-import PullTask from '../tasks/Donwload';
-import MergeTask from '../tasks/Merge';
-import PushTask from '../tasks/Upload';
+import Download from '../tasks/Donwload';
+import ResolveConflict from '../tasks/ResolveConflict';
+import Upload from '../tasks/Upload';
 
 export default function isChanged({
 	key,
@@ -36,9 +36,9 @@ export default function isChanged({
 			// Reuse tracked file changes
 			for (const task of tasks)
 				if (
-					(task instanceof MergeTask ||
-						task instanceof PushTask ||
-						task instanceof PullTask) &&
+					(task instanceof ResolveConflict ||
+						task instanceof Upload ||
+						task instanceof Download) &&
 					isSub(key, task.key)
 				)
 					return true;

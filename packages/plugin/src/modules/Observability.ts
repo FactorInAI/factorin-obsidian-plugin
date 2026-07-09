@@ -268,7 +268,7 @@ export default class Observability {
 		} catch (error) {
 			const message = toErrorMessage(error);
 			new Notice(`${translate('exportLogsFailed')}: ${message}`);
-			dispatch('error', `Export log failed: \`${message}\`.`);
+			dispatch('errorGeneral', `Export log failed: \`${message}\`.`);
 		}
 	};
 

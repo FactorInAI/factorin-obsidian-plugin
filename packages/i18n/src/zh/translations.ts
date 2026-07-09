@@ -60,9 +60,9 @@ const zh: Translations = {
 	confirmTasksDescription: '请确认以下操作。',
 	confirmTasksInSync: '手动同步时确认操作',
 	confirmTasksInSyncDescription: '显示待处理的操作并在确认后执行（不影响自动同步）。',
-	conflictStrategy: '冲突解决策略',
-	conflictStrategyDescription:
-		'选择当本地和远程文件自上次同步以来都被修改过时，如何解决文件冲突。',
+	conflictResolveStrategy: '冲突解决策略',
+	conflictResolveStrategyDescription:
+		'选择当本地和远程自上次同步以来都被修改过时，如何解决冲突。更多策略可以在模块中找到。',
 	controls: '控制',
 	createLocalDir: '创建本地文件夹',
 	createRemoteDir: '创建远程文件夹',
@@ -108,7 +108,7 @@ const zh: Translations = {
 	invalidValue: '无效值，已恢复为原始值。',
 	keepLocal: '保留本地',
 	keepRemote: '保留远程',
-	latestTimestamp: '保留最新修改',
+	latestSurvive: '保留最新修改',
 	loadingModules: '正在加载模块…',
 	maxFileSize: '最大文件大小',
 	maxFileSizeDescription:
@@ -122,7 +122,6 @@ const zh: Translations = {
 	maxRequestConcurrencyDescription:
 		'限制同步过程中的同时请求数。此选项对于有请求频率限制的服务非常有用。在输入框中修改并发限制。',
 	maxRequestConcurrencyPlaceholder: '输入并发限制',
-	merge: '合并',
 	migrationDescription:
 		'迁移可能需要几秒钟到几分钟不等，具体取决于库的大小。如果您已在其他设备上迁移了远程端，可以跳过此迁移。\n\n现在开始迁移吗？',
 	migrationPhase1Description: '确保本地状态是最新的',
@@ -163,6 +162,7 @@ const zh: Translations = {
 	removeLocal: '移除本地',
 	removeRecord: '移除记录',
 	removeRemote: '移除远程',
+	resolveConflict: '解决冲突',
 	save: '保存',
 	scheduledSync: '定时同步',
 	scheduledSyncDescription: '按照指定的时间间隔定期触发同步。在输入框中修改间隔时间。',
@@ -183,14 +183,9 @@ const zh: Translations = {
 	syncStrategy: '同步策略',
 	syncStrategyDescription: '选择用于解决文件更改的同步策略。更多策略可以在模块中找到。',
 	toggleWithoutMigration: '直接切换（不进行迁移）',
-	unmergeableStrategy: '不可合并冲突策略',
-	unmergeableStrategyDescription:
-		'为无法通过合并解决的文件（所有非 Markdown 文件）选择备用策略。',
 	updateAvailable: '有可用更新',
 	updateModule: '更新模块',
 	upload: '上传',
-	useGitStyle: '使用 Git 风格的冲突标记',
-	useGitStyleDescription: '使用 <<<<<<< 和 >>>>>>> 标记冲突，而不是使用 HTML 标签',
 	vaultRecordsCleared: '库记录已清除',
 	walkingRemote: '正在正在探测远程文件',
 };

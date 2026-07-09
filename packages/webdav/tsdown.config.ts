@@ -1,4 +1,4 @@
-import obsidianBridge from '@hesprs/sync-engine-sdk/obsidian-bridge';
+import { obsidianBridge } from '@hesprs/sync-engine-sdk/dev';
 import { defineConfig } from 'tsdown';
 
 const dev = process.env.MODE === 'dev';

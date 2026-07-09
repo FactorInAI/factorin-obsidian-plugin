@@ -49,7 +49,7 @@ Separate wrappers for `RootRemoteFs` and `RootLocalFs`, both check and modify sh
 
 Only intercept `read`, `readStream`, `write`, `writeStream` calls:
 
-1. When `read()` and `readStream()` (`RemoteFs` only) arrives, check if spare memory allows the digestion (`read` has size passed in arguments, `readStream` has fixed size 4 MiB). If allows, let it pass through and increment the consumption by the size. If memory is full, move it into the pool and delay the promise. When `read()` or `readStream()` fails, decrement the memory consumption back, check the pool, resume reads.
+1. When `read()` and `readStream()` (`RemoteFs` only) arrives, check if spare memory allows the digestion (`read` has size passed in arguments, `readStream` has fixed size 16 MiB). If allows, let it pass through and increment the consumption by the size. If memory is full, move it into the pool and delay the promise. When `read()` or `readStream()` fails, decrement the memory consumption back, check the pool, resume reads.
 2. When `write()` or `writeStream()` (`LocalFs` only) finishes, or either of the `write()`, `writeStream()` fails, decrement the consumption (fixed 4 MiB for `writeStream()`), check the pool, resume reads when memory allows.
 
 ## Encryption Wrapper

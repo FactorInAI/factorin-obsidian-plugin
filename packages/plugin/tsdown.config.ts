@@ -71,8 +71,8 @@ const sdkConfig = defineConfig({
 	clean: false,
 	dts: true,
 	entry: {
+		dev: 'src/sdk/dev.ts',
 		index: 'src/sdk/index.ts',
-		'obsidian-bridge': 'src/sdk/obsidian-bridge.ts',
 	},
 	outDir: 'dist-sdk',
 });
