@@ -10,7 +10,7 @@ export const STORAGE_NAME = 'sync-engine';
 
 export default class Storage {
 	private readonly memoryDB = openMemoryDB<General, General>(STORAGE_NAME);
-	private readonly indexedDB = openIndexedDB<IndexedDBSchema, {}>(STORAGE_NAME);
+	private readonly indexedDB = openIndexedDB<IndexedDBSchema>(STORAGE_NAME);
 
 	constructor(private readonly ctx: { getNamespace: () => string }) {}
 

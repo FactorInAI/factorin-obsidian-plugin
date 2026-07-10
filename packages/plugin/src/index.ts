@@ -61,50 +61,51 @@ export type Translations = MergeSingleKey<InternalModules, 'i18n'>;
 export default class SyncEngine extends Plugin {
 	context?: Context;
 	readonly allModules = new Set(internalModules);
-	settings: Settings = {
-		asymmetricStorage: true,
-		confirmDeleteInAutoSync: true,
-		confirmTasksInSync: true,
-		conflictResolver: 'latestSurvive',
-		customHeaders: [],
-		decider: 'bidirectional',
-		exclusionRules: [
-			'**/.git',
-			'**/.github',
-			'**/.gitlab',
-			'**/.svn',
-			'**/node_modules',
-			'**/.DS_Store',
-			'**/__MACOSX',
-			'**/desktop.ini',
-			'**/Thumbs.db',
-			'**/.trash',
-			'**/~$*.doc',
-			'**/~$*.docx',
-			'**/~$*.ppt',
-			'**/~$*.pptx',
-			'**/~$*.xls',
-			'**/~$*.xlsx',
-			this.app.vault.configDir,
-		].map(createGlobMatchOptions),
-		inclusionRules: [],
-		maxFileSize: { enabled: false, value: 31_457_280 },
-		maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },
-		maxRequestConcurrency: { enabled: true, value: 50 },
-		minRequestInterval: { enabled: false, value: 0 },
-		moduleAutoUpdate: true,
-		moduleSources: ['https://sync.consensia.cc/modules.json'],
-		modules: {},
-		noticeStatusOnMobile: true,
-		realtimeSync: { enabled: false, value: 5000 },
-		realtimeSyncFastMode: true,
-		remoteFs: '',
-		scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
-		startupSync: { enabled: false, value: 5000 },
-	};
+	declare settings: Settings;
 
 	async onload() {
-		Object.assign(this.settings, await this.loadData());
+		const settings: Settings = {
+			asymmetricStorage: true,
+			confirmDeleteInAutoSync: true,
+			confirmTasksInSync: true,
+			conflictResolver: 'latestSurvive',
+			customHeaders: [],
+			decider: 'bidirectional',
+			exclusionRules: [
+				'**/.git',
+				'**/.github',
+				'**/.gitlab',
+				'**/.svn',
+				'**/node_modules',
+				'**/.DS_Store',
+				'**/__MACOSX',
+				'**/desktop.ini',
+				'**/Thumbs.db',
+				'**/.trash',
+				'**/~$*.doc',
+				'**/~$*.docx',
+				'**/~$*.ppt',
+				'**/~$*.pptx',
+				'**/~$*.xls',
+				'**/~$*.xlsx',
+				this.app.vault.configDir,
+			].map(createGlobMatchOptions),
+			inclusionRules: [],
+			maxFileSize: { enabled: false, value: 31_457_280 },
+			maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },
+			maxRequestConcurrency: { enabled: true, value: 50 },
+			minRequestInterval: { enabled: false, value: 0 },
+			moduleAutoUpdate: true,
+			moduleSources: ['https://sync.consensia.cc/modules.json'],
+			modules: {},
+			noticeStatusOnMobile: true,
+			realtimeSync: { enabled: false, value: 5000 },
+			realtimeSyncFastMode: true,
+			remoteFs: '',
+			scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
+			startupSync: { enabled: false, value: 5000 },
+		};
+		Object.assign(settings, await this.loadData());
 		// https://github.com/microsoft/TypeScript/issues/62995
 		const preMerge = {
 			addCommand: this.addCommand.bind(this),
@@ -119,7 +120,7 @@ export default class SyncEngine extends Plugin {
 			injectKeys: ['settings', 'i18n'],
 			mergeKeys: ['settings', 'root', 'events', 'i18n'],
 			preMerge,
-		}).__assign__({ settings: this.settings });
+		}).__assign__({ settings });
 		this.settings = this.context.settings;
 		await this.context.loadAllModules();
 		this.context.addSettingTab(this);

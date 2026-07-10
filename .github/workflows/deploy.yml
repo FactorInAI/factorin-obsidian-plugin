@@ -5,8 +5,6 @@ on:
     branches: [feat/fs]
     paths:
       - docs/**
-      - packages/**
-      - .github/workflows/deploy.yml
       - modules.json
   workflow_dispatch:
 

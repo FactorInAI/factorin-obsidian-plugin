@@ -101,11 +101,10 @@ Here's ongoing polling about new directions in development! I recommend **everyo
 - Highly optimized core sync timing never wastes one millisecond.
 - Extensible optimizer slot ensures every request is optimized for your own service.
 
-🔐 **Client-side Encryption**:
+📦 **Module-provided Features**:
 
-- Provided by `Encryption` official module.
-- It prevents unauthorized file access, and detects unintended file modification and movement at remote side.
-- Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
+- Client-side encryption: provided by `Encryption` official module. Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
+- Smart merge: merges documents when conflict is detected, can intelligently identify different languages and code, and applying different strategies.
 
 ## Install & Setup
 
