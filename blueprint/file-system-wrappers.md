@@ -1,8 +1,8 @@
 # File System Wrappers
 
-A wrapper is a factory function around a `RemoteFs` instance that intercepts the behavior of the original class. A wrapper function receives the original class in the first argument and returns a `RemoteFs`. Infinite layers of wrappers can be applied to the same FS instance.
+A wrapper is a factory function around a `Fs` instance that intercepts the behavior of the original class. A wrapper function receives the original class in the first argument and returns a `WrappedFs`. Infinite layers of wrappers can be applied to the same FS instance.
 
-The root FS without any wrappers are typed `RootRemoteFs` and `RootLocalFs`. Once a layer of wrapper is applied, it changes to `WrappedRemoteFs`, and `WrappedLocalFs`.
+The root FS without any wrappers are typed `RootFs`. Once a layer of wrapper is applied, it changes to `WrappedFs`.
 
 There are two kinds of wrappers:
 
@@ -11,51 +11,24 @@ There are two kinds of wrappers:
 
 ## Base Dir Wrapper
 
-Target: `RemoteFs`
-Type: overlay wrapper
-
 Instantiates a new class wrappings around the remote FS to make a specific path as the root dir (format `${string}/`), instead of the entire FS. Receives the base dir in the second parameter in the constructor.
 
 `getUid()`: append `~` + `baseDir` to original `getUid()` output.
 
 All other methods: prepend the base dir to the received key, relay to the original class method. If the method returns `Stat` or `Array<Stat>`, pre-strip all base dirs in the `key` in it.
 
-## Retry Wrapper
-
-Target: `RemoteFs`
-Type: injection wrapper
-
-Auto-retry requests. Receives an options object including `maxRetry` (number) and `retryableStatusCodes` (array of string).
-
-Only re-assigns the `request` method in the original class by obtaining it, wrapping with retry logic, and assigning back.
-
-## Rate Limiter Wrapper
-
-Target: `RemoteFs`
-Type: injection wrapper
-
-Limit the max concurrency and request interval of remote requests. Receives `maxConcurrency` and `minInterval` as options in the second argument.
-
-Only re-assigns the `request` method in the original class by obtaining it, wrapping with a newly instantiated API limiter composable, and assigning back.
-
 ## Memory Control Wrapper
 
-Target: `RemoteFs` & `LocalFs`
-Type: overlay wrapper
-
-Separate wrappers for `RootRemoteFs` and `RootLocalFs`, both check and modify shared variables `memoryConsumption` counter and `hangingOperations` pool. Accept number `maxMemory` in the second parameter.
+Wrappers applied on both local and remote, check and modify shared variables `memoryConsumption` counter and `hangingOperations` pool. Accept number `maxMemory` in the second parameter.
 
 `hangingOperations` pool should always be sorted in ascending order according to the file size of each operation.
 
 Only intercept `read`, `readStream`, `write`, `writeStream` calls:
 
-1. When `read()` and `readStream()` (`RemoteFs` only) arrives, check if spare memory allows the digestion (`read` has size passed in arguments, `readStream` has fixed size 16 MiB). If allows, let it pass through and increment the consumption by the size. If memory is full, move it into the pool and delay the promise. When `read()` or `readStream()` fails, decrement the memory consumption back, check the pool, resume reads.
-2. When `write()` or `writeStream()` (`LocalFs` only) finishes, or either of the `write()`, `writeStream()` fails, decrement the consumption (fixed 4 MiB for `writeStream()`), check the pool, resume reads when memory allows.
+1. When `read()` and `readStream()` arrives, check if spare memory allows the digestion (`read` has size passed in arguments, `readStream` has fixed size 16 MiB). If allows, let it pass through and increment the consumption by the size. If memory is full, move it into the pool and delay the promise. When `read()` or `readStream()` fails, decrement the memory consumption back, check the pool, resume reads.
+2. When `write()` or `writeStream()` finishes, or either of the `write()`, `writeStream()` fails, decrement the consumption (fixed 16 MiB for `writeStream()`), check the pool, resume reads when memory allows.
 
 ## Encryption Wrapper
-
-Target: `RemoteFs`
-Type: overlay wrapper
 
 Apply client-side encryption / decryption directly at file system level.
 
@@ -63,8 +36,6 @@ Detail see `./encryption.md`.
 
 ## Optimization Wrapper
 
-Target: `RemoteFs` & `LocalFs`
-Type: overlay wrapper
 Mechanism: Microtask-batched atom queue
 
 ### Backend-Dependent Optimization
@@ -84,7 +55,6 @@ Coalescing exploits the JS event loop: raw tasks initiate in parallel, but their
 3. Writes (`write`, `writeStream`):
    - Reuses deferred execution if a pending anticipated write exists for the key.
    - Passes through otherwise.
-   - Note: `readStream` is `RemoteFs`-only; `writeStream` is `LocalFs`-only.
 4. Pass-through: `checkConnection`, `getUid`, `stat`, `exists`, `list` bypass interception.
 
 **Execution**:
@@ -93,12 +63,9 @@ On microtask flush, the wrapper drains queued atoms and anticipates opposite-sid
 
 ### Context Wrapper
 
-Target: `LocalFs` & `RemoteFs`
-Type: overlay wrapper
+Intercepts `list()`, `stat()`, `write()`, `writeStream()`, `delete()`, `move()`, and `mkdir()` calls, obtain file & folder stats, and builds a copy of best-effort known stat in memory KV store using `uni-kv` that survives sync runs.
 
-Intercepts `list()`, `stat()`, `write()`, `writeStream()` (`LocalFS` only), `delete()`, `move()`, and `mkdir()` calls, obtain file & folder stats, and builds a copy of best-effort known stat in memory KV store using `uni-kv` that survives sync runs.
-
-Also completes the `size` optional argument in `read()` or `readStream()` (`RemoteFS` only) calls.
+Also completes the `size` optional argument in `read()`, `readStream()`, and `writeStream()` calls.
 
 Constants (defined in `packages/plugin/src/types.ts` and `packages/plugin/src/consts.ts`):
 
@@ -121,12 +88,6 @@ Behavior:
 
 ## Cancellation Wrapper
 
-Target: `LocalFs` & `RemoteFs`
-Type: both overlay wrapper + injection wrapper for `RemoteFs`
-
-Behavior:
-
 - Receive `isCancelled: () => boolean` in the second argument to detect sync cancellation.
 - Intercept all methods except `checkConnection()` in `RemoteFs` and `getUid()`.
 - Wrap all method calls with a throw if cancelled at before and after relaying. Special cases: only check cancellation **before** `read()` & `readStream()` and **after** `write()` & `writeStream()` to prevent cancellation race blocking memory control counter release.
-- Wrap `request` in `RemoteFs` with a throw if cancelled at before and after requests.

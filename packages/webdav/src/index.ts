@@ -1,6 +1,6 @@
 import type {
 	RemoteFsEntry,
-	RemoteFsWrapperEntry,
+	FsWrapperEntry,
 	Translate,
 	Translations,
 	SelectFromContext,
@@ -15,10 +15,12 @@ import type { WebdavTranslations } from './setting';
 import baseDirWrapper from './base-dir';
 import { en, zh } from './i18n';
 import webdavSetting from './setting';
+import { checkConnection } from './webdav/check-connection';
 import WebdavFs from './webdav/fs';
 
 export type WebdavSettings = {
 	baseDirectory: string;
+	chunkedUpload: boolean;
 	depthInfinity: boolean;
 	endpoint: string;
 	password: string;
@@ -33,7 +35,7 @@ export default class Webdav {
 			translate: Translate<Translations & WebdavTranslations>;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => () => void;
 			app: App;
-			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => void;
+			registerRemoteFsWrapper: (entry: FsWrapperEntry) => () => void;
 			registerSetting: (entry: SettingEntry) => () => void;
 			registerI18n: (lang: ObsidianLanguageCode, translations: TranslationResource) => void;
 		}>,
@@ -46,6 +48,7 @@ export default class Webdav {
 
 	readonly moduleSettings: WebdavSettings = {
 		baseDirectory: '',
+		chunkedUpload: false,
 		depthInfinity: false,
 		endpoint: '',
 		password: '',
@@ -62,20 +65,25 @@ export default class Webdav {
 			registerRemoteFsWrapper,
 			registerSetting,
 		} = this.ctx;
+		const resolveConfig = () => {
+			const {
+				endpoint,
+				username,
+				password: pwd,
+				chunkedUpload,
+				depthInfinity,
+			} = this.moduleSettings;
+			const password = secretStorage.getSecret(pwd);
+			if (password === null || !endpoint) throw new Error('Please configure WebDAV account!');
+			return { chunkedUpload, depthInfinity, endpoint, password, username };
+		};
 		this.cleanup.push(
 			registerRemoteFs('webdav', {
-				instantiate: () => {
-					const {
-						endpoint,
-						username,
-						password: pwd,
-						depthInfinity,
-					} = this.moduleSettings;
-					const password = secretStorage.getSecret(pwd);
-					if (password === null || !endpoint)
-						throw new Error('Please configure WebDAV account!');
-					return new WebdavFs({ depthInfinity, endpoint, password, username });
+				checkConnection: (request) => {
+					const config = resolveConfig();
+					return checkConnection(config, request);
 				},
+				instantiate: (request) => new WebdavFs({ ...resolveConfig(), request }),
 				prettyName: translate('webdav'),
 			}),
 			registerRemoteFsWrapper({

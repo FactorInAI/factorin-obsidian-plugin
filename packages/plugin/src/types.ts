@@ -31,3 +31,5 @@ export type Progress<T = string> = {
 	completed: number;
 	current?: T;
 };
+
+export type Binary = Uint8Array<ArrayBuffer>;

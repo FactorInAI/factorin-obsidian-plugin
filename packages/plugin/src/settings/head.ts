@@ -1,10 +1,14 @@
 import type { Settings } from '@';
 import type { DatabaseSync } from 'uni-kv';
 import { ExtraButtonComponent, Notice, Setting } from 'obsidian';
-import type { RemoteFs } from '@/fs';
 import type { Translate } from '@/modules/I18n';
-import type { ConflictResolverEntry, DeciderEntry, RemoteFsEntry } from '@/modules/Registrar';
-import type { General } from '@/types';
+import type {
+	CheckConnectionResult,
+	ConflictResolverEntry,
+	DeciderEntry,
+	RemoteFsEntry,
+} from '@/modules/Registrar';
+import type { General, MaybePromise } from '@/types';
 import toErrorMessage from '@/utils/to-error-message';
 
 const CHECK_CONNECTION_INTERVAL = 10_000;
@@ -36,7 +40,7 @@ export default function headSettings(
 		remoteFsRegistry: Map<string, RemoteFsEntry>;
 		deciderRegistry: Map<string, DeciderEntry>;
 		conflictResolverRegistry: Map<string, ConflictResolverEntry>;
-		createRemoteFs: () => RemoteFs;
+		getCheckConnection: () => () => MaybePromise<CheckConnectionResult>;
 		memoryDB: DatabaseSync<General, { lastCheckedFs: string }>;
 	},
 ) {
@@ -47,7 +51,7 @@ export default function headSettings(
 		openModuleManagement,
 		remoteFsRegistry,
 		deciderRegistry,
-		createRemoteFs,
+		getCheckConnection,
 		memoryDB,
 		conflictResolverRegistry,
 	} = ctx;
@@ -101,7 +105,7 @@ export default function headSettings(
 
 		try {
 			setChecking(statusButton);
-			const result = await createRemoteFs().checkConnection();
+			const result = await getCheckConnection()();
 			if (result.success) {
 				memoryDB.setMeta('lastCheckedFs', settings.remoteFs);
 				setSuccess(statusButton);

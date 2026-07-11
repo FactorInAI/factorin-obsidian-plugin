@@ -1,9 +1,11 @@
 import { expect, test } from 'bun:test';
 import type { MemoryControlSharedState } from '@/fs';
-import { localMemoryControlWrapper, remoteMemoryControlWrapper } from '@/fs';
+import type { Binary } from '@/types';
+import { memoryControlWrapper } from '@/fs';
 import { testKit } from '@/sdk/dev';
 
-const { flush, bytes, localFs, remoteFs, deferred, stream } = testKit;
+const { bytes, deferred, fs, flush, stream } = testKit;
+
 const SIXTEEN_MIB = 16 * 1024 * 1024;
 
 function createSharedState(maxMemory: number, memoryConsumption = 0): MemoryControlSharedState {
@@ -14,10 +16,10 @@ function createSharedState(maxMemory: number, memoryConsumption = 0): MemoryCont
 	};
 }
 
-test('remote memory wrapper delays read when shared budget is exhausted', async () => {
+test('memory wrapper delays read when shared budget is exhausted', async () => {
 	const state = createSharedState(5);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 5);
 	const delayedRead = wrapper.read('delayed.md', 4);
@@ -35,10 +37,10 @@ test('remote memory wrapper delays read when shared budget is exhausted', async 
 	await delayedRead;
 });
 
-test('remote memory wrapper resumes queued reads after write completes', async () => {
+test('memory wrapper resumes queued reads after write completes', async () => {
 	const state = createSharedState(5);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 5);
 	const firstQueuedRead = wrapper.read('first.md', 2);
@@ -57,10 +59,10 @@ test('remote memory wrapper resumes queued reads after write completes', async (
 	await Promise.all([firstQueuedRead, secondQueuedRead]);
 });
 
-test('remote memory wrapper reserves fixed 16 MiB for readStream', async () => {
+test('memory wrapper reserves fixed 16 MiB for readStream', async () => {
 	const state = createSharedState(SIXTEEN_MIB + 1);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 1);
 	await wrapper.readStream('large.md', SIXTEEN_MIB * 2);
@@ -69,10 +71,10 @@ test('remote memory wrapper reserves fixed 16 MiB for readStream', async () => {
 	expect(state.memoryConsumption).toBe(SIXTEEN_MIB + 1);
 });
 
-test('vault memory wrapper releases budget only after writeStream fully drains', async () => {
+test('memory wrapper releases budget only after writeStream fully drains', async () => {
 	const state = createSharedState(8);
-	const local = localFs();
-	const wrapper = localMemoryControlWrapper(local.fs, state);
+	const local = fs();
+	const wrapper = memoryControlWrapper(local.fs, state);
 	const continueDrain = deferred<void>();
 	const firstChunkRead = deferred<void>();
 
@@ -113,15 +115,15 @@ test('vault memory wrapper releases budget only after writeStream fully drains',
 	await pendingRead;
 });
 
-test('shared state spans remote and vault wrappers', async () => {
+test('shared state spans multiple wrappers', async () => {
 	const state = createSharedState(6);
-	const remote = remoteFs();
-	const local = localFs();
-	const remoteWrapper = remoteMemoryControlWrapper(remote.fs, state);
-	const vaultWrapper = localMemoryControlWrapper(local.fs, state);
+	const remote = fs();
+	const local = fs();
+	const remoteWrapper = memoryControlWrapper(remote.fs, state);
+	const secondaryWrapper = memoryControlWrapper(local.fs, state);
 
 	await remoteWrapper.read('held.md', 4);
-	const pendingVaultRead = vaultWrapper.read('later.md', 5);
+	const pendingSecondaryRead = secondaryWrapper.read('later.md', 5);
 
 	await flush();
 	expect(local.calls.read).toStrictEqual([]);
@@ -130,13 +132,13 @@ test('shared state spans remote and vault wrappers', async () => {
 	await flush();
 
 	expect(local.calls.read).toStrictEqual([['later.md', 5]]);
-	await pendingVaultRead;
+	await pendingSecondaryRead;
 });
 
 test('write failure releases reserved budget', async () => {
 	const state = createSharedState(10);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 4);
 	remote.control.write = async () => {
@@ -149,8 +151,8 @@ test('write failure releases reserved budget', async () => {
 
 test('read failure does not leave counter incremented', async () => {
 	const state = createSharedState(10);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	remote.control.read = async () => {
 		throw new Error('read failed');
@@ -160,13 +162,13 @@ test('read failure does not leave counter incremented', async () => {
 	expect(state.memoryConsumption).toBe(0);
 });
 
-test('vault writeStream error releases consumed budget', async () => {
+test('memory wrapper writeStream error releases consumed budget', async () => {
 	const state = createSharedState(10);
-	const local = localFs();
-	const wrapper = localMemoryControlWrapper(local.fs, state);
+	const local = fs();
+	const wrapper = memoryControlWrapper(local.fs, state);
 
 	await wrapper.read('held.md', 4);
-	local.control.writeStream = async (_key: string, source: ReadableStream<ArrayBuffer>) => {
+	local.control.writeStream = async (_key: string, source: ReadableStream<Binary>) => {
 		const reader = source.getReader();
 		await reader.read();
 		throw new Error('stream failed');
@@ -176,13 +178,13 @@ test('vault writeStream error releases consumed budget', async () => {
 	expect(state.memoryConsumption).toBe(0);
 });
 
-test('vault writeStream cancel releases consumed budget', async () => {
+test('memory wrapper writeStream cancel releases consumed budget', async () => {
 	const state = createSharedState(10);
-	const local = localFs();
-	const wrapper = localMemoryControlWrapper(local.fs, state);
+	const local = fs();
+	const wrapper = memoryControlWrapper(local.fs, state);
 
 	await wrapper.read('held.md', 4);
-	local.control.writeStream = async (_key: string, source: ReadableStream<ArrayBuffer>) => {
+	local.control.writeStream = async (_key: string, source: ReadableStream<Binary>) => {
 		const reader = source.getReader();
 		await reader.read();
 		await reader.cancel();
@@ -195,8 +197,8 @@ test('vault writeStream cancel releases consumed budget', async () => {
 
 test('memory wrapper keeps hanging pool sorted and resumes maximum possible reads', async () => {
 	const state = createSharedState(10);
-	const remote = remoteFs();
-	const wrapper = remoteMemoryControlWrapper(remote.fs, state);
+	const remote = fs();
+	const wrapper = memoryControlWrapper(remote.fs, state);
 
 	await wrapper.read('held.md', 10);
 	void wrapper.read('seven.md', 7);

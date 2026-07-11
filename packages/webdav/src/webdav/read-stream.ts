@@ -1,8 +1,10 @@
+import type { Binary } from '@hesprs/sync-engine-sdk';
+
 export type CreateWebDAVReadStreamOptions = {
 	size: number;
 	chunkSize: number;
 	maxConcurrent: number;
-	requestRange: (start: number, endInclusive: number) => Promise<ArrayBuffer>;
+	requestRange: (start: number, endInclusive: number) => Promise<Binary>;
 };
 
 export default function createWebDAVReadStream({
@@ -10,24 +12,24 @@ export default function createWebDAVReadStream({
 	chunkSize,
 	maxConcurrent,
 	requestRange,
-}: CreateWebDAVReadStreamOptions): ReadableStream<ArrayBuffer> {
+}: CreateWebDAVReadStreamOptions): ReadableStream<Binary> {
 	const totalChunks = size === 0 ? 0 : Math.ceil(size / chunkSize);
 	const maxBufferedBytes = chunkSize * maxConcurrent;
 	if (totalChunks === 0)
-		return new ReadableStream<ArrayBuffer>({
+		return new ReadableStream<Binary>({
 			start(controller) {
 				controller.close();
 			},
 		});
 
-	let controllerRef: ReadableStreamDefaultController<ArrayBuffer> | undefined;
+	let controllerRef: ReadableStreamDefaultController<Binary> | undefined;
 	let nextChunkIndex = 0;
 	let nextPendingIndex = 0;
 	let inFlight = 0;
 	let closed = false;
 	let consumerReady = false;
 	let pendingBytes = 0;
-	const pending = new Map<number, ArrayBuffer>();
+	const pending = new Map<number, Binary>();
 
 	const closeIfDone = () => {
 		if (closed || !controllerRef) return;
@@ -88,7 +90,7 @@ export default function createWebDAVReadStream({
 		}
 	};
 
-	return new ReadableStream<ArrayBuffer>(
+	return new ReadableStream<Binary>(
 		{
 			cancel() {
 				closed = true;

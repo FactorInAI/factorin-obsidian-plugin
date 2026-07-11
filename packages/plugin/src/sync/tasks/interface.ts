@@ -1,11 +1,11 @@
-import type { RemoteFs, LocalFs } from '@/fs';
+import type { Fs } from '@/fs';
 import type { RecordStore } from '@/modules/Storage';
 import type { FileStat, MaybePromise } from '@/types';
 import type { TaskOptions } from '../decision/interface';
 
 export type BaseTaskOptions = {
-	localFs: LocalFs;
-	remoteFs: RemoteFs;
+	localFs: Fs;
+	remoteFs: Fs;
 	record: RecordStore;
 };
 
@@ -26,8 +26,8 @@ export type ConflictResolverPayload = {
 	local: FileStat;
 	remote: FileStat;
 	key: string;
-	localFs: LocalFs;
-	remoteFs: RemoteFs;
+	localFs: Fs;
+	remoteFs: Fs;
 	record: RecordStore;
 };
 
@@ -42,8 +42,8 @@ export abstract class BaseTask<T extends TaskOptions = TaskOptions> {
 		this.local = options.local;
 		this.remote = options.remote;
 	}
-	protected readonly remoteFs: RemoteFs;
-	protected readonly localFs: LocalFs;
+	protected readonly remoteFs: Fs;
+	protected readonly localFs: Fs;
 	protected readonly record: RecordStore;
 	declare name: TaskNames;
 	declare prettyName: string;

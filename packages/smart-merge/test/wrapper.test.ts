@@ -4,7 +4,7 @@ import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import smartMergeBaseTextWrapper from '@/wrapper';
 
-const { bytes, remoteFs } = testKit;
+const { bytes, fs } = testKit;
 const db = openMemoryDB<{ baseText: string }>('smart-merge-wrapper-test');
 
 function store() {
@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 test('write should persist mergeable base text', async () => {
-	const remote = remoteFs();
+	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 
 	await wrapper.write('folder/note.md', bytes('plain text'));
@@ -27,7 +27,7 @@ test('write should persist mergeable base text', async () => {
 });
 
 test('move should move stored base text', async () => {
-	const remote = remoteFs();
+	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 	await store().set('old.md', 'base text');
 
@@ -38,7 +38,7 @@ test('move should move stored base text', async () => {
 });
 
 test('delete should remove stored base text', async () => {
-	const remote = remoteFs();
+	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 	await store().set('deleted.md', 'base text');
 
@@ -48,7 +48,7 @@ test('delete should remove stored base text', async () => {
 });
 
 test('non mergeable write should not touch store', async () => {
-	const remote = remoteFs();
+	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 
 	await wrapper.write('image.png', bytes('not markdown'));
@@ -57,7 +57,7 @@ test('non mergeable write should not touch store', async () => {
 });
 
 test('failed mutation should not update base text', async () => {
-	const remote = remoteFs({
+	const remote = fs({
 		control: {
 			write: async () => {
 				throw new Error('write failed');

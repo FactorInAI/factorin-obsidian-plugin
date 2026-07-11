@@ -1,5 +1,26 @@
 import type { ErrorLike } from '@repo/shared/get-status';
 import { getStatus } from '@repo/shared/get-status';
+import type { Request } from '@/modules/Registrar';
+import sleep from '@/utils/sleep';
+
+type RetryOptions = {
+	maxRetry?: number;
+	isRetryable?: (error: unknown) => boolean;
+	retryDelayMs?: number;
+};
+
+export default function retryMiddleware(request: Request, options?: RetryOptions): Request {
+	const { maxRetry = 3, isRetryable = isRetryableError, retryDelayMs = 1000 } = options ?? {};
+	return async (args) => {
+		for (let i = 0; ; i++)
+			try {
+				return await request(args);
+			} catch (error) {
+				if (!isRetryable(error) || i >= maxRetry) throw error;
+				await sleep(retryDelayMs);
+			}
+	};
+}
 
 const RETRYABLE_STATUS_CODES = new Set([401, 408, 425, 429, 502, 503, 504]);
 
@@ -28,7 +49,7 @@ function hasRetryableMessage(message: string): boolean {
 	return RETRYABLE_MESSAGE_PATTERNS.some((pattern) => pattern.test(message));
 }
 
-export default function isRetryableError(error: unknown): boolean {
+function isRetryableError(error: unknown): boolean {
 	const queue: Array<unknown> = [error];
 	const visited = new Set<object>();
 	while (queue.length > 0) {

@@ -51,7 +51,7 @@ The core ships the infrastructure, and all backends (WebDAV, S3, GDrive) and fea
 There's already a lot of plugins to sync your notes between devices. But the advantage becomes clear with a comparison:
 
 - [Remotely Save](https://github.com/remotely-save/remotely-save): full-featured syncing plugins, but currently has optional payment, unmaintained, and 200 unresolved issues.
-- All plugins similar to Remotely Save: one plugin owns everything, you use part of it, others worsen the loading time. Vibe-coded / maintenance issues / optional payments possible.
+- **All plugins similar to Remotely Save**: one plugin owns everything, you use part of it, others worsen the loading time. Vibe-coded / maintenance issues / optional payments possible.
 - [Syncthing](https://syncthing.net/): a great way of P2P syncing, but requires both of your devices to be online, not 24/7.
 - [Self-hosted Live Sync](https://github.com/vrtmrz/obsidian-livesync) / [Fast note sync](https://github.com/haierkeys/obsidian-fast-note-sync): most robust solutions in the room, but require custom server setup.
 - [Git Integration](https://github.com/Vinzent03/obsidian-git): ideal for production-level collaboration and provenance, but not suitable for daily usage.

@@ -1,7 +1,6 @@
 import type { StoreSync } from '@hesprs/sync-engine-sdk';
 import { gcmsiv } from '@noble/ciphers/aes.js';
-import { textToArrayBuffer, textToUint8Array, uint8ArrayToText } from '@repo/shared/binary';
-import { toArrayBuffer } from './shared';
+import { textToUint8Array, uint8ArrayToText } from '@repo/shared/binary';
 
 export type EncryptionStores = {
 	decryptedToEncrypted: StoreSync<string>;
@@ -9,10 +8,10 @@ export type EncryptionStores = {
 };
 
 const BASENAME_CACHE_LIMIT = 10_000;
-const FILE_NAME_NONCE = textToArrayBuffer('file-name-v1');
+const FILE_NAME_NONCE = textToUint8Array('file-name-v1');
 
 export function encryptPathSegments(
-	nameKey: ArrayBuffer,
+	nameKey: Uint8Array,
 	key: string,
 	stores: EncryptionStores,
 ): string {
@@ -20,7 +19,7 @@ export function encryptPathSegments(
 }
 
 export function decryptPathSegments(
-	nameKey: ArrayBuffer,
+	nameKey: Uint8Array,
 	key: string,
 	stores: EncryptionStores,
 ): string {
@@ -35,7 +34,7 @@ function transformPathSegments(key: string, transformSegment: (segment: string) 
 }
 
 function encryptPathSegment(
-	nameKey: ArrayBuffer,
+	nameKey: Uint8Array,
 	segment: string,
 	stores: EncryptionStores,
 ): string {
@@ -48,7 +47,7 @@ function encryptPathSegment(
 }
 
 function decryptPathSegment(
-	nameKey: ArrayBuffer,
+	nameKey: Uint8Array,
 	segment: string,
 	stores: EncryptionStores,
 ): string {
@@ -60,20 +59,24 @@ function decryptPathSegment(
 	return decrypted;
 }
 
-function encryptBasename(nameKey: ArrayBuffer, basename: string): string {
+function encryptBasename(nameKey: Uint8Array, basename: string): string {
 	const normalizedBasename = normalizeBasename(basename);
-	const ciphertext = gcmsiv(new Uint8Array(nameKey), new Uint8Array(FILE_NAME_NONCE)).encrypt(
+	const ciphertext = gcmsiv(nameKey, FILE_NAME_NONCE).encrypt(
 		textToUint8Array(normalizedBasename),
 	);
-	return encodeBase64Url(toArrayBuffer(ciphertext));
+	return encodeBase64Url(ciphertext);
 }
 
-function decryptBasename(nameKey: ArrayBuffer, encryptedBasename: string): string {
+function decryptBasename(nameKey: Uint8Array, encryptedBasename: string): string {
 	if (encryptedBasename === '') throw new Error('Encrypted basename cannot be empty');
-	const plaintext = gcmsiv(new Uint8Array(nameKey), new Uint8Array(FILE_NAME_NONCE)).decrypt(
-		new Uint8Array(decodeBase64Url(encryptedBasename)),
-	);
-	return normalizeBasename(uint8ArrayToText(plaintext));
+	try {
+		const plaintext = gcmsiv(nameKey, FILE_NAME_NONCE).decrypt(
+			decodeBase64Url(encryptedBasename),
+		);
+		return normalizeBasename(uint8ArrayToText(plaintext));
+	} catch {
+		throw new Error('Encrypted basename is malformed');
+	}
 }
 
 function cacheSegmentPair(stores: EncryptionStores, decrypted: string, encrypted: string) {
@@ -92,21 +95,23 @@ function cacheLimitedSet(store: StoreSync<string>, key: string, value: string) {
 }
 
 function normalizeBasename(basename: string) {
-	if (basename === '') throw new Error('Basename cannot be empty');
-	if (basename.includes('/')) throw new Error(`Basename must not contain '/': ${basename}`);
-	return basename;
+	const normalizedBasename = basename.normalize('NFC');
+	if (normalizedBasename === '') throw new Error('Basename cannot be empty');
+	if (normalizedBasename.includes('/'))
+		throw new Error(`Basename must not contain '/': ${basename}`);
+	return normalizedBasename;
 }
 
-function encodeBase64Url(bytes: ArrayBuffer): string {
-	const binary = Array.from(new Uint8Array(bytes), (byte) => String.fromCharCode(byte)).join('');
+function encodeBase64Url(bytes: Uint8Array): string {
+	const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
 	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
 }
 
-function decodeBase64Url(value: string): ArrayBuffer {
+function decodeBase64Url(value: string): Uint8Array {
 	const padding = value.length % 4;
 	const normalized =
 		value.replace(/-/g, '+').replace(/_/g, '/') +
 		(padding === 0 ? '' : '='.repeat(4 - padding));
 	const binary = atob(normalized);
-	return Uint8Array.from(binary, (char) => char.charCodeAt(0)).buffer;
+	return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }

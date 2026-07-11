@@ -1,12 +1,11 @@
 import type { StoreSync } from 'uni-kv';
-import type { Progress, Stat } from '@/types';
-import generateAnchor from '@/fs/utils/generate-anchor';
-import type { RemoteFs, RemoteFsWrapper, WrappedRemoteFs } from '../interface';
+import type { Progress, Stat, Binary } from '@/types';
+import type { Fs, WrappedFs } from '../interface';
 import type { ContextMemoryDB } from './context';
 
 const ROOT_KEY = '/';
 const ROOT_ANCHOR = '00000';
-const EMPTY_BUFFER = new ArrayBuffer(0);
+const EMPTY_BINARY = new Uint8Array(0);
 
 type ParsedFlatKey =
 	| { isDir: false; basename: string; parentAnchor: string }
@@ -66,7 +65,7 @@ function parseFlattenedKey(key: string): ParsedFlatKey | undefined {
 	return undefined;
 }
 
-class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
+class AsymmetricStorageFs implements WrappedFs {
 	private readonly statStore: StoreSync<Stat>;
 	private readonly keyToAnchor = new Map<string, string>([[ROOT_KEY, ROOT_ANCHOR]]);
 	private readonly anchorToKey = new Map<string, string>([[ROOT_ANCHOR, ROOT_KEY]]);
@@ -74,30 +73,30 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 	private bootstrapped = false;
 
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		DB: ContextMemoryDB,
 	) {
 		this.statStore = DB.getStore('remoteStatContext');
-	}
-
-	checkConnection() {
-		return this.original.checkConnection();
 	}
 
 	getUid() {
 		return this.original.getUid();
 	}
 
-	async read(key: string, size?: number) {
-		return await this.original.read(this.flattenKey(key), size);
+	read(key: string, size?: number) {
+		return this.original.read(this.flattenKey(key), size);
 	}
 
-	async readStream(key: string, size?: number) {
-		return await this.original.readStream(this.flattenKey(key), size);
+	readStream(key: string, size?: number) {
+		return this.original.readStream(this.flattenKey(key), size);
 	}
 
-	async write(key: string, value: ArrayBuffer) {
-		return await this.original.write(this.flattenKey(key), value);
+	write(key: string, value: Binary) {
+		return this.original.write(this.flattenKey(key), value);
+	}
+
+	writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+		return this.original.writeStream(this.flattenKey(key), value, size);
 	}
 
 	async delete(key: string) {
@@ -129,7 +128,7 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 			await this.original.mkdir(key, recursive);
 			return;
 		}
-		await this.original.write(this.flattenKey(key), EMPTY_BUFFER);
+		await this.original.write(this.flattenKey(key), EMPTY_BINARY);
 	}
 
 	async stat(key: string) {
@@ -249,8 +248,49 @@ class AsymmetricStorageRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function asymmetricStorageWrapper(original: RemoteFs, options: ContextMemoryDB): WrappedRemoteFs {
-	return new AsymmetricStorageRemoteFs(original, options);
+export default function asymmetricStorageWrapper(
+	original: Fs,
+	options: ContextMemoryDB,
+): WrappedFs {
+	return new AsymmetricStorageFs(original, options);
 }
 
-export default asymmetricStorageWrapper satisfies RemoteFsWrapper<ContextMemoryDB>;
+const SAFE_85 =
+	" !#$%&'()+,-.0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
+const SAFE_83 =
+	"!#$%&'()+,-0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
+const REGENERATE_MARKER = '☭';
+
+function generateId(str: string): string {
+	let h1 = 0xde_ad_be_ef | 0,
+		h2 = 0x41_c6_ce_57 | 0;
+	for (let i = 0; i < str.length; i++) {
+		const ch = str.charCodeAt(i);
+		h1 = Math.imul(h1 ^ ch, 2_654_435_761);
+		h2 = Math.imul(h2 ^ ch, 1_597_334_677);
+	}
+	h1 = Math.imul(h1 ^ (h1 >>> 16), 2_246_822_507);
+	h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3_266_489_909);
+	h2 = Math.imul(h2 ^ (h2 >>> 16), 2_246_822_507);
+	h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3_266_489_909);
+	let hash = 4_294_967_296 * (2_097_151 & h2) + (h1 >>> 0);
+	const c4 = hash % 83;
+	hash = Math.trunc(hash / 83);
+	const c3 = hash % 85;
+	hash = Math.trunc(hash / 85);
+	const c2 = hash % 85;
+	hash = Math.trunc(hash / 85);
+	const c1 = hash % 85;
+	hash = (hash / 85) | 0;
+	const c0 = hash % 85;
+	return SAFE_85[c0] + SAFE_85[c1] + SAFE_85[c2] + SAFE_85[c3] + SAFE_83[c4];
+}
+function generateAnchor(source: string, existing: Set<string>) {
+	let anchor: string;
+	do {
+		anchor = generateId(source);
+		if (!existing.has(anchor)) break;
+		source += REGENERATE_MARKER;
+	} while (true);
+	return anchor;
+}

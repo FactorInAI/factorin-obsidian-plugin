@@ -8,8 +8,8 @@
 		"./*": "./src/*.ts"
 	},
 	"scripts": {
-		"lint": "oxlint --fix --silent --type-aware && oxfmt",
-		"check": "tsc && oxlint --format agent --type-aware && oxfmt --check",
+		"lint": "oxlint --fix --type-aware && oxfmt",
+		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun test"
 	}
 }

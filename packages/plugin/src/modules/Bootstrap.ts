@@ -1,7 +1,7 @@
 import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
-import type { LocalFs, BatchOptimizer, RemoteFs, ContextMemoryDB } from '@/fs';
+import type { BatchOptimizer, ContextMemoryDB } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
 import type { FeaturesSettingTranslations } from '@/settings/features';
@@ -11,19 +11,16 @@ import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous'
 import type { Progress, TogglableValue } from '@/types';
 import en from '@/en';
 import {
-	localCancellationWrapper,
-	localContextWrapper,
-	localMemoryControlWrapper,
-	localOptimizationWrapper,
-	rateLimiterWrapper,
-	remoteCancellationWrapper,
-	remoteOptimizationWrapper,
-	remoteContextWrapper,
-	remoteMemoryControlWrapper,
-	retryWrapper,
+	rateLimiterMiddleware,
+	cancellationWrapper,
+	optimizationWrapper,
+	contextWrapper,
+	memoryControlWrapper,
+	retryMiddleware,
 	hierarchalOptimizer,
 	asymmetricStorageWrapper,
-	customHeadersWrapper,
+	customHeadersMiddleware,
+	cancellationMiddleware,
 } from '@/fs';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
@@ -42,12 +39,12 @@ import type { ObsidianLanguageCode, Translate, TranslationResource } from './I18
 import type {
 	ConflictResolverEntry,
 	DeciderEntry,
-	LocalFsWrapperEntry,
+	FsWrapperEntry,
 	RemoteFsEntry,
-	RemoteFsWrapperEntry,
-	RemoteOptimizerEntry,
+	OptimizerEntry,
 	SettingEntry,
 	SyncTriggerEntry,
+	RequestMiddlewareEntry,
 } from './Registrar';
 
 export type CustomHeaders = Array<{ type: 'plaintext' | 'secret'; value: string; key: string }>;
@@ -97,17 +94,18 @@ export default class Bootstrap {
 			on: On<Events>;
 			memoryDB: ContextMemoryDB;
 			registerDecider: (id: string, entry: DeciderEntry) => void;
-			registerLocalFsWrapper: (entry: LocalFsWrapperEntry) => void;
+			registerLocalFsWrapper: (entry: FsWrapperEntry) => void;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => void;
-			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => void;
+			registerRemoteFsWrapper: (entry: FsWrapperEntry) => void;
 			translate: Translate<Translations>;
-			getLocalOptimizer: () => BatchOptimizer<LocalFs>;
-			getRemoteOptimizer: () => BatchOptimizer<RemoteFs>;
-			registerLocalOptimizer: (optimizer: BatchOptimizer<LocalFs>) => void;
-			registerRemoteOptimizer: (optimizer: RemoteOptimizerEntry) => void;
+			getLocalOptimizer: () => BatchOptimizer;
+			getRemoteOptimizer: () => BatchOptimizer;
+			registerLocalOptimizer: (optimizer: OptimizerEntry) => void;
+			registerRemoteOptimizer: (optimizer: OptimizerEntry) => void;
 			registerSyncTrigger: (id: string, entry: SyncTriggerEntry) => void;
 			registerSetting: (entry: SettingEntry) => () => boolean;
 			registerConflictResolver: (id: string, entry: ConflictResolverEntry) => void;
+			registerRequestMiddleware: (entry: RequestMiddlewareEntry) => void;
 		},
 	) {
 		ctx.registerI18n('en', en);
@@ -127,6 +125,7 @@ export default class Bootstrap {
 			registerSyncTrigger,
 			registerSetting,
 			registerConflictResolver,
+			registerRequestMiddleware,
 		} = this.ctx;
 		const { maxMemoryConsumption, maxRequestConcurrency, minRequestInterval } = this.settings;
 
@@ -153,11 +152,11 @@ export default class Bootstrap {
 			priority: 1000,
 		});
 
-		registerLocalOptimizer(hierarchalOptimizer);
+		registerLocalOptimizer({ optimizer: hierarchalOptimizer });
 		registerRemoteOptimizer({ optimizer: hierarchalOptimizer });
 		registerLocalFsWrapper({
 			apply: (fs) =>
-				localMemoryControlWrapper(fs, {
+				memoryControlWrapper(fs, {
 					hangingOperations: this.hangingOperations,
 					maxMemory: getMaxMemory(),
 					memoryConsumption: this.memoryConsumption,
@@ -166,22 +165,25 @@ export default class Bootstrap {
 		});
 		registerLocalFsWrapper({
 			apply: (fs) =>
-				localOptimizationWrapper(fs, {
+				optimizationWrapper(fs, {
 					batchOptimizer: this.ctx.getLocalOptimizer(),
-					localPool: this.localPool,
-					remotePool: this.remotePool,
+					thatPool: this.remotePool,
+					thisPool: this.localPool,
 				}),
 			order: 2000,
 		});
 		registerLocalFsWrapper({
-			apply: (fs) => localCancellationWrapper(fs, this.isCancelled),
+			apply: (fs) => cancellationWrapper(fs, this.isCancelled),
 			order: 3000,
 		});
-		registerLocalFsWrapper({ apply: (fs) => localContextWrapper(fs, memoryDB), order: 10_000 });
+		registerLocalFsWrapper({
+			apply: (fs) => contextWrapper(fs, memoryDB, 'local'),
+			order: 10_000,
+		});
 
 		registerRemoteFsWrapper({
 			apply: (fs) =>
-				remoteMemoryControlWrapper(fs, {
+				memoryControlWrapper(fs, {
 					hangingOperations: this.hangingOperations,
 					maxMemory: getMaxMemory(),
 					memoryConsumption: this.memoryConsumption,
@@ -190,42 +192,47 @@ export default class Bootstrap {
 		});
 		registerRemoteFsWrapper({
 			apply: (fs) =>
-				remoteOptimizationWrapper(fs, {
+				optimizationWrapper(fs, {
 					batchOptimizer: this.ctx.getRemoteOptimizer(),
-					localPool: this.localPool,
-					remotePool: this.remotePool,
+					thatPool: this.localPool,
+					thisPool: this.remotePool,
 				}),
 			order: 2000,
 		});
 		registerRemoteFsWrapper({
-			apply: (fs) => remoteCancellationWrapper(fs, this.isCancelled),
+			apply: (fs) => cancellationWrapper(fs, this.isCancelled),
 			order: 3000,
 		});
-		registerRemoteFsWrapper({ apply: (fs) => retryWrapper(fs), order: 4000 });
 		registerRemoteFsWrapper({
-			apply: (fs) =>
-				rateLimiterWrapper(fs, {
-					maxConcurrency: getMaxConcurrency(),
-					minInterval: getMinInterval(),
-				}),
-			order: 5000,
-		});
-		registerRemoteFsWrapper({
-			apply: (fs) =>
-				customHeadersWrapper(
-					fs,
-					synthesizeHeaders(this.settings.customHeaders, secretStorage),
-				),
-			order: 6000,
-		});
-		registerRemoteFsWrapper({
-			apply: (fs) => remoteContextWrapper(fs, memoryDB),
+			apply: (fs) => contextWrapper(fs, memoryDB, 'remote'),
 			order: 10_000,
 		});
 		registerRemoteFsWrapper({
 			apply: (fs) => asymmetricStorageWrapper(fs, memoryDB),
 			condition: () => this.settings.asymmetricStorage,
 			order: 11_000,
+		});
+
+		registerRequestMiddleware({ apply: retryMiddleware, order: 1000 });
+		registerRequestMiddleware({
+			apply: (request) =>
+				rateLimiterMiddleware(request, {
+					maxConcurrency: getMaxConcurrency(),
+					minInterval: getMinInterval(),
+				}),
+			order: 2000,
+		});
+		registerRequestMiddleware({
+			apply: (fs) =>
+				customHeadersMiddleware(
+					fs,
+					synthesizeHeaders(this.settings.customHeaders, secretStorage),
+				),
+			order: 3000,
+		});
+		registerRequestMiddleware({
+			apply: (request) => cancellationMiddleware(request, this.isCancelled),
+			order: 4000,
 		});
 
 		registerDecider('bidirectional', {

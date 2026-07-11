@@ -1,34 +1,39 @@
 import type { Events } from '@';
-import type { App, Plugin } from 'obsidian';
+import type { App, Plugin, RequestUrlParam } from 'obsidian';
 import type { StoreAsync } from 'uni-kv';
+import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
 import { hash } from '@repo/shared/crypto';
-import { PluginSettingTab } from 'obsidian';
-import type { BatchOptimizer, LocalFs, RemoteFs, RootRemoteFs } from '@/fs';
+import { PluginSettingTab, requestUrl } from 'obsidian';
+import type { BatchOptimizer, Fs, RootFs } from '@/fs';
 import type { ConflictResolver, Decider } from '@/sync';
-import type { MaybePromise, RecordStat, Stat } from '@/types';
+import type { General, MaybePromise, RecordStat, Stat, Binary } from '@/types';
 import { VaultFs } from '@/fs';
 import type { On } from './EventBus';
 import type { RecordStore } from './Storage';
 
-export type LocalFsWrapperEntry = {
+export type FsWrapperEntry = {
 	order: number;
-	apply: (fs: LocalFs) => LocalFs;
+	apply: (fs: Fs) => Fs;
 	condition?: () => boolean;
 };
-export type RemoteFsWrapperEntry = {
-	order: number;
-	apply: (fs: RemoteFs) => RemoteFs;
-	condition?: () => boolean;
+export type CheckConnectionResult = { success: true } | { success: false; reason: string };
+export type RemoteFsEntry = {
+	instantiate: (request: Request) => RootFs;
+	prettyName: string;
+	checkConnection: (request: Request) => MaybePromise<CheckConnectionResult>;
 };
-export type RemoteFsEntry = { instantiate: () => RootRemoteFs; prettyName: string };
+export type RequestMiddlewareEntry = {
+	order: number;
+	apply: RequestMiddleware;
+};
 export type DeciderEntry = { decider: Decider; prettyName: string };
 export type RemoteListGetter = (infras: Infras) => MaybePromise<Array<Stat> | undefined>;
 export type SyncTriggerEntry = {
 	getRemoteList?: RemoteListGetter;
 	priority: number;
 };
-export type RemoteOptimizerEntry = {
-	optimizer: BatchOptimizer<RemoteFs>;
+export type OptimizerEntry = {
+	optimizer: BatchOptimizer;
 	condition?: () => boolean;
 };
 export type SettingEntry = {
@@ -39,22 +44,44 @@ export type ConflictResolverEntry = {
 	prettyName: string;
 	resolver: ConflictResolver;
 };
+export type RequestParam = Omit<RequestUrlParam, 'body'> & { body?: string | Binary };
+export type Request = (params: RequestParam | string) => Promise<{
+	text: () => string;
+	bytes: () => Binary;
+	json: () => General;
+	headers: Record<string, string>;
+	status: number;
+}>;
+export type RequestMiddleware = (request: Request) => Request;
+export type Infras = { localFs: Fs; remoteFs: Fs; record: RecordStore };
 
-export type Infras = { localFs: LocalFs; remoteFs: RemoteFs; record: RecordStore };
+const request: Request = async (params: RequestParam | string) => {
+	if (typeof params === 'object' && params.body instanceof Uint8Array)
+		(params as RequestUrlParam).body = toArrayBuffer(params.body);
+	const response = await requestUrl(params as RequestUrlParam);
+	return {
+		bytes: () => toUint8Array(response.arrayBuffer),
+		headers: response.headers,
+		json: () => response.json,
+		status: response.status,
+		text: () => response.text,
+	};
+};
 
 export default class Registrar {
 	private settingTab?: SettingTab;
 	private readonly cleanupCallbacks: Array<() => void> = [];
 
-	private readonly localFsWrapperRegistry = new Set<LocalFsWrapperEntry>();
-	private readonly remoteFsWrapperRegistry = new Set<RemoteFsWrapperEntry>();
-	private readonly localOptimizerRegistry = new Set<BatchOptimizer<LocalFs>>();
-	private readonly remoteOptimizerRegistry = new Set<RemoteOptimizerEntry>();
+	private readonly localFsWrapperRegistry = new Set<FsWrapperEntry>();
+	private readonly remoteFsWrapperRegistry = new Set<FsWrapperEntry>();
+	private readonly localOptimizerRegistry = new Set<OptimizerEntry>();
+	private readonly remoteOptimizerRegistry = new Set<OptimizerEntry>();
 	private readonly remoteFsRegistry = new Map<string, RemoteFsEntry>();
 	private readonly deciderRegistry = new Map<string, DeciderEntry>();
 	private readonly syncTriggerRegistry = new Map<string, SyncTriggerEntry>();
 	private readonly settingRegistry = new Set<SettingEntry>();
 	private readonly conflictResolverRegistry = new Map<string, ConflictResolverEntry>();
+	private readonly requestMiddlewareRegistry = new Set<RequestMiddlewareEntry>();
 
 	declare readonly settings: { remoteFs: string; decider: string; conflictResolver: string };
 
@@ -71,11 +98,11 @@ export default class Registrar {
 		);
 	}
 
-	private readonly registerLocalFsWrapper = (entry: LocalFsWrapperEntry) => {
+	private readonly registerLocalFsWrapper = (entry: FsWrapperEntry) => {
 		this.localFsWrapperRegistry.add(entry);
 		return () => this.localFsWrapperRegistry.delete(entry);
 	};
-	private readonly registerRemoteFsWrapper = (entry: RemoteFsWrapperEntry) => {
+	private readonly registerRemoteFsWrapper = (entry: FsWrapperEntry) => {
 		this.remoteFsWrapperRegistry.add(entry);
 		return () => this.remoteFsWrapperRegistry.delete(entry);
 	};
@@ -87,11 +114,11 @@ export default class Registrar {
 		this.deciderRegistry.set(id, entry);
 		return () => this.deciderRegistry.delete(id);
 	};
-	private readonly registerRemoteOptimizer = (entry: RemoteOptimizerEntry) => {
+	private readonly registerRemoteOptimizer = (entry: OptimizerEntry) => {
 		this.remoteOptimizerRegistry.add(entry);
 		return () => this.remoteOptimizerRegistry.delete(entry);
 	};
-	private readonly registerLocalOptimizer = (optimizer: BatchOptimizer<LocalFs>) => {
+	private readonly registerLocalOptimizer = (optimizer: OptimizerEntry) => {
 		this.localOptimizerRegistry.add(optimizer);
 		return () => this.localOptimizerRegistry.delete(optimizer);
 	};
@@ -107,19 +134,22 @@ export default class Registrar {
 		this.conflictResolverRegistry.set(id, entry);
 		return () => this.conflictResolverRegistry.delete(id);
 	};
+	private readonly registerRequestMiddleware = (entry: RequestMiddlewareEntry) => {
+		this.requestMiddlewareRegistry.add(entry);
+		return () => this.requestMiddlewareRegistry.delete(entry);
+	};
 
 	private readonly createLocalFs = () => {
-		const wrappers: Record<number, (fs: LocalFs) => LocalFs> = {};
+		const wrappers: Record<number, (fs: Fs) => Fs> = {};
 		for (const { apply, order, condition } of this.localFsWrapperRegistry)
 			if (!condition || condition()) wrappers[order] = apply;
-		let fs: LocalFs = new VaultFs(this.ctx.app.vault);
+		let fs: Fs = new VaultFs(this.ctx.app.vault);
 		for (const apply of Object.values(wrappers)) fs = apply(fs);
 		return fs;
 	};
 
-	private readonly createRemoteFs = () => {
-		const wrappers: Record<number, (fs: RemoteFs) => RemoteFs> = {};
-		const { remoteFs } = this.settings;
+	private readonly createRemoteFs = (remoteFs = this.settings.remoteFs) => {
+		const wrappers: Record<number, (fs: Fs) => Fs> = {};
 		for (const { apply, order, condition } of this.remoteFsWrapperRegistry)
 			if (!condition || condition()) wrappers[order] = apply;
 		const entry = this.remoteFsRegistry.get(remoteFs);
@@ -127,9 +157,26 @@ export default class Registrar {
 			if (!remoteFs) throw new Error('Please install a backend!');
 			throw new Error(`Backend "${remoteFs}" is not installed!`);
 		}
-		let fs: RemoteFs = entry.instantiate();
+		let fs = entry.instantiate(this.getRequest());
 		for (const apply of Object.values(wrappers)) fs = apply(fs);
 		return fs;
+	};
+
+	private readonly getRequest = () => {
+		const middlewares: Record<number, RequestMiddleware> = {};
+		for (const { apply, order } of this.requestMiddlewareRegistry) middlewares[order] = apply;
+		let req: Request = request;
+		for (const apply of Object.values(middlewares)) req = apply(req);
+		return req;
+	};
+
+	private readonly getCheckConnection = (remoteFs = this.settings.remoteFs) => {
+		const entry = this.remoteFsRegistry.get(remoteFs);
+		if (!entry) {
+			if (!remoteFs) throw new Error('Please install a backend!');
+			throw new Error(`Backend "${remoteFs}" is not installed!`);
+		}
+		return () => entry.checkConnection(this.getRequest());
 	};
 
 	private readonly getDecider = () => {
@@ -138,24 +185,20 @@ export default class Registrar {
 		return decider.decider;
 	};
 
-	private readonly getLocalOptimizer = () => {
-		let local: BatchOptimizer<LocalFs> | undefined;
-		for (const value of this.localOptimizerRegistry) local = value;
-		if (!local) throw new Error('No local optimizer registered!');
-		return local;
-	};
-
-	private readonly getRemoteOptimizer = () => {
-		let remote: BatchOptimizer<RemoteFs> | undefined;
+	private readonly getOptimizer = (registry: Set<OptimizerEntry>) => {
+		let selected: BatchOptimizer | undefined;
 		let isBounded = false;
-		for (const { optimizer, condition } of this.remoteOptimizerRegistry)
+		for (const { optimizer, condition } of registry)
 			if (condition?.()) {
 				isBounded = true;
-				remote = optimizer;
-			} else if (!isBounded) remote = optimizer;
-		if (!remote) throw new Error('No remote optimizer registered!');
-		return remote;
+				selected = optimizer;
+			} else if (!isBounded) selected = optimizer;
+		if (!selected) throw new Error('No remote optimizer registered!');
+		return selected;
 	};
+
+	private readonly getLocalOptimizer = () => this.getOptimizer(this.localOptimizerRegistry);
+	private readonly getRemoteOptimizer = () => this.getOptimizer(this.remoteOptimizerRegistry);
 
 	private readonly getConflictResolver = () => {
 		const id = this.settings.conflictResolver;
@@ -180,7 +223,7 @@ export default class Registrar {
 	private readonly getRemoteListGetter = (trigger: string) =>
 		this.syncTriggerRegistry.get(trigger)?.getRemoteList;
 
-	private readonly getNamespace = (localFs?: LocalFs, remoteFs?: RemoteFs) => {
+	private readonly getNamespace = (localFs?: Fs, remoteFs?: Fs) => {
 		localFs ??= this.createLocalFs();
 		remoteFs ??= this.createRemoteFs();
 		return hash(`${localFs.getUid()}~~${remoteFs.getUid()}`);
@@ -206,12 +249,14 @@ export default class Registrar {
 		createLocalFs: this.createLocalFs,
 		createRemoteFs: this.createRemoteFs,
 		deciderRegistry: this.deciderRegistry,
+		getCheckConnection: this.getCheckConnection,
 		getConflictResolver: this.getConflictResolver,
 		getDecider: this.getDecider,
 		getLocalOptimizer: this.getLocalOptimizer,
 		getNamespace: this.getNamespace,
 		getRemoteListGetter: this.getRemoteListGetter,
 		getRemoteOptimizer: this.getRemoteOptimizer,
+		getRequest: this.getRequest,
 		initializeSync: this.initializeSync,
 		reduceSyncTrigger: this.reduceSyncTrigger,
 		registerConflictResolver: this.registerConflictResolver,
@@ -221,6 +266,7 @@ export default class Registrar {
 		registerRemoteFs: this.registerRemoteFs,
 		registerRemoteFsWrapper: this.registerRemoteFsWrapper,
 		registerRemoteOptimizer: this.registerRemoteOptimizer,
+		registerRequestMiddleware: this.registerRequestMiddleware,
 		registerSetting: this.registerSetting,
 		registerSyncTrigger: this.registerSyncTrigger,
 		remoteFsRegistry: this.remoteFsRegistry,

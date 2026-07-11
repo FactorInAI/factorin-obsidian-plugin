@@ -1,8 +1,7 @@
-import type { requestUrl } from 'obsidian';
-import type { Progress } from '@/types';
+import type { Request } from '@/modules/Registrar';
+import type { MaybePromise, Progress, Binary } from '@/types';
 import { syncCancelledError } from '@/sync';
-import type { LocalFs, RemoteFs, WrappedLocalFs, WrappedRemoteFs } from '../interface';
-import digOriginal from '../utils/dig-original';
+import type { Fs, WrappedFs } from '../interface';
 
 function assertNotCancelled(isCancelled: () => boolean) {
 	if (isCancelled()) throw syncCancelledError;
@@ -19,15 +18,11 @@ async function guardCancellation<T>(
 	return result;
 }
 
-class CancellationRemoteFs implements WrappedRemoteFs {
+class CancellationFs implements WrappedFs {
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		private readonly isCancelled: () => boolean,
 	) {}
-
-	checkConnection() {
-		return this.original.checkConnection();
-	}
 
 	getUid() {
 		return this.original.getUid();
@@ -43,8 +38,14 @@ class CancellationRemoteFs implements WrappedRemoteFs {
 		);
 	}
 
-	write(key: string, value: ArrayBuffer) {
+	write(key: string, value: Binary) {
 		return guardCancellation(this.isCancelled, 'post', () => this.original.write(key, value));
+	}
+
+	writeStream(key: string, value: ReadableStream<Binary>, size?: number): MaybePromise<string> {
+		return guardCancellation(this.isCancelled, 'post', () =>
+			this.original.writeStream(key, value, size),
+		);
 	}
 
 	delete(key: string) {
@@ -76,71 +77,15 @@ class CancellationRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-class CancellationLocalFs implements WrappedLocalFs {
-	constructor(
-		public readonly original: LocalFs,
-		private readonly isCancelled: () => boolean,
-	) {}
-
-	getUid() {
-		return this.original.getUid();
-	}
-
-	read(key: string, size?: number) {
-		return guardCancellation(this.isCancelled, 'pre', () => this.original.read(key, size));
-	}
-
-	write(key: string, value: ArrayBuffer) {
-		return guardCancellation(this.isCancelled, 'post', () => this.original.write(key, value));
-	}
-
-	writeStream(key: string, value: ReadableStream<ArrayBuffer>) {
-		return guardCancellation(this.isCancelled, 'post', () =>
-			this.original.writeStream(key, value),
-		);
-	}
-
-	delete(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.delete(key));
-	}
-
-	move(oldKey: string, newKey: string) {
-		return guardCancellation(this.isCancelled, 'both', () =>
-			this.original.move(oldKey, newKey),
-		);
-	}
-
-	mkdir(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.mkdir(key));
-	}
-
-	stat(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.stat(key));
-	}
-
-	list(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.list(key));
-	}
-}
-
-export function remoteCancellationWrapper(
-	original: RemoteFs,
-	isCancelled: () => boolean,
-): WrappedRemoteFs {
-	const root = digOriginal(original);
-	const request = root.request;
-	root.request = (async (...args: Parameters<typeof requestUrl>) => {
+export function cancellationMiddleware(request: Request, isCancelled: () => boolean): Request {
+	return async (params) => {
 		assertNotCancelled(isCancelled);
-		const response = await request(...args);
+		const response = await request(params);
 		assertNotCancelled(isCancelled);
 		return response;
-	}) as typeof requestUrl;
-	return new CancellationRemoteFs(original, isCancelled);
+	};
 }
 
-export function localCancellationWrapper(
-	original: LocalFs,
-	isCancelled: () => boolean,
-): WrappedLocalFs {
-	return new CancellationLocalFs(original, isCancelled);
+export function cancellationWrapper(original: Fs, isCancelled: () => boolean): WrappedFs {
+	return new CancellationFs(original, isCancelled);
 }

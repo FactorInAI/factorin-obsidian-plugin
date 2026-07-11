@@ -1,5 +1,5 @@
-import type { ConflictResolver, DatabaseAsync, LocalFs, RemoteFs } from '@hesprs/sync-engine-sdk';
-import { arrayBufferToText, textToArrayBuffer } from '@repo/shared/binary';
+import type { ConflictResolver, DatabaseAsync, Fs } from '@hesprs/sync-engine-sdk';
+import { textToUint8Array, uint8ArrayToText } from '@repo/shared/binary';
 import type { MergeOptions } from './utils/merge';
 import merge from './utils/merge';
 
@@ -9,7 +9,7 @@ type SmartMergeStoreMeta = Record<string, never>;
 export default function smartMergeResolver(
 	mergeOptions: MergeOptions,
 	db: DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>,
-	getNamespace: (localFs?: LocalFs, remoteFs?: RemoteFs) => string,
+	getNamespace: (localFs?: Fs, remoteFs?: Fs) => string,
 ): ConflictResolver {
 	return async ({ local, remote, key, localFs, remoteFs, record }) => {
 		const store = db.getStore(`base-text-${getNamespace(localFs, remoteFs)}`);
@@ -20,14 +20,14 @@ export default function smartMergeResolver(
 		]);
 
 		if (baseText !== undefined) {
-			const localText = arrayBufferToText(localBuffer);
-			const remoteText = arrayBufferToText(remoteBuffer);
+			const localText = uint8ArrayToText(localBuffer);
+			const remoteText = uint8ArrayToText(remoteBuffer);
 			if (localText === remoteText) {
 				await record.set(key, { isDir: false, local: local.uid, remote: remote.uid });
 				return;
 			}
 			const mergedText = merge({ a: localText, b: remoteText, o: baseText }, mergeOptions);
-			const mergedBuffer = textToArrayBuffer(mergedText);
+			const mergedBuffer = textToUint8Array(mergedText);
 			const [localUid, remoteUid] = await Promise.all([
 				mergedText === localText
 					? Promise.resolve(local.uid)

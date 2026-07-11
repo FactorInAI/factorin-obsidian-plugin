@@ -1,7 +1,8 @@
 import type { Vault } from 'obsidian';
+import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
 import { dirname, stripEndSlash } from '@repo/shared/path';
-import type { Stat } from '@/types';
-import type { RootLocalFs, LocalFs, RootLocalFsCtor } from './interface';
+import type { Stat, Binary } from '@/types';
+import type { Fs, RootFs } from './interface';
 
 function toKey(vaultPath: string, isDir: boolean): string {
 	if (vaultPath === '/') return '/';
@@ -33,49 +34,50 @@ async function removeVaultFileIfExists(vault: Vault, path: string): Promise<void
 	if (await vault.adapter.exists(path)) await vault.adapter.remove(path);
 }
 
-function getTempPath(): string {
-	return `.trash/${crypto.randomUUID()}.part`;
-}
-
 function getTrashOption(vault: Vault): 'local' | undefined {
 	const configuredVault = vault as { config?: { trashOption?: 'local' } };
 	return configuredVault.config?.trashOption;
 }
 
-async function getFileUid(fs: LocalFs, key: string): Promise<string> {
+async function getFileUid(fs: Fs, key: string): Promise<string> {
 	const stat = await fs.stat(key);
 	if (stat.isDir) throw new Error(`File ${key} not found!`);
 	return stat.uid;
 }
 
-class VaultFs implements RootLocalFs {
-	constructor(public readonly vault: Vault) {}
+export default class VaultFs implements RootFs {
+	constructor(private readonly vault: Vault) {}
 
 	getUid(): string {
 		return `obsidian-vault~${this.vault.getName()}`;
 	}
 
-	read(key: string): Promise<ArrayBuffer> {
-		return this.vault.adapter.readBinary(toVaultPath(key));
+	async read(key: string): Promise<Binary> {
+		return toUint8Array(await this.vault.adapter.readBinary(toVaultPath(key)));
 	}
 
-	async write(key: string, value: ArrayBuffer): Promise<string> {
+	async readStream(key: string) {
+		const response = await fetch(this.vault.adapter.getResourcePath(toVaultPath(key)));
+		if (!response.body) throw new Error('Streaming vault file is not supported!');
+		return response.body;
+	}
+
+	async write(key: string, value: Binary): Promise<string> {
 		const nativePath = toVaultPath(key);
-		await this.vault.adapter.writeBinary(nativePath, value);
+		await this.vault.adapter.writeBinary(nativePath, toArrayBuffer(value));
 		return getFileUid(this, key);
 	}
 
-	async writeStream(key: string, value: ReadableStream<ArrayBuffer>): Promise<string> {
+	async writeStream(key: string, value: ReadableStream<Binary>): Promise<string> {
 		const nativePath = toVaultPath(key);
-		const tempPath = getTempPath();
+		const tempPath = `.trash/${crypto.randomUUID()}.part`;
 		await ensureKeyDir(this.vault, dirname(key));
 		const reader = value.getReader();
 		try {
 			while (true) {
 				const result = await reader.read();
 				if (result.done) break;
-				const chunk = result.value;
-				await this.vault.adapter.appendBinary(tempPath, chunk);
+				await this.vault.adapter.appendBinary(tempPath, toArrayBuffer(result.value));
 			}
 			await removeVaultFileIfExists(this.vault, nativePath);
 			await this.vault.adapter.rename(tempPath, nativePath);
@@ -108,6 +110,10 @@ class VaultFs implements RootLocalFs {
 		await this.vault.adapter.mkdir(folderKey);
 	}
 
+	exists(key: string) {
+		return this.vault.adapter.exists(toVaultPath(key));
+	}
+
 	async stat(key: string): Promise<Stat> {
 		if (key === '/') return { isDir: true, key: '/' };
 
@@ -136,5 +142,3 @@ class VaultFs implements RootLocalFs {
 		return result;
 	}
 }
-
-export default VaultFs satisfies RootLocalFsCtor<Vault>;

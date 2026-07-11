@@ -1,3 +1,4 @@
+import pipe from '@/utils/pipe';
 import type { ConflictResolverPayload } from '../tasks/interface';
 
 export default async function keepLocalResolver({
@@ -5,8 +6,9 @@ export default async function keepLocalResolver({
 	localFs,
 	remoteFs,
 	record,
+	local,
 }: ConflictResolverPayload) {
-	const content = await localFs.read(key);
-	const uid = await remoteFs.write(key, content);
-	await record.set(key, { isDir: false, local: uid, remote: uid });
+	const uid = await pipe({ from: localFs, key, size: local.size, to: remoteFs });
+	if (!uid) return;
+	await record.set(key, { isDir: false, local: local.uid, remote: uid });
 }

@@ -1,5 +1,5 @@
-import type { Progress } from '@/types';
-import type { LocalFs, RemoteFs, WrappedLocalFs, WrappedRemoteFs } from '../interface';
+import type { Progress, Binary } from '@/types';
+import type { Fs, WrappedFs } from '../interface';
 
 type HangingOperation = {
 	size: number;
@@ -57,7 +57,7 @@ function releaseMemory(state: MemoryControlSharedState, size: number) {
 }
 
 async function readThroughMemory(
-	fs: RemoteFs | LocalFs,
+	fs: Fs,
 	state: MemoryControlSharedState,
 	key: string,
 	size?: number,
@@ -73,10 +73,10 @@ async function readThroughMemory(
 }
 
 async function writeThroughMemory(
-	fs: RemoteFs | LocalFs,
+	fs: Fs,
 	state: MemoryControlSharedState,
 	key: string,
-	value: ArrayBuffer,
+	value: Binary,
 ) {
 	try {
 		return await fs.write(key, value);
@@ -85,43 +85,47 @@ async function writeThroughMemory(
 	}
 }
 
-async function resolveReadSize(fs: RemoteFs | LocalFs, key: string, size?: number) {
+async function resolveReadSize(fs: Fs, key: string, size?: number) {
 	if (typeof size === 'number') return size;
 	const stat = await fs.stat(key);
 	if (stat.isDir) throw new Error('Cannot read a folder');
 	return stat.size;
 }
 
-class MemoryControlRemoteFs implements WrappedRemoteFs {
+class MemoryControlRemoteFs implements WrappedFs {
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		private readonly state: MemoryControlSharedState,
 	) {}
-
-	checkConnection() {
-		return this.original.checkConnection();
-	}
 
 	getUid() {
 		return this.original.getUid();
 	}
 
-	async read(key: string, size?: number) {
-		return await readThroughMemory(this.original, this.state, key, size);
+	read(key: string, size?: number) {
+		return readThroughMemory(this.original, this.state, key, size);
 	}
 
 	async readStream(key: string, size?: number) {
 		await reserveMemory(this.state, STREAM_RESERVATION_SIZE);
 		try {
-			return await this.original.readStream(key, size);
+			return this.original.readStream(key, size);
 		} catch (error) {
 			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
 			throw error;
 		}
 	}
 
-	async write(key: string, value: ArrayBuffer) {
-		return await writeThroughMemory(this.original, this.state, key, value);
+	write(key: string, value: Binary) {
+		return writeThroughMemory(this.original, this.state, key, value);
+	}
+
+	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+		try {
+			return await this.original.writeStream(key, value, size);
+		} finally {
+			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
+		}
 	}
 
 	delete(key: string) {
@@ -149,63 +153,9 @@ class MemoryControlRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-class MemoryControlVaultFs implements WrappedLocalFs {
-	constructor(
-		public readonly original: LocalFs,
-		private readonly state: MemoryControlSharedState,
-	) {}
-
-	getUid() {
-		return this.original.getUid();
-	}
-
-	async read(key: string, size?: number) {
-		return await readThroughMemory(this.original, this.state, key, size);
-	}
-
-	async write(key: string, value: ArrayBuffer) {
-		return await writeThroughMemory(this.original, this.state, key, value);
-	}
-
-	async writeStream(key: string, value: ReadableStream<ArrayBuffer>) {
-		try {
-			return await this.original.writeStream(key, value);
-		} finally {
-			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
-		}
-	}
-
-	delete(key: string) {
-		return this.original.delete(key);
-	}
-
-	move(oldKey: string, newKey: string) {
-		return this.original.move(oldKey, newKey);
-	}
-
-	mkdir(key: string) {
-		return this.original.mkdir(key);
-	}
-
-	stat(key: string) {
-		return this.original.stat(key);
-	}
-
-	list(key: string) {
-		return this.original.list(key);
-	}
-}
-
-export function remoteMemoryControlWrapper(
-	original: RemoteFs,
+export default function memoryControlWrapper(
+	original: Fs,
 	state: MemoryControlSharedState,
-): WrappedRemoteFs {
+): WrappedFs {
 	return new MemoryControlRemoteFs(original, state);
-}
-
-export function localMemoryControlWrapper(
-	original: LocalFs,
-	state: MemoryControlSharedState,
-): WrappedLocalFs {
-	return new MemoryControlVaultFs(original, state);
 }

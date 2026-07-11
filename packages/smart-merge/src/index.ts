@@ -2,9 +2,8 @@ import type {
 	ConflictResolverEntry,
 	DatabaseAsync,
 	ObsidianLanguageCode,
-	LocalFs,
-	RemoteFs,
-	RemoteFsWrapperEntry,
+	Fs,
+	FsWrapperEntry,
 	SelectFromContext,
 	SettingEntry,
 	StoreAsync,
@@ -30,9 +29,9 @@ export default class SmartMerge {
 			indexedDB: DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>;
 			translate: Translate<SmartMergeTranslations>;
 			saveSettings: () => Promise<void>;
-			getNamespace: (localFs?: LocalFs, remoteFs?: RemoteFs) => string;
+			getNamespace: (localFs?: Fs, remoteFs?: Fs) => string;
 			registerI18n: (locale: ObsidianLanguageCode, resource: TranslationResource) => void;
-			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => void;
+			registerRemoteFsWrapper: (entry: FsWrapperEntry) => () => void;
 			registerConflictResolver: (id: string, entry: ConflictResolverEntry) => () => void;
 			registerSetting: (entry: SettingEntry) => () => void;
 		}>,

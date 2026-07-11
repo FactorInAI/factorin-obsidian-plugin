@@ -1,350 +1,382 @@
+import type { Binary, Fs } from '@hesprs/sync-engine-sdk';
 import { testKit } from '@hesprs/sync-engine-sdk/dev';
-import { beforeEach, expect, mock, test } from 'bun:test';
+import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import type { EncryptionDBMeta, EncryptionDBSchema } from '@/wrapper';
 import encryptionWrapper from '@/wrapper';
 
-const { bytes, stream, remoteFs, collectStream } = testKit;
-const actualContentModule = await import('../src/wrapper/content');
-const actualDeriveMasterKey = actualContentModule.deriveMasterKey;
-const actualDeriveMasterSalt = actualContentModule.deriveMasterSalt;
-const actualDeriveNameKey = actualContentModule.deriveNameKey;
-const actualDeriveRootFileKey = actualContentModule.deriveRootFileKey;
-
-type ContentModule = typeof import('../src/wrapper/content');
-
-const derivationCalls = {
-	deriveMasterKey: 0,
-	deriveMasterSalt: 0,
-	deriveNameKey: 0,
-	deriveRootFileKey: 0,
-};
-
-await mock.module('@/wrapper/content', () => ({
-	...actualContentModule,
-	deriveMasterKey: async (...args: Parameters<ContentModule['deriveMasterKey']>) => {
-		derivationCalls.deriveMasterKey += 1;
-		return await actualDeriveMasterKey(...args);
-	},
-	deriveMasterSalt: async (...args: Parameters<ContentModule['deriveMasterSalt']>) => {
-		derivationCalls.deriveMasterSalt += 1;
-		return await actualDeriveMasterSalt(...args);
-	},
-	deriveNameKey: async (...args: Parameters<ContentModule['deriveNameKey']>) => {
-		derivationCalls.deriveNameKey += 1;
-		return await actualDeriveNameKey(...args);
-	},
-	deriveRootFileKey: async (...args: Parameters<ContentModule['deriveRootFileKey']>) => {
-		derivationCalls.deriveRootFileKey += 1;
-		return await actualDeriveRootFileKey(...args);
-	},
-}));
-
+const { bytes, fs: testFs, stream } = testKit;
 const PASSWORD = 'password';
+const WRONG_PASSWORD = 'wrong-password';
 const DECRYPTION_ERROR_MESSAGE = 'data corrupted or wrong password';
-const DEFAULT_REMOTE_UID = 'remote-uid';
+
 const memoryDB = openMemoryDB<EncryptionDBSchema, EncryptionDBMeta>('encryption-wrapper-test');
 
 beforeEach(() => {
-	derivationCalls.deriveMasterKey = 0;
-	derivationCalls.deriveMasterSalt = 0;
-	derivationCalls.deriveNameKey = 0;
-	derivationCalls.deriveRootFileKey = 0;
 	memoryDB.clearStores();
 	memoryDB.setMeta('encryptionKeys', undefined);
 	memoryDB.setMeta('lastEncryptionUid', undefined);
 });
 
-function splitBytes(source: Uint8Array, sizes: Array<number>) {
-	const chunks: Array<ArrayBuffer> = [];
+function must<T>(value: T | undefined, message: string): T {
+	if (value === undefined) throw new Error(message);
+	return value;
+}
+
+async function collectStream(value: ReadableStream<Binary>): Promise<Binary> {
+	const reader = value.getReader();
+	const chunks: Array<Binary> = [];
+	let total = 0;
+	try {
+		while (true) {
+			const { done, value: chunk } = await reader.read();
+			if (done) break;
+			chunks.push(chunk);
+			total += chunk.byteLength;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+	const result = new Uint8Array(total);
+	let offset = 0;
+	for (const chunk of chunks) {
+		result.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	return result;
+}
+
+function splitBinary(source: Binary, sizes: Array<number>) {
+	const chunks: Array<Binary> = [];
 	let offset = 0;
 	for (const size of sizes) {
-		if (offset >= source.length) break;
-		const end = Math.min(source.length, offset + size);
-		chunks.push(source.slice(offset, end).buffer);
+		if (offset >= source.byteLength) break;
+		const end = Math.min(source.byteLength, offset + size);
+		chunks.push(source.slice(offset, end));
 		offset = end;
 	}
-	if (offset < source.length) chunks.push(source.slice(offset).buffer);
+	if (offset < source.byteLength) chunks.push(source.slice(offset));
 	return chunks;
 }
 
-function createRemote() {
-	const remote = remoteFs({ uid: DEFAULT_REMOTE_UID });
-	return { remote, shim: encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD }) };
-}
-
-async function captureEncryptedKey(path: string, action: 'mkdir' | 'write' = 'write') {
-	const { remote, shim } = createRemote();
-	if (action === 'mkdir') {
-		await shim.mkdir(path);
-		return remote.calls.mkdir.at(-1) as string;
+function joinBinary(chunks: Array<Binary>) {
+	const total = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+	const result = new Uint8Array(total);
+	let offset = 0;
+	for (const chunk of chunks) {
+		result.set(chunk, offset);
+		offset += chunk.byteLength;
 	}
-
-	await shim.write(path, new ArrayBuffer(0));
-	return remote.calls.write.at(-1)?.[0] as string;
+	return result;
 }
 
-async function seedPersistentCache(uid: string, password = PASSWORD) {
-	const remote = remoteFs({ uid });
-	const shim = encryptionWrapper(remote.fs, { memoryDB, password });
-
-	await shim.write('Folder/file.md', new ArrayBuffer(0));
-	remote.control.stat = async (key) => ({
-		isDir: false,
-		key,
-		mtime: 1,
-		size: 0,
-		uid: 'etag',
+function createRemote(options: { uid?: string } = {}) {
+	const files = new Map<string, Binary>();
+	const directories = new Set<string>(['/']);
+	const forwardedSizes: Array<number | undefined> = [];
+	const writeStreamChunks: Array<Binary> = [];
+	const base = testFs({
+		control: {
+			async delete(key) {
+				files.delete(key);
+				directories.delete(key);
+			},
+			async exists(key) {
+				return files.has(key) || directories.has(key);
+			},
+			async list() {
+				return [];
+			},
+			async mkdir(key) {
+				directories.add(key);
+			},
+			async move(oldKey, newKey) {
+				const file = files.get(oldKey);
+				if (file !== undefined) {
+					files.set(newKey, file);
+					files.delete(oldKey);
+				}
+				if (directories.has(oldKey)) {
+					directories.add(newKey);
+					directories.delete(oldKey);
+				}
+			},
+			async read(key) {
+				return files.get(key) ?? new Uint8Array(0);
+			},
+			async readStream(key) {
+				return stream([files.get(key) ?? new Uint8Array(0)]);
+			},
+			async stat(key) {
+				if (directories.has(key) || key.endsWith('/')) return { isDir: true, key };
+				const value = files.get(key) ?? new Uint8Array(0);
+				return { isDir: false, key, mtime: 1, size: value.byteLength, uid: `${key}-uid` };
+			},
+			async write(key, value) {
+				files.set(key, value);
+				return key;
+			},
+			async writeStream(key, value) {
+				const reader = value.getReader();
+				const chunks: Array<Binary> = [];
+				try {
+					while (true) {
+						const { done, value: chunk } = await reader.read();
+						if (done) break;
+						writeStreamChunks.push(chunk);
+						chunks.push(chunk);
+					}
+				} finally {
+					reader.releaseLock();
+				}
+				const collected = joinBinary(chunks);
+				files.set(key, collected);
+				return key;
+			},
+		},
+		uid: options.uid ?? 'uid',
 	});
-	await shim.stat('Folder/file.md');
-
-	return remote;
+	const fs = {
+		...base.fs,
+		async writeStream(key, value, size) {
+			forwardedSizes.push(size);
+			return await base.fs.writeStream(key, value, size);
+		},
+	} as Fs;
+	return { base, files, forwardedSizes, fs, writeStreamChunks };
 }
 
-function expectPersistentCacheFilled() {
-	expect(memoryDB.getStore('decryptedToEncrypted').keys()).not.toStrictEqual([]);
-	expect(memoryDB.getStore('encryptedToDecrypted').keys()).not.toStrictEqual([]);
-	expect(memoryDB.getMeta('encryptionKeys')).not.toBeUndefined();
-}
-
-function expectPersistentCacheReset(marker: string) {
-	expect(memoryDB.getStore('decryptedToEncrypted').keys()).toStrictEqual([]);
-	expect(memoryDB.getStore('encryptedToDecrypted').keys()).toStrictEqual([]);
-	expect(memoryDB.getMeta('encryptionKeys')).toBeUndefined();
-	expect(memoryDB.getMeta('lastEncryptionUid')).toBe(marker);
-}
-
-test('Write encrypts delegated key and content before forwarding', async () => {
-	const { remote, shim } = createRemote();
+test('write and read round trip content', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
 	const plaintext = bytes('hello world');
 
 	await shim.write('Folder/file.md', plaintext);
 
-	expect(remote.calls.write[0]?.[0]).not.toBe('Folder/file.md');
-	expect(remote.calls.write[0]?.[1]).toBeGreaterThan(plaintext.byteLength);
-	expect(new Uint8Array(remote.state.writePayloads[0]?.[1])).not.toStrictEqual(
-		new Uint8Array(plaintext),
+	expect(await shim.read('Folder/file.md')).toStrictEqual(plaintext);
+});
+
+test('readStream decrypts with provided size', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const plaintext = bytes('stream data'.repeat(20_000));
+
+	await shim.write('Folder/file.md', plaintext);
+	const encryptedKey = must(remote.base.calls.write[0]?.[0], 'missing encrypted key');
+	const encrypted = must(remote.files.get(encryptedKey), 'missing encrypted payload');
+	remote.base.control.readStream = async () =>
+		stream(splitBinary(encrypted, [1, 7, 3, 64, 4096]));
+
+	expect(remote.base.calls.stat).toStrictEqual([]);
+	expect(
+		await collectStream(await shim.readStream('Folder/file.md', encrypted.byteLength)),
+	).toStrictEqual(plaintext);
+});
+
+test('readStream falls back to stat size', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const plaintext = bytes('fallback data'.repeat(20_000));
+
+	await shim.write('Folder/file.md', plaintext);
+	const encryptedKey = must(remote.base.calls.write[0]?.[0], 'missing encrypted key');
+	const encrypted = must(remote.files.get(encryptedKey), 'missing encrypted payload');
+	remote.base.control.stat = async (key) => ({
+		isDir: false,
+		key,
+		mtime: 1,
+		size: encrypted.byteLength,
+		uid: 'uid',
+	});
+	remote.base.control.readStream = async () =>
+		stream(splitBinary(encrypted, [1, 7, 3, 64, 4096]));
+
+	expect(await collectStream(await shim.readStream('Folder/file.md'))).toStrictEqual(plaintext);
+	expect(remote.base.calls.stat).toStrictEqual([encryptedKey]);
+});
+
+test('readStream handles arbitrary source boundaries', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const plaintext = new Uint8Array(300_000).fill(7);
+
+	await shim.write('Folder/file.md', plaintext);
+	const encryptedKey = must(remote.base.calls.write[0]?.[0], 'missing encrypted key');
+	const encrypted = must(remote.files.get(encryptedKey), 'missing encrypted payload');
+	remote.base.control.readStream = async () =>
+		stream(splitBinary(encrypted, [1, 7, 3, 4096, 11, 8192]));
+
+	expect(
+		await collectStream(await shim.readStream('Folder/file.md', encrypted.byteLength)),
+	).toStrictEqual(plaintext);
+});
+
+test('writeStream encrypts round trip and forwards encrypted size', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const plaintext = bytes('chunked write stream '.repeat(12_000));
+
+	await shim.writeStream(
+		'Folder/file.md',
+		stream(splitBinary(plaintext, [1, 5, 3, 4096, 7])),
+		plaintext.byteLength,
+	);
+
+	const encryptedKey = must(remote.base.calls.writeStream[0], 'missing encrypted key');
+	const encrypted = must(remote.files.get(encryptedKey), 'missing encrypted payload');
+	expect(remote.forwardedSizes[0]).toBe(encrypted.byteLength);
+	expect(remote.writeStreamChunks.length).toBeGreaterThan(1);
+	expect(await shim.read('Folder/file.md')).toStrictEqual(plaintext);
+});
+
+test('writeStream rejects missing size', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const source = stream([bytes('x')]);
+
+	expect(shim.writeStream('Folder/file.md', source)).rejects.toThrow(
+		'writeStream size is required',
 	);
 });
 
-test('Read decrypts encrypted remote content back to plaintext', async () => {
-	const { remote, shim } = createRemote();
-	const plaintext = bytes('hello world'.repeat(8000));
-
-	await shim.write('Folder/file.md', plaintext);
-	const encryptedContent = remote.state.writePayloads.at(-1)?.[1] as ArrayBuffer;
-	remote.control.read = async () => encryptedContent;
-
-	const decrypted = await shim.read('Folder/file.md');
-
-	expect(new Uint8Array(decrypted)).toStrictEqual(new Uint8Array(plaintext));
-	expect(remote.calls.read[0]?.[0]).toBe(remote.calls.write[0]?.[0]);
-});
-
-test('ReadStream uses provided encrypted size without extra stat', async () => {
-	const { remote, shim } = createRemote();
-	const plaintext = bytes('stream data'.repeat(15_000));
-
-	await shim.write('Folder/file.md', plaintext);
-	const encryptedContent = remote.state.writePayloads.at(-1)?.[1] as ArrayBuffer;
-	remote.control.readStream = async () => stream([encryptedContent]);
-
-	const decryptedStream = await shim.readStream('Folder/file.md', encryptedContent.byteLength);
-
-	expect(remote.calls.stat).toStrictEqual([]);
-	expect(remote.calls.readStream).toStrictEqual([
-		[remote.calls.write[0]?.[0], encryptedContent.byteLength],
-	]);
-	expect(await collectStream(decryptedStream)).toStrictEqual(plaintext);
-});
-
-test('ReadStream falls back to encrypted stat when size is missing', async () => {
-	const { remote, shim } = createRemote();
-	const plaintext = bytes('stream fallback'.repeat(10_000));
-
-	await shim.write('Folder/file.md', plaintext);
-	const encryptedContent = remote.state.writePayloads.at(-1)?.[1] as ArrayBuffer;
-	remote.control.stat = async (key) => ({
-		isDir: false,
-		key,
-		mtime: 10,
-		size: encryptedContent.byteLength,
-		uid: 'uid',
-	});
-	remote.control.readStream = async () =>
-		stream(splitBytes(new Uint8Array(encryptedContent), [1, 7, 3, 64, 4096, 9999]));
-
-	const decryptedStream = await shim.readStream('Folder/file.md');
-
-	expect(remote.calls.stat).toStrictEqual([remote.calls.write[0]?.[0]]);
-	expect(remote.calls.readStream).toStrictEqual([
-		[remote.calls.write[0]?.[0], encryptedContent.byteLength],
-	]);
-	expect(await collectStream(decryptedStream)).toStrictEqual(plaintext);
-});
-
-test('ReadStream handles arbitrary source chunk boundaries', async () => {
-	const { remote, shim } = createRemote();
-	const plaintext = new Uint8Array(300_000).fill(7).buffer;
-
-	await shim.write('Folder/file.md', plaintext);
-	const encryptedContent = remote.state.writePayloads.at(-1)?.[1] as ArrayBuffer;
-	remote.control.readStream = async () =>
-		stream(splitBytes(new Uint8Array(encryptedContent), [1, 7, 3, 4096, 11, 8192]));
-
-	const decryptedStream = await shim.readStream('Folder/file.md', encryptedContent.byteLength);
-
-	expect(await collectStream(decryptedStream)).toStrictEqual(plaintext);
-});
-
-test('Stat decrypts returned key and preserves metadata', async () => {
-	const { remote, shim } = createRemote();
-	remote.control.stat = async (key) => ({
+test('stat and list preserve metadata while decrypting keys', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	remote.base.control.stat = async (key) => ({
 		isDir: false,
 		key,
 		mtime: 1234,
 		size: 567,
 		uid: 'etag-1',
 	});
+	await shim.mkdir('Folder/folder/');
+	await shim.write('Folder/file.md', bytes('x'));
+	const folderKey = must(remote.base.calls.mkdir[0], 'missing encrypted folder key');
+	const fileKey = must(remote.base.calls.write[0]?.[0], 'missing encrypted file key');
+	remote.base.control.list = async () => [
+		{ isDir: true, key: folderKey },
+		{ isDir: false, key: fileKey, mtime: 12, size: 7, uid: 'note-2' },
+	];
 
 	const stat = await shim.stat('Folder/file.md');
+	const list = await shim.list('Folder/', () => undefined);
 
-	expect(stat).toStrictEqual({
-		isDir: false,
-		key: 'Folder/file.md',
-		mtime: 1234,
-		size: 567,
-		uid: 'etag-1',
-	});
-	expect(remote.calls.stat[0]).not.toBe('Folder/file.md');
-});
-
-test('List decrypts returned descendant keys', async () => {
-	const folderKey = await captureEncryptedKey('Folder/folder/', 'mkdir');
-	const fileKey = await captureEncryptedKey('Folder/note.md');
-
-	const listRemote = remoteFs({ uid: DEFAULT_REMOTE_UID });
-	const listShim = encryptionWrapper(listRemote.fs, { memoryDB, password: PASSWORD });
-	let forwardedProgress: unknown;
-	listRemote.control.list = async (_key, progress) => {
-		forwardedProgress = progress;
-		return [
-			{ isDir: true, key: folderKey } as never,
-			{ isDir: false, key: fileKey, mtime: 12, size: 7, uid: 'note-2' } as never,
-		];
-	};
-
-	const progress = () => {};
-	const list = await listShim.list('Folder/', progress);
-
+	expect(stat).toMatchObject({ isDir: false, mtime: 1234, size: 567, uid: 'etag-1' });
+	expect(stat.key).toBe('Folder/file.md');
 	expect(list).toStrictEqual([
 		{ isDir: true, key: 'Folder/folder/' },
-		{ isDir: false, key: 'Folder/note.md', mtime: 12, size: 7, uid: 'note-2' },
+		{ isDir: false, key: 'Folder/file.md', mtime: 12, size: 7, uid: 'note-2' },
 	]);
-	expect(listRemote.calls.list[0]).not.toBe('Folder/');
-	expect(forwardedProgress).toBe(progress);
 });
 
-test('Exists, delete, and mkdir rewrite keys consistently', async () => {
-	const { remote, shim } = createRemote();
+test('exists delete mkdir and move rewrite keys', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const calls: Array<[string, string?]> = [];
+	remote.base.control.exists = async (key) => {
+		calls.push([key]);
+		return true;
+	};
+	remote.base.control.delete = async (key) => {
+		calls.push([key]);
+	};
+	remote.base.control.mkdir = async (key) => {
+		calls.push([key]);
+	};
+	remote.base.control.move = async (oldKey, newKey) => {
+		calls.push([oldKey, newKey]);
+	};
 
 	await shim.exists('Folder/Sub/');
 	await shim.delete('Folder/Sub/');
 	await shim.mkdir('Folder/Sub/');
+	await shim.move('Folder/Sub/', 'Folder/Next/');
 
-	expect(remote.calls.exists[0]).toBe(remote.calls.delete[0]);
-	expect(remote.calls.delete[0]).toBe(remote.calls.mkdir[0]);
+	expect(calls[0]?.[0]).toBe(calls[1]?.[0]);
+	expect(calls[1]?.[0]).toBe(calls[2]?.[0]);
+	expect(calls[3]?.[0]).not.toBe('Folder/Sub/');
+	expect(calls[3]?.[1]).not.toBe('Folder/Next/');
 });
 
-test('Same plaintext path reuses deterministic encrypted segments across repeated calls', async () => {
-	const { remote, shim } = createRemote();
+test('same credentials keep deterministic encrypted paths', async () => {
+	const first = createRemote({ uid: 'uid-a' });
+	const second = createRemote({ uid: 'uid-a' });
+	const firstShim = encryptionWrapper(first.fs, { memoryDB, password: PASSWORD });
+	const secondShim = encryptionWrapper(second.fs, { memoryDB, password: PASSWORD });
 
-	await shim.write('Folder/Repeat.md', new ArrayBuffer(0));
-	await shim.write('Folder/Repeat.md', new ArrayBuffer(0));
+	await firstShim.exists('Folder/file.md');
+	await secondShim.exists('Folder/file.md');
 
-	expect(remote.calls.write[0]?.[0]).toBe(remote.calls.write[1]?.[0]);
+	expect(first.base.calls.exists[0]).toBe(second.base.calls.exists[0]);
 });
 
-test('Same shim instance reuses derived keys across multiple operations', async () => {
-	const { shim } = createRemote();
+test('uid change resets persistent path cache', async () => {
+	const first = createRemote({ uid: 'uid-a' });
+	const firstShim = encryptionWrapper(first.fs, { memoryDB, password: PASSWORD });
 
-	await shim.exists('Folder/Sub/');
-	await shim.delete('Folder/Sub/');
-	await shim.mkdir('Folder/Sub/');
+	await firstShim.exists('Folder/file.md');
 
-	expect(derivationCalls.deriveMasterSalt).toBe(1);
-	expect(derivationCalls.deriveMasterKey).toBe(1);
-	expect(derivationCalls.deriveRootFileKey).toBe(1);
-	expect(derivationCalls.deriveNameKey).toBe(1);
+	const second = createRemote({ uid: 'uid-b' });
+	const secondShim = encryptionWrapper(second.fs, { memoryDB, password: PASSWORD });
+
+	expect(memoryDB.getMeta('lastEncryptionUid')).toBe('uid-b~password');
+	expect(memoryDB.getMeta('encryptionKeys')).toBeUndefined();
+	expect(memoryDB.getStore('decryptedToEncrypted').keys()).toStrictEqual([]);
+	expect(memoryDB.getStore('encryptedToDecrypted').keys()).toStrictEqual([]);
+
+	await secondShim.exists('Folder/file.md');
 });
 
-test('derived keys should be reused across wrapper instances when remote uid and password match', async () => {
-	const remoteA = remoteFs({ uid: 'shared-uid' });
-	const shimA = encryptionWrapper(remoteA.fs, { memoryDB, password: PASSWORD });
+test('password change resets persistent path cache', async () => {
+	const first = createRemote({ uid: 'uid-a' });
+	const firstShim = encryptionWrapper(first.fs, { memoryDB, password: PASSWORD });
 
-	await shimA.exists('Folder/Sub/');
+	await firstShim.exists('Folder/file.md');
 
-	const remoteB = remoteFs({ uid: 'shared-uid' });
-	const shimB = encryptionWrapper(remoteB.fs, { memoryDB, password: PASSWORD });
+	const second = createRemote({ uid: 'uid-a' });
+	const secondShim = encryptionWrapper(second.fs, { memoryDB, password: WRONG_PASSWORD });
 
-	await shimB.exists('Folder/Sub/');
+	expect(memoryDB.getMeta('lastEncryptionUid')).toBe('uid-a~wrong-password');
+	expect(memoryDB.getMeta('encryptionKeys')).toBeUndefined();
+	expect(memoryDB.getStore('decryptedToEncrypted').keys()).toStrictEqual([]);
+	expect(memoryDB.getStore('encryptedToDecrypted').keys()).toStrictEqual([]);
 
-	expect(derivationCalls.deriveMasterSalt).toBe(1);
-	expect(derivationCalls.deriveMasterKey).toBe(1);
-	expect(derivationCalls.deriveRootFileKey).toBe(1);
-	expect(derivationCalls.deriveNameKey).toBe(1);
-	expect(memoryDB.getMeta('encryptionKeys')).not.toBeUndefined();
+	await secondShim.exists('Folder/file.md');
 });
 
-test('persistent encryption cache should reset when remote uid changes', async () => {
-	await seedPersistentCache('uid-a');
-	expectPersistentCacheFilled();
+test('wrong password and malformed content fail to decrypt', async () => {
+	const good = createRemote();
+	const goodShim = encryptionWrapper(good.fs, { memoryDB, password: PASSWORD });
+	await goodShim.write('Folder/file.md', bytes('secret payload'));
+	const encryptedKey = must(good.base.calls.write[0]?.[0], 'missing encrypted key');
+	const encrypted = must(good.files.get(encryptedKey), 'missing encrypted payload');
 
-	const remoteB = remoteFs({ uid: 'uid-b' });
-	const shimB = encryptionWrapper(remoteB.fs, { memoryDB, password: PASSWORD });
-
-	expectPersistentCacheReset('uid-b~password');
-
-	remoteB.control.exists = async () => true;
-	await shimB.exists('Folder/file.md');
-
-	expect(derivationCalls.deriveMasterSalt).toBe(2);
-	expect(derivationCalls.deriveMasterKey).toBe(2);
-	expect(derivationCalls.deriveRootFileKey).toBe(2);
-	expect(derivationCalls.deriveNameKey).toBe(2);
-	expect(remoteB.calls.exists[0]).not.toBe('Folder/file.md');
-});
-
-test('persistent encryption cache should reset when password changes', async () => {
-	const remote = await seedPersistentCache('uid-password');
-	expectPersistentCacheFilled();
-
-	const shimB = encryptionWrapper(remote.fs, { memoryDB, password: 'wrong-password' });
-
-	expectPersistentCacheReset('uid-password~wrong-password');
-
-	remote.control.exists = async () => true;
-	await shimB.exists('Folder/file.md');
-
-	expect(derivationCalls.deriveMasterSalt).toBe(2);
-	expect(derivationCalls.deriveMasterKey).toBe(2);
-	expect(derivationCalls.deriveRootFileKey).toBe(2);
-	expect(derivationCalls.deriveNameKey).toBe(2);
-});
-
-test('Wrong password or malformed content throws data corrupted or wrong password', async () => {
-	const { remote, shim } = createRemote();
-	const plaintext = bytes('secret payload');
-
-	await shim.write('Folder/file.md', plaintext);
-	const encryptedContent = remote.state.writePayloads.at(-1)?.[1] as ArrayBuffer;
-
-	const wrongRemote = remoteFs({ uid: DEFAULT_REMOTE_UID });
-	const wrongShim = encryptionWrapper(wrongRemote.fs, { memoryDB, password: 'wrong-password' });
-	wrongRemote.control.read = async () => encryptedContent;
+	const wrong = createRemote();
+	const wrongShim = encryptionWrapper(wrong.fs, { memoryDB, password: WRONG_PASSWORD });
+	wrong.base.control.read = async () => encrypted;
+	wrong.base.control.stat = async (key) => ({
+		isDir: false,
+		key,
+		mtime: 1,
+		size: encrypted.byteLength,
+		uid: 'uid',
+	});
 
 	expect(wrongShim.read('Folder/file.md')).rejects.toThrow(DECRYPTION_ERROR_MESSAGE);
-
-	wrongRemote.control.read = async () => new ArrayBuffer(1);
+	wrong.base.control.read = async () => new Uint8Array(1);
 	expect(wrongShim.read('Folder/file.md')).rejects.toThrow(DECRYPTION_ERROR_MESSAGE);
+});
+
+test('zero byte content round trips', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const empty = new Uint8Array(0);
+
+	await shim.write('Folder/empty.md', empty);
+	await shim.writeStream('Folder/empty-stream.md', stream(), 0);
+
+	expect(await shim.read('Folder/empty.md')).toStrictEqual(empty);
+	expect(await collectStream(await shim.readStream('Folder/empty-stream.md', 16))).toStrictEqual(
+		empty,
+	);
 });

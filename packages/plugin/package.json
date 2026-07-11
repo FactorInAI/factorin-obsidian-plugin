@@ -20,8 +20,8 @@
 	"scripts": {
 		"dev": "MODE=dev BUILD=plugin tsdown && MODE=dev BUILD=sdk tsdown",
 		"build": "BUILD=plugin tsdown && BUILD=sdk tsdown",
-		"lint": "oxlint --fix --silent --type-aware && oxfmt",
-		"check": "tsc && oxlint --format agent --type-aware && oxfmt --check",
+		"lint": "oxlint --fix --type-aware && oxfmt",
+		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun --preload=./test/mocks test"
 	},
 	"dependencies": {

@@ -12,6 +12,8 @@ Different types of [wrappers](./file-system-wrappers.md) can be applied above th
 
 `read()`: wrap `vault.adapter.readBinary()`
 
+`readStream()`: wrap `fetch(vault.adapter.getResourcePath(path))`, return response body
+
 `write()`: wrap `vault.adapter.writeBinary()`, then immediately `this.stat()` and return `mtime`.
 
 `writeStream()`:
@@ -34,21 +36,23 @@ Different types of [wrappers](./file-system-wrappers.md) can be applied above th
 
 `list()`: concurrent DFS `vault.adapter.stat()` + convert to `Stat` array
 
+`exists()`: wrap `vault.adapter.exists()`
+
 ## WebDAV Abstraction
 
-The WebDAV abstraction should not use any external libraries. Only use Obsidian `requestUrl`-like API with custom request handling.
+The WebDAV abstraction should not use any external libraries. Only use Obsidian `Request` with custom request handling.
 
-`constructor()`: receives an options object including `requestUrl()` injection (default to the Obsidian export), user username, WebDAV endpoint, password, and `useInfinity` boolean option.
+`constructor()`: receives an options object including `request` injection, user username, WebDAV endpoint, password, and `useInfinity`, `chunkedUpload` boolean option, both default to false.
 
 `getUid()`: user server endpoint + `~` + user account name
-
-`checkConnection()`: most simple method to test whether a WebDAV endpoint, account name, credential are correct.
 
 `read()`: `GET` request to constructed URL
 
 `readStream()`: `GET` with byte range header, each request fixed at 2MiB, multiplex max 8 concurrent requests during streaming. When multiplexed response arrives, sort and feed to stream. When back pressure detected, stop making new requests.
 
 `write()`: `PUT` request to constructed URL. Try to find `Etag` in the response header. If found, return it. If not found, `this.stat()` immediately to the file just uploaded and return `uid`.
+
+`writeStream()`: most WebDAV backends don't support chunked upload, if `chunkedUpload` is false, collect the entire stream, assemble in memory, and `write()` directly. If true, use Nextcloud-style chunked upload: create a temp random string folder, upload number-labeled chunks to that folder, 5MiB each chunk, maximum 3 concurrent chunk uploading, when finished, `MOVE` that folder to destination, and extract `Etag` from move response as return.
 
 `delete()`: `DELETE` request to the constructed URL. Swallow `404` errors where the file has already been deleted.
 
@@ -83,10 +87,5 @@ File: `https://.../file.md`, `https://.../folder/file.md`
 Folder: `https://.../folder/`, `https://.../folder/folder/`
 
 **Error handling**: Except 404 errors explicitly documented above to swallow, other request errors should be thrown fast. No retry needed (which should be handled by the retry wrapper).
-
-**Local remote disparity**: The local vault has an intentionally different interface with remote. This is for specific reasons:
-
-- We don't need so many wrappers around vault FS.
-- Obsidian doesn't support read stream. And thus, we don't need write stream in remote FS.
 
 **Behavioral purity**: Raw FS classes should not carry any additional functions, such as base dir config or retry, they should all be achieved via wrappers.

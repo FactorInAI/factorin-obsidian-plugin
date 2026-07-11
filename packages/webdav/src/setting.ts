@@ -19,6 +19,8 @@ export type WebdavTranslations = {
 	baseDirectoryPlaceholder: string;
 	depthInfinity: string;
 	depthInfinityDescription: string;
+	chunkedUpload: string;
+	chunkedUploadDescription: string;
 };
 
 export default function webdavSetting(
@@ -106,6 +108,16 @@ export default function webdavSetting(
 		.addToggle((toggle) => {
 			toggle.setValue(settings.depthInfinity).onChange((value) => {
 				settings.depthInfinity = value;
+				void saveSettings();
+			});
+		});
+
+	new Setting(el)
+		.setName(translate('chunkedUpload'))
+		.setDesc(translate('chunkedUploadDescription'))
+		.addToggle((toggle) => {
+			toggle.setValue(settings.chunkedUpload).onChange((value) => {
+				settings.chunkedUpload = value;
 				void saveSettings();
 			});
 		});

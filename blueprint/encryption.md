@@ -52,7 +52,7 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 - _chunk nonce_: 12B, chunk index represented in 12B.
 - _encrypted file / folder name_: `Base64URL` of `AES-GCM-SIV` encrypted file name
 - _encrypted file / folder path_: _encrypted file / folder name_ of all ancestor hierarchies joined by `/`.
-- _file chunk_: 131,088B, 128KiB-chunked and `AES-GCM-256` encrypted piece of file (end chunk is smaller)
+- _file chunk_: 131,088B, 128KiB-chunked and `AES-GCM-256` encrypted piece of file (end chunk can be smaller)
 - _encrypted file content_: _file salt_ || all chunks sequentially
 
 ## Enabling and Disabling
@@ -91,7 +91,7 @@ Then come to the traversal and syncing logic:
 
 ## File Encryption
 
-- Input raw file, raw file size, and relative file path (uniformly `localPath` in this plugin)
+- Input raw file, raw file size, and file path
 - Generate random 16B _file salt_ via `CSPRNG`
 - Calculate encrypted file size as `raw size + 16B + ceil(raw size / 128KiB) * 16B`
 - Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 12B || UTF-8 file path
@@ -127,6 +127,18 @@ Streamed decryption receives a `ReadableStream`, generates another `ReadableStre
   - concatenate content, and pipe to new stream.
   - when next binary stream chunk arrives, it concatenates the content in the buffer with the first certain size of bytes in the new binary as the first _completed chunk_.
   - repeat until the original stream finishes, the class treats the rest content in its buffer as a _completed chunk_, decrypt directly, pipe to the new stream, then end it.
+
+## Streamed Encryption
+
+Streamed encryption follows symmetrical path with streamed decryption.
+
+- Input the unencrypted file path, unencrypted size in bytes, and a `ReadableStream` of file content.
+- Calculate the encrypted size as `raw size + 16B + ceil(raw size / 128KiB) * 16B`
+- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 12B || UTF-8 file path
+- Calculate _file key_ using `HKDF-SHA-256` of _root file key_ (salt: _file key salt_, info: `file-key-v1` constant string).
+- Creates a `TransformStream` above the original stream.
+- Constantly reads the stream, encrypts and maintains a buffer of raw bytes: if the buffer < 128KiB after reserving a stream chunk, continue reading; if larger than 128KiB, encrypt the max number of 128KiB chunks in the buffer and emit. When stream ends, encrypt and emit the rest in the buffer.
+- The first emitted should have _file salt_ prepended.
 
 ## File / Folder Name Decryption
 

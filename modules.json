@@ -1,13 +1,13 @@
 [
 	{
 		"name": "WebDAV",
-		"version": "0.0.3",
+		"version": "0.1.0",
 		"description": "[Official] WebDAV backend support.",
 		"main": "https://sync.consensia.cc/modules/WebDAV.js"
 	},
 	{
 		"name": "Encryption",
-		"version": "0.0.2",
+		"version": "0.0.3",
 		"description": "[Official] Client-side encrypt vault files before uploading to backend.",
 		"main": "https://sync.consensia.cc/modules/Encryption.js"
 	},
@@ -19,7 +19,7 @@
 	},
 	{
 		"name": "Smart Merge",
-		"version": "0.0.1",
+		"version": "0.0.2",
 		"description": "[Official] Smart merge conflict resolution strategy that applies recursive three-way merge.",
 		"main": "https://sync.consensia.cc/modules/Smart Merge.js"
 	}

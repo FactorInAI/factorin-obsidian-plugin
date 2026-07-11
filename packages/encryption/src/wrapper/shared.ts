@@ -1,7 +1,8 @@
-import { textToArrayBuffer } from '@repo/shared/binary';
+import type { Binary } from '@hesprs/sync-engine-sdk';
+import { concatBinary, textToUint8Array, toUint8Array } from '@repo/shared/binary';
 import { sha256Digest } from '@repo/shared/crypto';
 
-const EMPTY_SALT = new ArrayBuffer(0);
+const EMPTY_SALT: Binary = new Uint8Array(0);
 
 const DECRYPTION_ERROR_MESSAGE = 'data corrupted or wrong password';
 export const MASTER_KEY_LENGTH = 32;
@@ -12,56 +13,66 @@ export const CONTENT_CHUNK_SIZE = 128 * 1024;
 const ENCRYPTED_CONTENT_CHUNK_SIZE = CONTENT_CHUNK_SIZE + AES_GCM_TAG_LENGTH;
 const FILE_KEY_INFO = 'file-key-v1';
 
+export function getEncryptedFileSize(rawFileSize: number): number {
+	if (rawFileSize < 0) throw new Error('Raw file size must be non-negative');
+	if (rawFileSize === 0) return FILE_SALT_LENGTH;
+	return (
+		rawFileSize +
+		FILE_SALT_LENGTH +
+		Math.ceil(rawFileSize / CONTENT_CHUNK_SIZE) * AES_GCM_TAG_LENGTH
+	);
+}
+
 export async function deriveFileKey(
-	rootFileKey: ArrayBuffer,
-	fileSalt: ArrayBuffer,
+	rootFileKey: BufferSource,
+	fileSalt: BufferSource,
 	encryptedFileSize: number,
 	virtualPath: string,
-): Promise<ArrayBuffer> {
+): Promise<Binary> {
 	const fileKeySalt = await sha256Digest(
-		concatArrayBuffer(
-			fileSalt,
-			encodeUInt96(encryptedFileSize),
-			textToArrayBuffer(virtualPath),
-		),
+		concatBinary(fileSalt, encodeUInt96(encryptedFileSize), textToUint8Array(virtualPath)),
 	);
 	return deriveHkdfKey(rootFileKey, FILE_KEY_INFO, fileKeySalt);
 }
 
 export async function deriveHkdfKey(
-	masterKey: ArrayBuffer,
+	masterKey: BufferSource,
 	info: string,
-	salt: ArrayBuffer = EMPTY_SALT,
-): Promise<ArrayBuffer> {
+	salt: BufferSource = EMPTY_SALT,
+): Promise<Binary> {
 	const keyMaterial = await crypto.subtle.importKey('raw', masterKey, 'HKDF', false, [
 		'deriveBits',
 	]);
-	return await crypto.subtle.deriveBits(
-		{
-			hash: 'SHA-256',
-			info: textToArrayBuffer(info),
-			name: 'HKDF',
-			salt,
-		},
-		keyMaterial,
-		MASTER_KEY_LENGTH * 8,
+	return toUint8Array(
+		await crypto.subtle.deriveBits(
+			{
+				hash: 'SHA-256',
+				info: textToUint8Array(info),
+				name: 'HKDF',
+				salt,
+			},
+			keyMaterial,
+			MASTER_KEY_LENGTH * 8,
+		),
 	);
 }
 
-export async function importAesGcmKey(key: ArrayBuffer): Promise<CryptoKey> {
+export async function importAesGcmKey(key: BufferSource): Promise<CryptoKey> {
 	return await crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt', 'decrypt']);
 }
 
 export async function decryptContentChunk(
 	key: CryptoKey,
-	encryptedChunk: ArrayBuffer,
+	encryptedChunk: BufferSource,
 	chunkIndex: number,
-): Promise<ArrayBuffer> {
+): Promise<Binary> {
 	try {
-		return await crypto.subtle.decrypt(
-			{ iv: encodeUInt96(chunkIndex), name: 'AES-GCM' },
-			key,
-			encryptedChunk,
+		return toUint8Array(
+			await crypto.subtle.decrypt(
+				{ iv: encodeUInt96(chunkIndex), name: 'AES-GCM' },
+				key,
+				encryptedChunk,
+			),
 		);
 	} catch {
 		throw new Error(DECRYPTION_ERROR_MESSAGE);
@@ -84,7 +95,7 @@ export function getEncryptedChunkSize(chunkIndex: number, encryptedFileSize: num
 	return encryptedPayloadSize - ENCRYPTED_CONTENT_CHUNK_SIZE * (chunkCount - 1);
 }
 
-export function encodeUInt96(value: number): ArrayBuffer {
+export function encodeUInt96(value: number): Binary {
 	if (!Number.isSafeInteger(value) || value < 0)
 		throw new Error('Value must be a non-negative safe integer');
 	let remainder = value;
@@ -93,23 +104,5 @@ export function encodeUInt96(value: number): ArrayBuffer {
 		result[index] = remainder & 0xff;
 		remainder = Math.floor(remainder / 256);
 	}
-	return result.buffer;
-}
-
-export function concatArrayBuffer(...arrays: Array<ArrayBuffer>): ArrayBuffer {
-	const totalLength = arrays.reduce((sum, array) => sum + array.byteLength, 0);
-	const buffer = new ArrayBuffer(totalLength);
-	const result = new Uint8Array(buffer);
-	let offset = 0;
-	for (const array of arrays) {
-		result.set(new Uint8Array(array), offset);
-		offset += array.byteLength;
-	}
-	return buffer;
-}
-
-export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-	const result = new ArrayBuffer(bytes.byteLength);
-	new Uint8Array(result).set(bytes);
 	return result;
 }

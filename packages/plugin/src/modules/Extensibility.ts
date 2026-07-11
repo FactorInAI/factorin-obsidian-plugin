@@ -252,6 +252,7 @@ export default class Extensibility {
 	};
 
 	private readonly updateModules = async () => {
+		if (!this.discoveredModules.size) return;
 		const { execute, factory, operations } = this.createOperationFactory();
 		const { isIdle } = this.ctx;
 		(await this.fetchSources()).forEach(({ name, version, main }) => {

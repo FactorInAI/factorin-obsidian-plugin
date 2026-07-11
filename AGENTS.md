@@ -35,3 +35,5 @@ Study the structure of other modules when working on modules.
 - Use inline Tailwind CSS for common styling, only use semantic CSS for animations and complex compositions.
 - When any function or class needs to use `Context` as argument, prefer plain object structural typing instead of direct `Context` type.
 - Excluding main plugin, shared utils and documentation site, all packages are Sync Engine modules, they use the SDK and follow unified module structure.
+- `null` forbidden, use `undefined` consistently.
+- lint warnings must be cleared.

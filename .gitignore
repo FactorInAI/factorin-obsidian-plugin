@@ -1,5 +1,6 @@
 plans
 .ignore
+.vscode
 **/dist
 **/dist-sdk
 **/.turbo

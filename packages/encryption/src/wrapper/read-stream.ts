@@ -1,7 +1,8 @@
+import type { Binary } from '@hesprs/sync-engine-sdk';
+import { concatBinary } from '@repo/shared/binary';
 import { DECRYPTION_ERROR_MESSAGE } from './content';
 import {
 	FILE_SALT_LENGTH,
-	concatArrayBuffer,
 	decryptContentChunk,
 	deriveFileKey,
 	getEncryptedChunkCount,
@@ -10,23 +11,23 @@ import {
 } from './shared';
 
 export default function createDecryptedReadableStream(
-	source: ReadableStream<ArrayBuffer>,
-	rootFileKey: ArrayBuffer,
+	source: ReadableStream<Binary>,
+	rootFileKey: Binary,
 	key: string,
 	encryptedFileSize: number,
-): ReadableStream<ArrayBuffer> {
-	let pending = new ArrayBuffer(0);
+): ReadableStream<Binary> {
+	let pending = new Uint8Array(0);
 	let fileKeyPromise: Promise<CryptoKey> | undefined;
 	let chunkIndex = 0;
 
 	if (encryptedFileSize < FILE_SALT_LENGTH) throw new Error(DECRYPTION_ERROR_MESSAGE);
 
 	const processPending = async (
-		chunk: ArrayBuffer,
+		chunk: Binary,
 		isFinal: boolean,
-		controller: TransformStreamDefaultController<ArrayBuffer>,
+		controller: TransformStreamDefaultController<Binary>,
 	): Promise<void> => {
-		pending = concatArrayBuffer(pending, chunk);
+		pending = concatBinary(pending, chunk);
 
 		const totalChunkCount = getEncryptedChunkCount(encryptedFileSize);
 
@@ -60,9 +61,9 @@ export default function createDecryptedReadableStream(
 	};
 
 	return source.pipeThrough(
-		new TransformStream<ArrayBuffer, ArrayBuffer>({
+		new TransformStream<Binary, Binary>({
 			async flush(controller) {
-				await processPending(new ArrayBuffer(0), true, controller);
+				await processPending(new Uint8Array(0), true, controller);
 			},
 			async transform(chunk, controller) {
 				await processPending(chunk, false, controller);

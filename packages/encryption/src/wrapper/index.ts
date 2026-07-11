@@ -1,12 +1,4 @@
-import type {
-	DatabaseSync,
-	RemoteFs,
-	WrappedRemoteFs,
-	RemoteFsWrapper,
-	MaybePromise,
-	Progress,
-	Stat,
-} from '@hesprs/sync-engine-sdk';
+import type { DatabaseSync, Fs, WrappedFs, Progress, Stat, Binary } from '@hesprs/sync-engine-sdk';
 import type { EncryptionStores } from './path';
 import {
 	decryptFileContent,
@@ -18,10 +10,12 @@ import {
 } from './content';
 import { decryptPathSegments, encryptPathSegments } from './path';
 import createDecryptedReadableStream from './read-stream';
+import { getEncryptedFileSize } from './shared';
+import createEncryptedReadableStream from './write-stream';
 
 export type DerivedKeys = {
-	nameKey: ArrayBuffer;
-	rootFileKey: ArrayBuffer;
+	nameKey: Binary;
+	rootFileKey: Binary;
 };
 
 export type EncryptionDBSchema = {
@@ -41,12 +35,12 @@ export type EncryptionWrapperOptions = {
 	password: string;
 };
 
-class EncryptionRemoteFs implements WrappedRemoteFs {
+class EncryptionFs implements WrappedFs {
 	private readonly pathStores: EncryptionStores;
 	private keysPromise: Promise<DerivedKeys> | undefined;
 
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		private readonly options: EncryptionWrapperOptions,
 	) {
 		const { password, memoryDB } = options;
@@ -63,22 +57,18 @@ class EncryptionRemoteFs implements WrappedRemoteFs {
 		}
 	}
 
-	checkConnection(): MaybePromise<{ success: true } | { success: false; reason: string }> {
-		return this.original.checkConnection();
-	}
-
 	getUid(): string {
 		return this.original.getUid();
 	}
 
-	async read(key: string, size?: number) {
+	async read(key: string, size?: number): Promise<Binary> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		const encryptedContent = await this.original.read(encryptedKey, size);
 		return decryptFileContent(rootFileKey, key, encryptedContent, encryptedContent.byteLength);
 	}
 
-	async readStream(key: string, size?: number) {
+	async readStream(key: string, size?: number): Promise<ReadableStream<Binary>> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		if (typeof size !== 'number') {
@@ -90,11 +80,20 @@ class EncryptionRemoteFs implements WrappedRemoteFs {
 		return createDecryptedReadableStream(source, rootFileKey, key, size);
 	}
 
-	async write(key: string, value: ArrayBuffer) {
+	async write(key: string, value: Binary): Promise<string> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		const encryptedContent = await encryptFileContent(rootFileKey, key, value);
 		return this.original.write(encryptedKey, encryptedContent);
+	}
+
+	async writeStream(key: string, value: ReadableStream<Binary>, size?: number): Promise<string> {
+		if (typeof size !== 'number') throw new Error('writeStream size is required');
+		const encryptedKey = await this.encryptKey(key);
+		const { rootFileKey } = await this.getKeys();
+		const encryptedFileSize = getEncryptedFileSize(size);
+		const stream = await createEncryptedReadableStream(rootFileKey, key, value, size);
+		return this.original.writeStream(encryptedKey, stream, encryptedFileSize);
 	}
 
 	async delete(key: string) {
@@ -162,8 +161,9 @@ class EncryptionRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function encryptionWrapper(original: RemoteFs, options: EncryptionWrapperOptions): WrappedRemoteFs {
-	return new EncryptionRemoteFs(original, options);
+export default function encryptionWrapper(
+	original: Fs,
+	options: EncryptionWrapperOptions,
+): WrappedFs {
+	return new EncryptionFs(original, options);
 }
-
-export default encryptionWrapper satisfies RemoteFsWrapper<EncryptionWrapperOptions>;

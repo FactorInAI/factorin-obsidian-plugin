@@ -1,3 +1,4 @@
+import pipe from '@/utils/pipe';
 import type { ConflictResolverPayload } from '../tasks/interface';
 
 export default async function latestSurviveResolver({
@@ -9,18 +10,12 @@ export default async function latestSurviveResolver({
 	key,
 }: ConflictResolverPayload) {
 	if (local.mtime > remote.mtime) {
-		const content = await localFs.read(key);
-		const uid = await remoteFs.write(key, content);
+		const uid = await pipe({ from: localFs, key, size: local.size, to: remoteFs });
+		if (!uid) return;
 		await record.set(key, { isDir: false, local: local.uid, remote: uid });
 	} else {
-		let uid: string;
-		if (remote.size >= 2 ** 21) {
-			const contentStream = await remoteFs.readStream(key);
-			uid = await localFs.writeStream(key, contentStream);
-		} else {
-			const content = await remoteFs.read(key);
-			uid = await localFs.write(key, content);
-		}
+		const uid = await pipe({ from: remoteFs, key, size: remote.size, to: localFs });
+		if (!uid) return;
 		await record.set(key, { isDir: false, local: uid, remote: remote.uid });
 	}
 }

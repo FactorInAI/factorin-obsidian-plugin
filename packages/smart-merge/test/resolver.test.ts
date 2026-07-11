@@ -1,13 +1,13 @@
 import type { DatabaseAsync, FileStat, RecordStore } from '@hesprs/sync-engine-sdk';
 import { testKit } from '@hesprs/sync-engine-sdk/dev';
-import { arrayBufferToText } from '@repo/shared/binary';
+import { uint8ArrayToText } from '@repo/shared/binary';
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import type { SmartMergeStoreMeta, SmartMergeStoreSchema } from '@/index';
 import type { MergeOptions } from '@/utils/merge';
 import smartMergeResolver from '@/resolver';
 
-const { bytes, file, localFs, remoteFs, stream } = testKit;
+const { bytes, file, fs, stream } = testKit;
 const memoryDB = openMemoryDB<Record<string, unknown>, Record<string, never>>(
 	'smart-merge-resolver-test',
 );
@@ -31,8 +31,8 @@ beforeEach(() => {
 });
 
 test('resolver should merge when base text exists', async () => {
-	const local = localFs({ control: { read: async () => bytes('line1-local\nline2\nline3') } });
-	const remote = remoteFs({ control: { read: async () => bytes('line1\nline2\nline3-remote') } });
+	const local = fs({ control: { read: async () => bytes('line1-local\nline2\nline3') } });
+	const remote = fs({ control: { read: async () => bytes('line1\nline2\nline3-remote') } });
 	const resolver = smartMergeResolver(mergeOptions, db, () => 'namespace');
 	await db.getStore('base-text-namespace').set('note.md', 'line1\nline2\nline3');
 
@@ -45,12 +45,8 @@ test('resolver should merge when base text exists', async () => {
 		remoteFs: remote.fs,
 	});
 
-	expect(arrayBufferToText(remote.state.writePayloads[0]?.[1])).toBe(
-		'line1-local\nline2\nline3-remote',
-	);
-	expect(arrayBufferToText(local.state.writePayloads[0]?.[1])).toBe(
-		'line1-local\nline2\nline3-remote',
-	);
+	expect(uint8ArrayToText(remote.calls.write[0]?.[1])).toBe('line1-local\nline2\nline3-remote');
+	expect(uint8ArrayToText(local.calls.write[0]?.[1])).toBe('line1-local\nline2\nline3-remote');
 	expect(await record.get('note.md')).toStrictEqual({
 		isDir: false,
 		local: 'write-uid',
@@ -59,8 +55,8 @@ test('resolver should merge when base text exists', async () => {
 });
 
 test('resolver should fall back when base text is missing', async () => {
-	const local = localFs({ control: { read: async () => bytes('local wins') } });
-	const remote = remoteFs();
+	const local = fs({ control: { read: async () => bytes('local wins') } });
+	const remote = fs();
 	const resolver = smartMergeResolver(mergeOptions, db, () => 'namespace');
 
 	await resolver({
@@ -72,7 +68,7 @@ test('resolver should fall back when base text is missing', async () => {
 		remoteFs: remote.fs,
 	});
 
-	expect(arrayBufferToText(remote.state.writePayloads[0]?.[1])).toBe('local wins');
+	expect(uint8ArrayToText(remote.calls.write[0]?.[1])).toBe('local wins');
 	expect(await record.get('note.md')).toStrictEqual({
 		isDir: false,
 		local: 'local-current',
@@ -81,8 +77,8 @@ test('resolver should fall back when base text is missing', async () => {
 });
 
 test('resolver should stream remote fallback for large newer remote files', async () => {
-	const local = localFs();
-	const remote = remoteFs({ control: { readStream: async () => stream(['remote wins']) } });
+	const local = fs();
+	const remote = fs({ control: { readStream: async () => stream(['remote wins']) } });
 	const resolver = smartMergeResolver(mergeOptions, db, () => 'namespace');
 
 	await resolver({

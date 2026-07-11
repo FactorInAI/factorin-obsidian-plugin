@@ -103,7 +103,7 @@ export function documentSplitter(text: string): MergeSegment {
 			continue;
 		}
 
-		const fenceMatch = /^(```|~~~|\$\$)/.exec(line);
+		const fenceMatch = /^(?<fence>```|~~~|\$\$)/.exec(line);
 		flushJoint();
 
 		if (fenceMatch) {
@@ -111,7 +111,8 @@ export function documentSplitter(text: string): MergeSegment {
 			splitters.push(codeSplitter);
 			i++;
 
-			const fenceType = fenceMatch[1];
+			const fenceType = fenceMatch.groups?.fence;
+			if (!fenceType) continue;
 			const contentLines: Array<string> = [];
 			while (i < lines.length && !lines[i].startsWith(fenceType)) {
 				contentLines.push(lines[i]);

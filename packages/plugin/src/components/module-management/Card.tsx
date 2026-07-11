@@ -28,7 +28,10 @@ export default function Card(props: {
 	const busy = () => props.pendingAction !== undefined;
 	const versionLabel = () => {
 		const currentVersion = props.installedVersion;
-		if (currentVersion !== props.module.version && currentVersion !== undefined)
+		if (
+			currentVersion !== undefined &&
+			compareVersions(props.module.version, currentVersion) === 1
+		)
 			return `v${currentVersion} -> v${props.module.version}`;
 		return `v${currentVersion ?? props.module.version}`;
 	};

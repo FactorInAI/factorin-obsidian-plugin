@@ -1,9 +1,7 @@
 import { isSub } from '@repo/shared/path';
-import type { OptimizerInput, RemoteFs, LocalFs, InputAtom } from './interface';
+import type { OptimizerInput, InputAtom } from './interface';
 
-type Fs = RemoteFs | LocalFs;
-
-export default function hierarchalOptimizer({ atoms, executeAtom }: OptimizerInput<Fs>) {
+export default function hierarchalOptimizer({ atoms, executeAtom }: OptimizerInput) {
 	// Extract relevant paths based on atom type
 	const getPaths = (atom: InputAtom): { read?: string; write?: string } => {
 		switch (atom.type) {

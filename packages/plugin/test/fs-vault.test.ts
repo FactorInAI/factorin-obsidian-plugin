@@ -1,13 +1,12 @@
 import type { Vault } from 'obsidian';
-import { arrayBufferToText, textToArrayBuffer } from '@repo/shared/binary';
 import { expect, test } from 'bun:test';
-import type { RootLocalFs } from '@/fs';
-import type { HarnessState } from '@/sdk/test-utils';
+import type { RootFs } from '@/fs';
 import type { MaybePromise } from '@/types';
 import { VaultFs } from '@/fs';
 import { testKit } from '@/sdk/dev';
 
-const { stream } = testKit;
+const { stream, bytes } = testKit;
+const textDecoder = new TextDecoder();
 
 type VaultFixtureStat = {
 	mtime: number;
@@ -46,8 +45,7 @@ type VaultControl = {
 type VaultHarness = {
 	calls: VaultCalls;
 	control: VaultControl;
-	fs: RootLocalFs;
-	state: HarnessState;
+	fs: RootFs;
 };
 
 type VaultHarnessOptions = {
@@ -92,7 +90,7 @@ function createVaultStub(options: VaultHarnessOptions): VaultHarness {
 	const control = createVaultControl(options);
 	const adapter = {
 		appendBinary: async (path: string, data: ArrayBuffer) => {
-			calls.appendBinary.push([path, arrayBufferToText(data)]);
+			calls.appendBinary.push([path, textDecoder.decode(data)]);
 			return await control.appendBinary(path, data);
 		},
 		exists: async (path: string) => {
@@ -132,7 +130,7 @@ function createVaultStub(options: VaultHarnessOptions): VaultHarness {
 			return await control.trashSystem(path);
 		},
 		writeBinary: async (path: string, data: ArrayBuffer) => {
-			calls.writeBinary.push([path, arrayBufferToText(data)]);
+			calls.writeBinary.push([path, textDecoder.decode(data)]);
 			return await control.writeBinary(path, data);
 		},
 	};
@@ -147,7 +145,6 @@ function createVaultStub(options: VaultHarnessOptions): VaultHarness {
 		calls,
 		control,
 		fs: new VaultFs(vault),
-		state: { requestCalls: [], vault, writePayloads: [] },
 	};
 }
 
@@ -176,7 +173,7 @@ test('write should return refreshed file uid from stat', async () => {
 			'note.md': { mtime: 456, size: 11, type: 'file' },
 		},
 	});
-	const data = textToArrayBuffer('hello');
+	const data = bytes('hello');
 
 	expect(await vault.fs.write('note.md', data)).toBe('456~11');
 	expect(vault.calls.writeBinary).toStrictEqual([['note.md', 'hello']]);
@@ -237,13 +234,14 @@ test('list should BFS descendants and exclude queried root', async () => {
 	});
 
 	const stats = await vault.fs.list('/');
+	const keys = stats.map(({ key }) => key);
 
-	expect(stats.map((stat) => stat.key)).toStrictEqual([
+	expect(keys).toStrictEqual([
 		'root.md',
 		'folder/',
 		'folder/child.md',
 		'folder/nested/',
 		'folder/nested/deep.md',
 	]);
-	expect(stats.some((stat) => stat.key === '/')).toBe(false);
+	expect(stats.some(({ key }) => key === '/')).toBe(false);
 });

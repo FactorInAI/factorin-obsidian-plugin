@@ -1,16 +1,11 @@
-import type { RemoteFs, RemoteFsWrapper, WrappedRemoteFs } from '@/fs';
-import type { Progress } from '@/types';
+import type { WrappedFs, Fs } from '@/fs';
+import type { Progress, Binary } from '@/types';
 
-class DebugRemoteFs implements WrappedRemoteFs {
+class DebugFs implements WrappedFs {
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		private readonly log: (content: string) => void,
 	) {}
-
-	checkConnection() {
-		this.log('checkConnection');
-		return this.original.checkConnection();
-	}
 
 	getUid(): string {
 		const uid = this.original.getUid();
@@ -28,8 +23,14 @@ class DebugRemoteFs implements WrappedRemoteFs {
 		return this.original.readStream(key, size);
 	}
 
-	async write(key: string, value: ArrayBuffer) {
+	async write(key: string, value: Binary) {
 		const result = await this.original.write(key, value);
+		this.log(`write: key ${key}, result ${result}`);
+		return result;
+	}
+
+	async writeStream(key: string, value: ReadableStream<Binary>) {
+		const result = await this.original.writeStream(key, value);
 		this.log(`write: key ${key}, result ${result}`);
 		return result;
 	}
@@ -68,8 +69,6 @@ class DebugRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function debugWrapper(original: RemoteFs, log: (content: string) => void): WrappedRemoteFs {
-	return new DebugRemoteFs(original, log);
+export default function debugWrapper(original: Fs, log: (content: string) => void): WrappedFs {
+	return new DebugFs(original, log);
 }
-
-export default debugWrapper satisfies RemoteFsWrapper<(content: string) => void>;

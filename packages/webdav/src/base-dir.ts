@@ -1,11 +1,4 @@
-import type {
-	Progress,
-	Stat,
-	RemoteFs,
-	RemoteFsWrapper,
-	WrappedRemoteFs,
-	MaybePromise,
-} from '@hesprs/sync-engine-sdk';
+import type { Binary, MaybePromise, Progress, Stat, Fs, WrappedFs } from '@hesprs/sync-engine-sdk';
 import { normalizeBaseDir } from '@repo/shared/path';
 
 function joinUnifiedKey(baseDir: string, key: string) {
@@ -25,15 +18,11 @@ function stripBaseDirFromStats(baseDir: string, stats: Array<Stat>) {
 	return stats.map((stat) => stripBaseDir(baseDir, stat)).filter((stat) => stat.key !== '/');
 }
 
-class BaseDirRemoteFs implements WrappedRemoteFs {
+class BaseDirRemoteFs implements WrappedFs {
 	constructor(
-		public readonly original: RemoteFs,
+		public readonly original: Fs,
 		private readonly baseDir: string,
 	) {}
-
-	checkConnection(): MaybePromise<{ success: true } | { success: false; reason: string }> {
-		return this.original.checkConnection();
-	}
 
 	getUid(): string {
 		return `${this.original.getUid()}~${this.baseDir}`;
@@ -47,8 +36,12 @@ class BaseDirRemoteFs implements WrappedRemoteFs {
 		return this.original.readStream(joinUnifiedKey(this.baseDir, key), size);
 	}
 
-	write(key: string, value: ArrayBuffer) {
+	write(key: string, value: Binary) {
 		return this.original.write(joinUnifiedKey(this.baseDir, key), value);
+	}
+
+	writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+		return this.original.writeStream(joinUnifiedKey(this.baseDir, key), value, size);
 	}
 
 	delete(key: string) {
@@ -83,9 +76,7 @@ class BaseDirRemoteFs implements WrappedRemoteFs {
 	}
 }
 
-function baseDirWrapper(original: RemoteFs, baseDir: string): WrappedRemoteFs {
+export default function baseDirWrapper(original: Fs, baseDir: string): WrappedFs {
 	const normalizedBaseDir = normalizeBaseDir(baseDir);
 	return new BaseDirRemoteFs(original, normalizedBaseDir);
 }
-
-export default baseDirWrapper satisfies RemoteFsWrapper<string>;

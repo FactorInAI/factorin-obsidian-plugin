@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
-import type { BatchOptimizer, LocalFs, RemoteFs } from '@/fs';
-import { localOptimizationWrapper, remoteOptimizationWrapper } from '@/fs';
+import type { BatchOptimizer } from '@/fs';
+import { optimizationWrapper } from '@/fs';
 import { testKit } from '@/sdk/dev';
 
-const { bytes, deferred, flush, localFs, remoteFs, stream } = testKit;
+const { bytes, deferred, flush, fs, stream } = testKit;
 
-function createBatchRecorder<Fs extends RemoteFs | LocalFs>() {
+function createBatchRecorder() {
 	const seen: Array<Array<string>> = [];
-	const batchOptimizer: BatchOptimizer<Fs> = ({ atoms }) => {
+	const batchOptimizer: BatchOptimizer = ({ atoms }) => {
 		seen.push(atoms.map(({ type }) => type));
 		return atoms;
 	};
@@ -15,13 +15,13 @@ function createBatchRecorder<Fs extends RemoteFs | LocalFs>() {
 	return { batchOptimizer, seen };
 }
 
-test('remote optimization wrapper forwards queued atoms to batch optimizer', async () => {
-	const remote = remoteFs();
-	const { batchOptimizer, seen } = createBatchRecorder<RemoteFs>();
-	const wrapper = remoteOptimizationWrapper(remote.fs, {
+test('optimization wrapper forwards queued atoms to batch optimizer', async () => {
+	const remote = fs();
+	const { batchOptimizer, seen } = createBatchRecorder();
+	const wrapper = optimizationWrapper(remote.fs, {
 		batchOptimizer,
-		localPool: [],
-		remotePool: [],
+		thatPool: [],
+		thisPool: [],
 	});
 
 	const pending = Promise.all([wrapper.delete('folder/'), wrapper.mkdir('notes/')]);
@@ -34,21 +34,21 @@ test('remote optimization wrapper forwards queued atoms to batch optimizer', asy
 	expect(remote.calls.mkdir).toStrictEqual(['notes/']);
 });
 
-test('local optimization wrapper forwards pooled write alongside queued ops', async () => {
-	const local = localFs();
-	const remote = remoteFs();
+test('optimization wrapper forwards pooled write alongside queued ops', async () => {
+	const local = fs();
+	const remote = fs();
 	const localPool: Array<string> = [];
 	const remotePool: Array<string> = [];
-	const { batchOptimizer, seen } = createBatchRecorder<LocalFs>();
-	const localWrapper = localOptimizationWrapper(local.fs, {
+	const { batchOptimizer, seen } = createBatchRecorder();
+	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,
-		localPool,
-		remotePool,
+		thatPool: remotePool,
+		thisPool: localPool,
 	});
-	const remoteWrapper = remoteOptimizationWrapper(remote.fs, {
-		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer<RemoteFs>,
-		localPool,
-		remotePool,
+	const remoteWrapper = optimizationWrapper(remote.fs, {
+		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer,
+		thatPool: localPool,
+		thisPool: remotePool,
 	});
 	const deleteDeferred = deferred<void>();
 	const mkdirDeferred = deferred<void>();
@@ -73,24 +73,24 @@ test('local optimization wrapper forwards pooled write alongside queued ops', as
 
 	await Promise.all([pendingBatch, pendingWrite]);
 
-	expect(local.calls.write).toStrictEqual([['folder/note.md', 4]]);
+	expect(local.calls.write).toStrictEqual([['folder/note.md', bytes('body')]]);
 });
 
-test('local optimization wrapper forwards pooled writeStream alongside queued ops', async () => {
-	const local = localFs();
-	const remote = remoteFs();
+test('optimization wrapper forwards pooled writeStream alongside queued ops', async () => {
+	const local = fs();
+	const remote = fs();
 	const localPool: Array<string> = [];
 	const remotePool: Array<string> = [];
-	const { batchOptimizer, seen } = createBatchRecorder<LocalFs>();
-	const localWrapper = localOptimizationWrapper(local.fs, {
+	const { batchOptimizer, seen } = createBatchRecorder();
+	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,
-		localPool,
-		remotePool,
+		thatPool: remotePool,
+		thisPool: localPool,
 	});
-	const remoteWrapper = remoteOptimizationWrapper(remote.fs, {
-		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer<RemoteFs>,
-		localPool,
-		remotePool,
+	const remoteWrapper = optimizationWrapper(remote.fs, {
+		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer,
+		thatPool: localPool,
+		thisPool: remotePool,
 	});
 	const deleteDeferred = deferred<void>();
 	const mkdirDeferred = deferred<void>();
@@ -118,16 +118,16 @@ test('local optimization wrapper forwards pooled writeStream alongside queued op
 	expect(local.calls.writeStream).toStrictEqual(['folder/stream.md']);
 });
 
-test('single optimization call bypasses batch optimizer', async () => {
-	const remote = remoteFs();
-	const batchOptimizer: BatchOptimizer<RemoteFs> = () => {
+test('optimization wrapper bypasses batch optimizer for single call', async () => {
+	const remote = fs();
+	const batchOptimizer: BatchOptimizer = () => {
 		throw new Error('batch optimizer should not run');
 	};
 	const recursiveValues: Array<boolean | undefined> = [];
-	const wrapper = remoteOptimizationWrapper(remote.fs, {
+	const wrapper = optimizationWrapper(remote.fs, {
 		batchOptimizer,
-		localPool: [],
-		remotePool: [],
+		thatPool: [],
+		thisPool: [],
 	});
 
 	remote.control.mkdir = async (_key, recursive) => {

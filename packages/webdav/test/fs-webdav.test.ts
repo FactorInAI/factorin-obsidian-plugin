@@ -1,34 +1,34 @@
-import type { Progress, RootRemoteFs } from '@hesprs/sync-engine-sdk';
-import type { requestUrl } from 'obsidian';
+import type { Binary, Progress, Request, RootFs } from '@hesprs/sync-engine-sdk';
 import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { beforeEach, expect, mock, test } from 'bun:test';
 import type { WebdavFsOptions } from '@/webdav/fs';
+import { checkConnection } from '@/webdav/check-connection';
 import WebdavFs from '@/webdav/fs';
 import createWebDAVReadStream from '@/webdav/read-stream';
 
-const { collectStream, deferred, flush } = testKit;
+const { bytes, deferred, flush, stream: createStream } = testKit;
 const sharedDate = new Date('Mon, 01 Jan 2024 00:00:00 GMT').valueOf();
 
-type RequestUrlParam = {
-	body?: string | ArrayBuffer;
-	headers?: Record<string, string>;
-	method?: string;
-	url: string;
+type RequestParam = Exclude<Parameters<Request>[0], string>;
+type RequestResponse = Awaited<ReturnType<Request>>;
+type RequestHandler = (params: RequestParam) => Promise<RequestResponse>;
+type ParsedResponse = { multistatus: { response: Array<unknown> } };
+type WebdavHarness = {
+	calls: Array<RequestParam>;
+	fs: RootFs;
+	setRequest: (handler: RequestHandler) => void;
 };
 
-type RequestUrlResponse = {
-	headers: Record<string, string | undefined>;
-	text: string;
-	arrayBuffer: ArrayBuffer;
+const emptyBinary: Binary = new Uint8Array(0);
+const defaultResponse: RequestResponse = {
+	bytes: () => emptyBinary,
+	headers: {},
+	json: () => undefined,
+	status: 200,
+	text: () => '',
 };
 
-type ParsedResponse = {
-	multistatus: {
-		response: Array<unknown>;
-	};
-};
-
-let response: RequestUrlResponse;
+let response: RequestResponse;
 let parsedResponse: ParsedResponse;
 
 const defaultOptions = {
@@ -36,18 +36,14 @@ const defaultOptions = {
 	endpoint: 'https://dav.example.com/dav',
 	password: 'pass',
 	username: 'alice',
-} satisfies WebdavFsOptions;
+} satisfies Omit<WebdavFsOptions, 'request'>;
 
 void mock.module('@/parse-xml', () => ({
 	default: () => parsedResponse,
 }));
 
 beforeEach(() => {
-	response = {
-		arrayBuffer: new ArrayBuffer(0),
-		headers: {},
-		text: '',
-	};
+	response = defaultResponse;
 	parsedResponse = {
 		multistatus: {
 			response: [],
@@ -55,28 +51,18 @@ beforeEach(() => {
 	};
 });
 
-type RequestHandler = (params: RequestUrlParam) => Promise<RequestUrlResponse>;
-
-type WebdavHarness = {
-	calls: Array<RequestUrlParam>;
-	fs: RootRemoteFs;
-	setRequest: (handler: RequestHandler) => void;
-};
-
 function createWebdavFs(options: Partial<WebdavFsOptions> = {}): WebdavHarness {
-	const calls: Array<RequestUrlParam> = [];
+	const calls: Array<RequestParam> = [];
 	let requestHandler: RequestHandler = async () => response;
-	const fs = new WebdavFs({ ...defaultOptions, ...options }, (async (
-		params: string | RequestUrlParam,
-	) => {
+	const request = (async (params: RequestParam | string) => {
 		if (typeof params === 'string') throw new Error(`Unexpected string request: ${params}`);
 		calls.push(params);
 		return await requestHandler(params);
-	}) as typeof requestUrl);
+	}) as Request;
 
 	return {
 		calls,
-		fs,
+		fs: new WebdavFs({ ...defaultOptions, ...options, request }),
 		setRequest: (handler: RequestHandler) => {
 			requestHandler = handler;
 		},
@@ -85,9 +71,11 @@ function createWebdavFs(options: Partial<WebdavFsOptions> = {}): WebdavHarness {
 
 function setXmlResponse(items: Array<unknown>, text = '<xml />') {
 	response = {
-		arrayBuffer: new ArrayBuffer(0),
+		bytes: () => emptyBinary,
 		headers: {},
-		text,
+		json: () => undefined,
+		status: 207,
+		text: () => text,
 	};
 	parsedResponse = {
 		multistatus: {
@@ -96,9 +84,53 @@ function setXmlResponse(items: Array<unknown>, text = '<xml />') {
 	};
 }
 
-function createBuffer(value: number, size: number) {
-	return new Uint8Array(size).fill(value).buffer;
+function filledBinary(size: number, value: number) {
+	return new Uint8Array(size).fill(value);
 }
+
+async function collectStream(source: ReadableStream<Binary>): Promise<Binary> {
+	const reader = source.getReader();
+	const chunks: Array<Binary> = [];
+	let total = 0;
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(value);
+			total += value.byteLength;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+	const merged = new Uint8Array(total);
+	let offset = 0;
+	for (const chunk of chunks) {
+		merged.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	return merged;
+}
+
+test('checkConnection returns success for a healthy endpoint', async () => {
+	const calls: Array<RequestParam> = [];
+	const request = (async (params: RequestParam | string) => {
+		if (typeof params === 'string') throw new Error(`Unexpected string request: ${params}`);
+		calls.push(params);
+		return { ...defaultResponse, status: 200 };
+	}) as Request;
+
+	expect(await checkConnection(defaultOptions, request)).toStrictEqual({ success: true });
+	expect(calls[0]).toMatchObject({ method: 'PROPFIND', url: 'https://dav.example.com/dav/' });
+});
+
+test('checkConnection returns failure reason for bad status', async () => {
+	const request = (async () => ({ ...defaultResponse, status: 503 })) as Request;
+
+	expect(await checkConnection(defaultOptions, request)).toStrictEqual({
+		reason: '503',
+		success: false,
+	});
+});
 
 test('stat parses dav fields and prefers etag for uid', async () => {
 	setXmlResponse([
@@ -125,7 +157,6 @@ test('stat parses dav fields and prefers etag for uid', async () => {
 	expect(webdav.calls[0]?.url).toBe(
 		'https://dav.example.com/remote.php/dav/files/alice/Notes/file.md',
 	);
-
 	expect(stat).toStrictEqual({
 		isDir: false,
 		key: 'Notes/file.md',
@@ -133,6 +164,195 @@ test('stat parses dav fields and prefers etag for uid', async () => {
 		size: 12,
 		uid: 'etag-123',
 	});
+});
+
+test('writeStream buffers chunks into one put', async () => {
+	const webdav = createWebdavFs();
+	webdav.setRequest(async (params) => {
+		expect(params.method).toBe('PUT');
+		expect(params.url).toBe('https://dav.example.com/dav/Notes/file.md');
+		expect(params.body).toStrictEqual(bytes('hello'));
+		return { ...defaultResponse, headers: { etag: 'buffered-uid' } };
+	});
+
+	const source = createStream([bytes('he'), bytes('llo')]);
+	const uid = await webdav.fs.writeStream('Notes/file.md', source);
+	expect(uid).toBe('buffered-uid');
+	expect(webdav.calls).toHaveLength(1);
+});
+
+test('chunked writeStream uses exact Nextcloud urls and headers', async () => {
+	const webdav = createWebdavFs({
+		chunkedUpload: true,
+		endpoint: 'https://dav.example.com/remote.php/dav/files/alice',
+	});
+	let uploadFolderUrl = '';
+	const destination = 'https://dav.example.com/remote.php/dav/files/alice/Notes/file.md';
+	webdav.setRequest(async (params) => {
+		if (params.method === 'MKCOL') {
+			uploadFolderUrl = params.url;
+			expect(params.headers).toMatchObject({
+				Destination: destination,
+			});
+			return { ...defaultResponse, status: 201 };
+		}
+		if (params.method === 'PUT') {
+			expect(params.url).toBe(`${uploadFolderUrl}1`);
+			expect(params.headers).toMatchObject({
+				Destination: destination,
+				'OC-Total-Length': '7',
+			});
+			expect(params.body).toStrictEqual(bytes('abcdefg'));
+			return { ...defaultResponse, status: 200 };
+		}
+		if (params.method === 'MOVE') {
+			expect(params.url).toBe(`${uploadFolderUrl}.file`);
+			expect(params.headers).toMatchObject({
+				Destination: destination,
+			});
+			return { ...defaultResponse, headers: { 'oc-etag': 'oc-uid' } };
+		}
+		throw new Error(`Unexpected method: ${params.method}`);
+	});
+
+	const source = createStream([bytes('abc'), bytes('defg')]);
+	const uid = await webdav.fs.writeStream('Notes/file.md', source, 7);
+	expect(uid).toBe('oc-uid');
+	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
+		{ method: 'MKCOL', url: uploadFolderUrl },
+		{ method: 'PUT', url: `${uploadFolderUrl}1` },
+		{ method: 'MOVE', url: `${uploadFolderUrl}.file` },
+	]);
+	expect(uploadFolderUrl).toMatch(
+		/^https:\/\/dav\.example\.com\/remote\.php\/dav\/uploads\/alice\/[^/]+\/$/,
+	);
+});
+
+test('chunked writeStream slices 5 MiB chunks and limits concurrency to 3', async () => {
+	const mib = 5 * 1024 * 1024;
+	const webdav = createWebdavFs({ chunkedUpload: true });
+	const uploads: Array<{ size: number; url: string }> = [];
+	const pending: Array<ReturnType<typeof deferred<RequestResponse>>> = [];
+	let inFlight = 0;
+	let maxInFlight = 0;
+	let uploadFolderUrl = '';
+
+	webdav.setRequest(async (params) => {
+		if (params.method === 'MKCOL') {
+			uploadFolderUrl = params.url;
+			return { ...defaultResponse, status: 201 };
+		}
+		if (params.method === 'PUT') {
+			const body = params.body as Binary;
+			uploads.push({ size: body.byteLength, url: params.url });
+			inFlight += 1;
+			maxInFlight = Math.max(maxInFlight, inFlight);
+			const wait = deferred<RequestResponse>();
+			wait.promise
+				.finally(() => {
+					inFlight -= 1;
+				})
+				.catch(() => {});
+			pending.push(wait);
+			return await wait.promise;
+		}
+		if (params.method === 'MOVE') return { ...defaultResponse, headers: { etag: 'big-uid' } };
+		throw new Error(`Unexpected method: ${params.method}`);
+	});
+
+	const source = createStream([
+		filledBinary(mib, 1),
+		filledBinary(mib, 2),
+		filledBinary(mib, 3),
+		filledBinary(1, 4),
+	]);
+	const writePromise = webdav.fs.writeStream('Notes/big.bin', source, mib * 3 + 1);
+
+	await flush(12);
+	expect(uploads.map(({ size }) => size)).toStrictEqual([mib, mib, mib]);
+	expect(maxInFlight).toBe(3);
+
+	pending[0]?.resolve({ ...defaultResponse, status: 200 });
+	await flush(12);
+	expect(uploads.map(({ size }) => size)).toStrictEqual([mib, mib, mib, 1]);
+	expect(uploads.map(({ url }) => url)).toStrictEqual([
+		`${uploadFolderUrl}1`,
+		`${uploadFolderUrl}2`,
+		`${uploadFolderUrl}3`,
+		`${uploadFolderUrl}4`,
+	]);
+
+	for (const wait of pending.slice(1)) wait.resolve({ ...defaultResponse, status: 200 });
+	expect(await writePromise).toBe('big-uid');
+});
+
+test('empty chunked stream skips put and still mkcol move', async () => {
+	const webdav = createWebdavFs({ chunkedUpload: true });
+	let uploadFolderUrl = '';
+	webdav.setRequest(async (params) => {
+		if (params.method === 'MKCOL') {
+			uploadFolderUrl = params.url;
+			return { ...defaultResponse, status: 201 };
+		}
+		if (params.method === 'MOVE') return { ...defaultResponse, headers: { etag: 'empty-uid' } };
+		throw new Error(`Unexpected method: ${params.method}`);
+	});
+
+	const source = createStream([]);
+	const uid = await webdav.fs.writeStream('Notes/empty.md', source);
+	expect(uid).toBe('empty-uid');
+	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
+		{ method: 'MKCOL', url: uploadFolderUrl },
+		{ method: 'MOVE', url: `${uploadFolderUrl}.file` },
+	]);
+});
+
+test('chunked upload error deletes temp folder and rethrows original error', async () => {
+	const webdav = createWebdavFs({ chunkedUpload: true });
+	let uploadFolderUrl = '';
+	const uploadError = new Error('upload failed');
+	webdav.setRequest(async (params) => {
+		if (params.method === 'MKCOL') {
+			uploadFolderUrl = params.url;
+			return { ...defaultResponse, status: 201 };
+		}
+		if (params.method === 'PUT') throw uploadError;
+		if (params.method === 'DELETE') return defaultResponse;
+		throw new Error(`Unexpected method: ${params.method}`);
+	});
+
+	const source = createStream([bytes('chunk')]);
+	expect(webdav.fs.writeStream('Notes/fail.md', source)).rejects.toBe(uploadError);
+	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
+		{ method: 'MKCOL', url: uploadFolderUrl },
+		{ method: 'PUT', url: `${uploadFolderUrl}1` },
+		{ method: 'DELETE', url: uploadFolderUrl },
+	]);
+});
+
+test('chunked finalization error deletes temp folder and rethrows original error', async () => {
+	const webdav = createWebdavFs({ chunkedUpload: true });
+	let uploadFolderUrl = '';
+	const moveError = new Error('move failed');
+	webdav.setRequest(async (params) => {
+		if (params.method === 'MKCOL') {
+			uploadFolderUrl = params.url;
+			return { ...defaultResponse, status: 201 };
+		}
+		if (params.method === 'PUT') return { ...defaultResponse, status: 200 };
+		if (params.method === 'MOVE') throw moveError;
+		if (params.method === 'DELETE') return defaultResponse;
+		throw new Error(`Unexpected method: ${params.method}`);
+	});
+
+	const source = createStream([bytes('chunk')]);
+	expect(webdav.fs.writeStream('Notes/finalize.md', source)).rejects.toBe(moveError);
+	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
+		{ method: 'MKCOL', url: uploadFolderUrl },
+		{ method: 'PUT', url: `${uploadFolderUrl}1` },
+		{ method: 'MOVE', url: `${uploadFolderUrl}.file` },
+		{ method: 'DELETE', url: uploadFolderUrl },
+	]);
 });
 
 test('delete swallows 404 and rethrows other failures', async () => {
@@ -192,17 +412,15 @@ test('list uses infinity when enabled', async () => {
 	]);
 
 	const webdav = createWebdavFs({ depthInfinity: true, endpoint: 'https://dav.example.com/dav' });
-
 	let storedProgress: Progress = { completed: 0, total: 0 };
-	const progress = (prog: Progress) => (storedProgress = prog);
-	const list = await webdav.fs.list('Notes/', progress);
+	const list = await webdav.fs.list('Notes/', (progress) => {
+		storedProgress = progress;
+	});
 
-	expect(webdav.calls[0]).toStrictEqual(
-		expect.objectContaining({
-			headers: expect.objectContaining({ Depth: 'infinity' }),
-			method: 'PROPFIND',
-		}),
-	);
+	expect(webdav.calls[0]).toMatchObject({
+		headers: expect.objectContaining({ Depth: 'infinity' }),
+		method: 'PROPFIND',
+	});
 	expect(list).toStrictEqual([
 		{
 			isDir: false,
@@ -267,8 +485,9 @@ test('list bfs updates progress when infinity is disabled', async () => {
 	});
 
 	let storedProgress: Progress = { completed: 0, total: 0 };
-	const progress = (prog: Progress) => (storedProgress = prog);
-	const list = await webdav.fs.list('Notes/', progress);
+	const list = await webdav.fs.list('Notes/', (progress) => {
+		storedProgress = progress;
+	});
 
 	expect(list).toStrictEqual([
 		{ isDir: true, key: 'Notes/Folder A/' },
@@ -285,15 +504,15 @@ test('list bfs updates progress when infinity is disabled', async () => {
 
 test('readStream reorders out-of-order ranged responses', async () => {
 	const requestRanges: Array<{ start: number; end: number }> = [];
-	const resolvers: Array<ReturnType<typeof deferred<ArrayBuffer>>> = [];
-	const toBytes = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)];
+	const resolvers: Array<ReturnType<typeof deferred<Binary>>> = [];
+	const toBytes = (buffer: Binary) => [...buffer];
 
 	const stream = createWebDAVReadStream({
 		chunkSize: 2,
 		maxConcurrent: 3,
 		requestRange: async (start, end) => {
 			requestRanges.push({ end, start });
-			const pending = deferred<ArrayBuffer>();
+			const pending = deferred<Binary>();
 			resolvers.push(pending);
 			return await pending.promise;
 		},
@@ -308,9 +527,9 @@ test('readStream reorders out-of-order ranged responses', async () => {
 		{ end: 5, start: 4 },
 	]);
 
-	resolvers[2]?.resolve(createBuffer(3, 2));
-	resolvers[0]?.resolve(createBuffer(1, 2));
-	resolvers[1]?.resolve(createBuffer(2, 2));
+	resolvers[2]?.resolve(filledBinary(2, 3));
+	resolvers[0]?.resolve(filledBinary(2, 1));
+	resolvers[1]?.resolve(filledBinary(2, 2));
 
 	expect(toBytes(await collected)).toStrictEqual([1, 1, 2, 2, 3, 3]);
 });
@@ -331,13 +550,13 @@ test('readStream uses 2 MiB ranges from stat size', async () => {
 	]);
 
 	const ranges: Array<string> = [];
-	const pending = new Map<string, ReturnType<typeof deferred<RequestUrlResponse>>>();
+	const pending = new Map<string, ReturnType<typeof deferred<RequestResponse>>>();
 	const webdav = createWebdavFs({ endpoint: 'https://dav.example.com/dav' });
 	webdav.setRequest(async (params) => {
 		if (params.method === 'PROPFIND') return response;
 		const range = params.headers?.Range ?? '';
 		ranges.push(range);
-		const wait = deferred<RequestUrlResponse>();
+		const wait = deferred<RequestResponse>();
 		pending.set(range, wait);
 		return await wait.promise;
 	});
@@ -350,10 +569,12 @@ test('readStream uses 2 MiB ranges from stat size', async () => {
 		'bytes=4194304-5242880',
 	]);
 
-	const makeResponse = (byte: number): RequestUrlResponse => ({
-		arrayBuffer: new Uint8Array([byte]).buffer,
+	const makeResponse = (byte: number): RequestResponse => ({
+		bytes: () => new Uint8Array([byte]),
 		headers: {},
-		text: '',
+		json: () => undefined,
+		status: 206,
+		text: () => '',
 	});
 
 	pending.get('bytes=4194304-5242880')?.resolve(makeResponse(3));
@@ -366,8 +587,7 @@ test('readStream uses 2 MiB ranges from stat size', async () => {
 		'bytes=2097152-4194303',
 		'bytes=4194304-5242880',
 	]);
-
-	expect(new Uint8Array(await collected)).toStrictEqual(new Uint8Array([1, 2, 3]));
+	expect(await collected).toStrictEqual(new Uint8Array([1, 2, 3]));
 });
 
 test('readStream waits for consumer demand before scheduling', async () => {
@@ -386,13 +606,13 @@ test('readStream waits for consumer demand before scheduling', async () => {
 	]);
 
 	const ranges: Array<string> = [];
-	const pending = new Map<string, ReturnType<typeof deferred<RequestUrlResponse>>>();
+	const pending = new Map<string, ReturnType<typeof deferred<RequestResponse>>>();
 	const webdav = createWebdavFs({ endpoint: 'https://dav.example.com/dav' });
 	webdav.setRequest(async (params) => {
 		if (params.method === 'PROPFIND') return response;
 		const range = params.headers?.Range ?? '';
 		ranges.push(range);
-		const wait = deferred<RequestUrlResponse>();
+		const wait = deferred<RequestResponse>();
 		pending.set(range, wait);
 		return await wait.promise;
 	});
@@ -405,9 +625,11 @@ test('readStream waits for consumer demand before scheduling', async () => {
 	await flush();
 	expect(ranges).toStrictEqual(['bytes=0-3']);
 	pending.get('bytes=0-3')?.resolve({
-		arrayBuffer: new Uint8Array([1, 2, 3, 4]).buffer,
+		bytes: () => new Uint8Array([1, 2, 3, 4]),
 		headers: {},
-		text: '',
+		json: () => undefined,
+		status: 206,
+		text: () => '',
 	});
-	expect(new Uint8Array(await collected)).toStrictEqual(new Uint8Array([1, 2, 3, 4]));
+	expect(await collected).toStrictEqual(new Uint8Array([1, 2, 3, 4]));
 });

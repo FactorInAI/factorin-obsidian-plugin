@@ -1,5 +1,5 @@
 import type { Events, Translations } from '@';
-import type { LocalFs } from '@/fs';
+import type { Fs } from '@/fs';
 import type { ConflictResolver, Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
 import type { GlobMatchOptions, Progress, Stat, StatsMap, TogglableValue } from '@/types';
 import {
@@ -229,7 +229,7 @@ export default class Sync {
 		return terminateReason;
 	};
 
-	private async convertDeleteToUpload(tasks: Array<RemoveLocal>, localFs: LocalFs) {
+	private async convertDeleteToUpload(tasks: Array<RemoveLocal>, localFs: Fs) {
 		const final: Array<Upload | CreateRemoteDir> = [];
 		await Promise.all(
 			tasks.map(async (task) => {

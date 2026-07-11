@@ -1,7 +1,7 @@
 import type {
 	Context,
 	ObsidianLanguageCode,
-	RemoteFsWrapperEntry,
+	FsWrapperEntry,
 	SelectFromContext,
 	SettingEntry,
 	TranslationResource,
@@ -22,7 +22,7 @@ export default class Encryption {
 
 	constructor(
 		private readonly ctx: SelectFromContext<{
-			registerRemoteFsWrapper: (entry: RemoteFsWrapperEntry) => () => boolean;
+			registerRemoteFsWrapper: (entry: FsWrapperEntry) => () => void;
 			app: App;
 			memoryDB: EncryptionDB;
 			registerSetting: (entry: SettingEntry) => () => void;

@@ -1,10 +1,5 @@
-import type {
-	FolderStat,
-	Progress,
-	Stat,
-	RootRemoteFs,
-	RootRemoteFsCtor,
-} from '@hesprs/sync-engine-sdk';
+import type { Binary, FolderStat, Progress, Request, RootFs, Stat } from '@hesprs/sync-engine-sdk';
+import { concatBinary } from '@repo/shared/binary';
 import { getStatus } from '@repo/shared/get-status';
 import {
 	dirname,
@@ -13,15 +8,18 @@ import {
 	normalizeUrl,
 	stripEndSlash,
 } from '@repo/shared/path';
-import { requestUrl } from 'obsidian';
 import parseXML from '@/parse-xml';
+import writeNextcloudChunkedUpload from './chunked-upload';
 import createWebDAVReadStream from './read-stream';
+import { buildUrl, getAuthorization, getFileUid, getHeader } from './utils';
 
 export type WebdavFsOptions = {
 	endpoint: string;
 	username: string;
 	password: string;
+	chunkedUpload?: boolean;
 	depthInfinity?: boolean;
+	request: Request;
 };
 
 type WebDAVPropValue = string | { '#text'?: string } | undefined;
@@ -60,24 +58,8 @@ const PROPFIND_BODY = `<?xml version="1.0" encoding="utf-8"?>
     <getetag/>
   </prop>
 </propfind>`;
-const CHECK_CONNECTION_BODY = `<?xml version="1.0" encoding="utf-8"?>
-<D:propfind xmlns:D="DAV:">
-  <D:propname/>
-</D:propfind>`;
-
 const READ_CHUNK_SIZE = 2 * 1024 * 1024;
 const READ_MAX_CONCURRENT = 8;
-
-function getAuthorization(username: string, password: string) {
-	return `Basic ${btoa(`${username}:${password}`)}`;
-}
-
-function getHeader(headers: Record<string, string | undefined>, name: string) {
-	const entry = Object.entries(headers).find(
-		([headerName]) => headerName.toLowerCase() === name.toLowerCase(),
-	);
-	return entry?.[1];
-}
 
 function getDavText(value: WebDAVPropValue) {
 	if (typeof value === 'string') return value;
@@ -102,16 +84,6 @@ function isSuccessStatus(status: string | undefined) {
 
 function asArray<T>(value: T | Array<T>) {
 	return Array.isArray(value) ? value : [value];
-}
-
-function prependSlash(key: string) {
-	if (key === '/') return '/';
-	return `/${key}`;
-}
-
-function buildUrl(endpoint: string, key: string) {
-	const encodedPath = key.split('/').map(encodeURIComponent).join('/');
-	return `${endpoint}${prependSlash(encodedPath)}`;
 }
 
 function getRecursiveKeys(key: string) {
@@ -155,7 +127,7 @@ type PropfindOptions = {
 };
 
 async function propfind(
-	request: typeof requestUrl,
+	request: Request,
 	auth: string,
 	endpoint: string,
 	propfindOptions: PropfindOptions,
@@ -171,7 +143,7 @@ async function propfind(
 		url: buildUrl(endpoint, propfindOptions.key),
 	});
 
-	const parsed = parseXML(response.text) as WebDAVMultistatus;
+	const parsed = parseXML(response.text()) as WebDAVMultistatus;
 	return asArray(parsed.multistatus.response);
 }
 
@@ -186,45 +158,35 @@ function toDescendantStats(key: string, endpoint: string, items: Array<WebDAVRes
 		.filter((item): item is Stat => item !== undefined);
 }
 
-function getFileUid(stat: Stat, key: string) {
-	if (stat.isDir) throw new Error(`WebDAV write returned a folder stat for ${key}.`);
-	return stat.uid;
+async function collectStreamToBinary(source: ReadableStream<Binary>): Promise<Binary> {
+	const reader = source.getReader();
+	const chunks: Array<Binary> = [];
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(value);
+		}
+		return concatBinary(...chunks);
+	} finally {
+		reader.releaseLock();
+	}
 }
 
-class WebdavFs implements RootRemoteFs {
+export default class WebdavFs implements RootFs {
 	private readonly auth: string;
 	private readonly endpoint: string;
+	private readonly request: Request;
 
-	constructor(
-		private readonly options: WebdavFsOptions,
-		public request = requestUrl,
-	) {
+	constructor(private readonly options: WebdavFsOptions) {
+		if (!options.request) throw new Error('WebDAV request is required.');
+		this.request = options.request;
 		this.auth = getAuthorization(options.username, options.password);
 		this.endpoint = normalizeUrl(options.endpoint);
 	}
 
 	getUid() {
-		return `webdav~${this.options.endpoint}~${this.options.username}`;
-	}
-
-	async checkConnection() {
-		try {
-			const response = await this.request({
-				body: CHECK_CONNECTION_BODY,
-				headers: { Authorization: this.auth, Depth: '0' },
-				method: 'PROPFIND',
-				url: buildUrl(this.endpoint, '/'),
-			});
-			if (response.status === 200 || response.status === 207)
-				return { success: true } as const;
-			return { reason: response.status.toString(), success: false } as const;
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			return {
-				reason: errorMessage,
-				success: false,
-			} as const;
-		}
+		return `webdav~${this.endpoint}~${this.options.username}`;
 	}
 
 	async read(key: string) {
@@ -234,7 +196,7 @@ class WebdavFs implements RootRemoteFs {
 			url: buildUrl(this.endpoint, key),
 		});
 
-		return response.arrayBuffer;
+		return response.bytes();
 	}
 
 	async readStream(key: string, size?: number) {
@@ -257,13 +219,13 @@ class WebdavFs implements RootRemoteFs {
 					url: buildUrl(this.endpoint, key),
 				});
 
-				return response.arrayBuffer;
+				return response.bytes();
 			},
 			size,
 		});
 	}
 
-	async write(key: string, value: ArrayBuffer) {
+	async write(key: string, value: Binary) {
 		const response = await this.request({
 			body: value,
 			headers: { Authorization: this.auth },
@@ -275,6 +237,23 @@ class WebdavFs implements RootRemoteFs {
 		if (etag) return etag;
 
 		return getFileUid(await this.stat(key), key);
+	}
+
+	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+		if (this.options.chunkedUpload)
+			return await writeNextcloudChunkedUpload(
+				{
+					auth: this.auth,
+					endpoint: this.endpoint,
+					request: this.request,
+					stat: async (targetKey) => await this.stat(targetKey),
+					username: this.options.username,
+				},
+				key,
+				value,
+				size,
+			);
+		return await this.write(key, await collectStreamToBinary(value));
 	}
 
 	async delete(key: string) {
@@ -322,10 +301,10 @@ class WebdavFs implements RootRemoteFs {
 		if (key === '/') return { isDir: true, key: '/' } satisfies FolderStat;
 
 		const items = await propfind(this.request, this.auth, this.endpoint, { depth: '0', key });
-		const item = items.find((candidate) => isTargetItem(key, this.options.endpoint, candidate));
+		const item = items.find((candidate) => isTargetItem(key, this.endpoint, candidate));
 		if (!item) throw new Error(`WebDAV stat not found for ${key}`);
 
-		const stat = toStat(this.options.endpoint, item);
+		const stat = toStat(this.endpoint, item);
 		if (!stat) throw new Error(`WebDAV stat not found for ${key}`);
 		return stat;
 	}
@@ -336,9 +315,7 @@ class WebdavFs implements RootRemoteFs {
 				depth: '0',
 				key,
 			});
-			const item = items.find((candidate) =>
-				isTargetItem(key, this.options.endpoint, candidate),
-			);
+			const item = items.find((candidate) => isTargetItem(key, this.endpoint, candidate));
 			return Boolean(item);
 		} catch (error: unknown) {
 			if (getStatus(error) === 404) return false;
@@ -348,7 +325,7 @@ class WebdavFs implements RootRemoteFs {
 
 	private async listShallow(key: string) {
 		const items = await propfind(this.request, this.auth, this.endpoint, { depth: '1', key });
-		return toDescendantStats(key, this.options.endpoint, items);
+		return toDescendantStats(key, this.endpoint, items);
 	}
 
 	async list(key: string, progress?: (progress: Progress) => void) {
@@ -357,7 +334,7 @@ class WebdavFs implements RootRemoteFs {
 				depth: 'infinity',
 				key,
 			});
-			const result = toDescendantStats(key, this.options.endpoint, items);
+			const result = toDescendantStats(key, this.endpoint, items);
 			progress?.({ completed: 1, total: 1 });
 			return result;
 		}
@@ -379,5 +356,3 @@ class WebdavFs implements RootRemoteFs {
 		return result;
 	}
 }
-
-export default WebdavFs satisfies RootRemoteFsCtor<WebdavFsOptions>;

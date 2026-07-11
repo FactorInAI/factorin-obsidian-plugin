@@ -1,9 +1,21 @@
+import type { Request } from '@/modules/Registrar';
+
+type RateLimiterOptions = { maxConcurrency: number; minInterval: number };
+
+export default function rateLimiterMiddleware(
+	request: Request,
+	options: RateLimiterOptions,
+): Request {
+	const limiter = new ApiLimiter(options);
+	return limiter.wrap(request);
+}
+
 /**
  * A simple rate limiter for API calls.
  * @param options.maxConcurrent - The maximum number of concurrent requests.
  * @param options.minTime - The minimum time between requests.
  */
-export default class ApiLimiter {
+class ApiLimiter {
 	private activeCount = 0;
 	private lastStartTime = 0;
 	private readonly queue: Array<() => void> = [];
