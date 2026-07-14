@@ -20,8 +20,7 @@ export type FeaturesSettingTranslations = {
 	scheduledSyncPlaceholder: string;
 	asymmetricStorage: string;
 	asymmetricStorageDescription: Fragment;
-	asymmetricStorageEnableMigration: Fragment;
-	asymmetricStorageDisableMigration: Fragment;
+	asymmetricStorageMigration: Fragment<'enable' | 'disable'>;
 	invalidValue: string;
 } & MigrationModalTranslations;
 
@@ -107,11 +106,7 @@ export default function featuresSettings(
 						settings.asymmetricStorage = value;
 						void saveSettings();
 					},
-					content: translate(
-						value
-							? 'asymmetricStorageEnableMigration'
-							: 'asymmetricStorageDisableMigration',
-					),
+					content: translate('asymmetricStorageMigration', value ? 'enable' : 'disable'),
 					onCancel: () => {
 						settings.asymmetricStorage = original;
 						void saveSettings();

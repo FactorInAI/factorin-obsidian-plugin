@@ -48,6 +48,3 @@ try {
 	console.error('Error:', error instanceof Error ? error.message : error);
 	throw error;
 }
-
-// oxlint-disable-next-line unicorn/require-module-specifiers
-export {};

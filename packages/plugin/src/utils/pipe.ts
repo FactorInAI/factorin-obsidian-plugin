@@ -5,7 +5,7 @@ import type { Binary } from '@/types';
 
 const STREAM_THRESHOLD = 2.5 * 1024 ** 2; // 2.5 MiB
 
-export default async function pipe({
+export async function pipe({
 	from,
 	to,
 	size,
@@ -16,25 +16,24 @@ export default async function pipe({
 	key: string;
 	size: number;
 }) {
-	if (size > STREAM_THRESHOLD) {
-		let content: ReadableStream<Binary>;
-		try {
-			content = await from.readStream(key);
-		} catch (error) {
-			if (isNonExistent(error)) return;
-			throw error;
-		}
-		return to.writeStream(key, content);
-	} else {
-		let content: Binary;
-		try {
-			content = await from.read(key);
-		} catch (error) {
-			if (isNonExistent(error)) return;
-			throw error;
-		}
-		return to.write(key, content);
+	const value = await readWithSize(from, key, size);
+	if (!value) return;
+	return writeWithValue(to, key, value);
+}
+
+export async function readWithSize(fs: Fs, key: string, size: number) {
+	try {
+		if (size > STREAM_THRESHOLD) return await fs.readStream(key);
+		return await fs.read(key);
+	} catch (error) {
+		if (isNonExistent(error)) return;
+		throw error;
 	}
+}
+
+export function writeWithValue(fs: Fs, key: string, value: Binary | ReadableStream<Binary>) {
+	if (value instanceof ReadableStream) return fs.writeStream(key, value);
+	return fs.write(key, value);
 }
 
 // Swallow TOCTOU

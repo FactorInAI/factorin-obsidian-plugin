@@ -11,7 +11,7 @@ permissions:
   attestations: write
 
 jobs:
-  build:
+  release-plugin:
     runs-on: ubuntu-slim
 
     steps:

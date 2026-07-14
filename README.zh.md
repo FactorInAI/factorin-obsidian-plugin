@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img src="./logo.svg" alt="Sync Engine logo" width="280px">
+    <img src="./docs/public/logo.svg" alt="Sync Engine logo" width="280px">
     <br />
     Sync Engine
     <br />
@@ -28,14 +28,11 @@
 </p>
 
 <p align="center">
-    <a href="../../README.md">
+    <a href="./README.md">
         <strong>English</strong>
     </a> • 
     <a href="https://community.obsidian.md/plugins/webdav-sync">
         <strong>Plugin Store</strong>
-    </a> • 
-    <a href="#notices">
-        <strong>Notices</strong>
     </a> • 
     <a href="#license-copyright-and-originality">
         <strong>License</strong>
@@ -58,53 +55,45 @@ Sync Engine 是一款革命性的 vault 同步解决方案。它不仅是一个�
 
 Sync Engine 完全免费（MIT License）、可扩展、社区驱动、人工精选、对 AI 友好，并拥有高度优化的核心。
 
-## 公告
-
-### 📢 这里有一项投票
-
-目前有一项关于新开发方向的投票正在进行！建议**所有看到此内容的人**都花 5 秒钟参与这项匿名投票，以便让开发者获得一个公正的参考结果。
-
-- 🗳️ [Smart Merge 是否值得引入这些开销？](https://github.com/hesprs/obsidian-webdav-sync/discussions/117)
-
 ## 功能特性
 
-🧰 **完善的基础功能**：
+🧰 **基础功能完备**：
 
 - 双向同步。
-- 启动同步 / 定时同步 / 修改时自动保存同步。
-- 冲突解决策略（合并 / 保留最新修改 / 保留远程 / 保留本地 / 跳过）。
-- 高级速率 / 内存控制选项。
+- 启动同步 / 定时同步 / 修改时自动同步。
+- 冲突解决策略（保留两者 / 保留最新 / 保留云端 / 保留本地 / 跳过）。
+- 高级速率与内存控制选项。
+- 自定义请求头（Headers）。
 - 您可以通过编写模块来扩展上述绝大部分功能。
 
 🖥 **支持的后端**：
 
-- WebDAV（`WebDAV` 官方模块）。
+- WebDAV（官方提供 `WebDAV` 模块）。
 - S3（正在开发中）。
 - Google Drive（已在计划中）。
-- 您可以通过创建自定义模块轻松扩展此列表。欢迎贡献！
+- 您可以通过创建自定义模块轻松扩展此列表。欢迎贡献代码！
 
-🧩 **可扩展的架构**：
+🧩 **高可扩展性架构**：
 
-- 您可以在自定义模块中添加后端、优化器、同步触发器、i18n 资源、决策策略、设置项、自定义文件处理，以及所有可能的调用操作。
-- 提供了开发文档（构建中）、AI Agent 技能（构建中）以及带有调试和测试工具包的 SDK。
-- 插件提供了专门的模块发现和管理面板 UI。
+- 您可以在自定义模块中添加后端、优化器、同步触发器、国际化（i18n）资源、决策策略、设置项、自定义文件处理流程，并调用所有可行的操作。
+- 提供完善的文档、AI 智能体技能（开发中），以及包含调试和测试套件的 SDK。
+- 插件提供专用的模块发现与管理界面。
 - 只要符合 [贡献指南](./CONTRIBUTING.md)，本仓库接受任何模块的贡献。
 
-⚡ **闪电般的速度**：
+⚡ **极速体验**：
 
-- 增量同步，绝不在每次同步时上传整个库。
-- 创新的 [**Anchored Asymmetric Storage™（锚定非对称存储）**](../../blueprint/asymmetric-storage.md) 技术可大幅提升同步速度。
-- 实时同步复用缓存的远程状态，使其能够在毫秒内完成。
+- 增量同步，无需每次都上传整个仓库。
+- 创新的 [**锚定非对称存储™（Anchored Asymmetric Storage™）**](./blueprint/asymmetric-storage.md) 技术，大幅提升同步速度。
+- 实时同步利用缓存的云端状态，可在数毫秒内完成。
 - 体积比 Remotely Save 小 **40 倍**，启动速度快 **20 倍**。
-- 流畅处理拥有超过 3000 个文件及数 GB 大小的库。
-- 高度优化的核心同步时机，绝不浪费一毫秒。
-- 可扩展的优化器插槽，确保针对您自己的服务对每个请求都进行了优化。
+- 轻松应对拥有 3000 多个文件、数 GB 大小的仓库。
+- 高度优化的核心同步时机，不浪费任何一毫秒。
+- 可扩展的优化器插槽，确保针对您的专属服务优化每一次请求。
 
-🔐 **客户端加密**：
+📦 **由模块提供的功能**：
 
-- 由 `Encryption` 官方模块提供。
-- 它可以防止未经授权的文件访问，并在远程端检测意外的文件修改和移动。
-- 相比同类解决方案（如 Remotely Save），实现了**理论上更高的安全性和更佳的性能**，详情请参阅 [加密规范](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md)。
+- 🔐 客户端加密：由官方 `Encryption` 模块提供。实现比同类解决方案（如 Remotely Save）**理论上更高的安全性和更佳的性能**，详情请参阅 [加密规范](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md)。
+- 📑 智能合并：由官方 `Smart Merge` 模块提供。检测到冲突时合并文档，能够智能识别不同的语言和代码，并应用相应的策略。
 
 ## 安装与设置
 

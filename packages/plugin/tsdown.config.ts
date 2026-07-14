@@ -9,18 +9,7 @@ const buildingPlugin = process.env.BUILD === 'plugin';
 
 const sharedConfig = defineConfig({
 	deps: {
-		neverBundle: [
-			'obsidian',
-			'electron',
-			'@codemirror/autocomplete',
-			'@codemirror/collab',
-			'@codemirror/commands',
-			'@codemirror/language',
-			'@codemirror/lint',
-			'@codemirror/search',
-			'@codemirror/state',
-			'@codemirror/view',
-		],
+		neverBundle: ['obsidian'],
 		onlyBundle: false,
 	},
 	minify: true,
@@ -68,7 +57,7 @@ const pluginConfig = defineConfig({
 
 const sdkConfig = defineConfig({
 	...sharedConfig,
-	clean: false,
+	clean: true,
 	dts: true,
 	entry: {
 		dev: 'src/sdk/dev.ts',

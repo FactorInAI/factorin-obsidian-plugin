@@ -1,7 +1,7 @@
 import { isSub } from '@repo/shared/path';
 import type { RecordStatsMap, StatsMap } from '@/types';
 import type { BaseTask } from '../tasks/interface';
-import Download from '../tasks/Donwload';
+import Download from '../tasks/Download';
 import ResolveConflict from '../tasks/ResolveConflict';
 import Upload from '../tasks/Upload';
 

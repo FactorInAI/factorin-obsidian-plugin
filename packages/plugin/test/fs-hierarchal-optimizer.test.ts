@@ -33,6 +33,7 @@ test('mkdir chain waits for ancestor mkdir', async () => {
 				await root.promise;
 			},
 			key: 'folder/',
+			resolve: () => {},
 			type: 'mkdir',
 		},
 		{
@@ -41,6 +42,7 @@ test('mkdir chain waits for ancestor mkdir', async () => {
 				await nested.promise;
 			},
 			key: 'folder/nested/',
+			resolve: () => {},
 			type: 'mkdir',
 		},
 		{
@@ -49,6 +51,7 @@ test('mkdir chain waits for ancestor mkdir', async () => {
 				return 'write-uid';
 			},
 			key: 'folder/nested/file.md',
+			resolve: () => {},
 			type: 'write',
 		},
 	];
@@ -83,6 +86,7 @@ test('move waits for source descendants and gates target descendants', async () 
 				return 'src-uid';
 			},
 			key: 'folder/src/note.md',
+			resolve: () => {},
 			type: 'write',
 		},
 		{
@@ -92,6 +96,7 @@ test('move waits for source descendants and gates target descendants', async () 
 			},
 			newKey: 'folder/dst/',
 			oldKey: 'folder/src/',
+			resolve: () => {},
 			type: 'move',
 		},
 		{
@@ -100,6 +105,7 @@ test('move waits for source descendants and gates target descendants', async () 
 				return 'dst-uid';
 			},
 			key: 'folder/dst/note.md',
+			resolve: () => {},
 			type: 'write',
 		},
 	];
@@ -130,6 +136,7 @@ test('delete blocks folder/file collision write', async () => {
 				await release.promise;
 			},
 			key: 'folder/',
+			resolve: () => {},
 			type: 'delete',
 		},
 		{
@@ -138,6 +145,7 @@ test('delete blocks folder/file collision write', async () => {
 				return 'file-uid';
 			},
 			key: 'folder',
+			resolve: () => {},
 			type: 'write',
 		},
 	];

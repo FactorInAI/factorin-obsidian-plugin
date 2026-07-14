@@ -17,7 +17,7 @@ import toErrorMessage from '@/utils/to-error-message';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
 import type { DeleteConfirmReturn } from './ProgressModal';
-import type { Infras, RemoteListGetter } from './Registrar';
+import type { Infras, RemoteStatsGetter } from './Registrar';
 
 export type SyncTerminateReason =
 	| { result: 'cancelled' }
@@ -39,7 +39,7 @@ export default class Sync {
 			getDecider: () => Decider;
 			on: On<Events>;
 			translate: Translate<Translations>;
-			getRemoteListGetter: (trigger: string) => RemoteListGetter | undefined;
+			getRemoteStatsGetter: (trigger: string) => RemoteStatsGetter | undefined;
 			getConflictResolver: () => ConflictResolver;
 		},
 	) {
@@ -135,7 +135,8 @@ export default class Sync {
 				}
 			};
 			const getRemoteList = async () =>
-				(await this.ctx.getRemoteListGetter(trigger)?.(infras)) ?? (await traverseRemote());
+				(await this.ctx.getRemoteStatsGetter(trigger)?.(infras)) ??
+				(await traverseRemote());
 			const [localList, remoteList] = await Promise.all([localFs.list('/'), getRemoteList()]);
 			if (cancelled) throw syncCancelledError;
 			const records = new Map(await record.entries());

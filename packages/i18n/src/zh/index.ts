@@ -6,7 +6,7 @@ import type {
 import zh from './translations';
 
 // oxlint-disable-next-line typescript/no-extraneous-class
-export default class Webdav {
+export default class I18nZh {
 	constructor(
 		ctx: SelectFromContext<{
 			registerI18n: (lang: ObsidianLanguageCode, translations: TranslationResource) => void;

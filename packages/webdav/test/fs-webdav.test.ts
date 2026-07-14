@@ -54,11 +54,11 @@ beforeEach(() => {
 function createWebdavFs(options: Partial<WebdavFsOptions> = {}): WebdavHarness {
 	const calls: Array<RequestParam> = [];
 	let requestHandler: RequestHandler = async () => response;
-	const request = (async (params: RequestParam | string) => {
+	const request = async (params: RequestParam | string) => {
 		if (typeof params === 'string') throw new Error(`Unexpected string request: ${params}`);
 		calls.push(params);
 		return await requestHandler(params);
-	}) as Request;
+	};
 
 	return {
 		calls,
@@ -113,11 +113,11 @@ async function collectStream(source: ReadableStream<Binary>): Promise<Binary> {
 
 test('checkConnection returns success for a healthy endpoint', async () => {
 	const calls: Array<RequestParam> = [];
-	const request = (async (params: RequestParam | string) => {
+	const request = async (params: RequestParam | string) => {
 		if (typeof params === 'string') throw new Error(`Unexpected string request: ${params}`);
 		calls.push(params);
 		return { ...defaultResponse, status: 200 };
-	}) as Request;
+	};
 
 	expect(await checkConnection(defaultOptions, request)).toStrictEqual({ success: true });
 	expect(calls[0]).toMatchObject({ method: 'PROPFIND', url: 'https://dav.example.com/dav/' });

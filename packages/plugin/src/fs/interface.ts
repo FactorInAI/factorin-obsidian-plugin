@@ -12,7 +12,7 @@ export type RootFs = {
 	read(key: string, size?: number): MaybePromise<Binary>;
 	readStream(key: string, size?: number): MaybePromise<ReadableStream<Binary>>;
 	write(key: string, value: Binary): MaybePromise<string>; // Returns uid
-	writeStream(key: string, value: ReadableStream<Binary>, size?: number): MaybePromise<string>; // Returns uid, should only resolve when the stream si fully consumed
+	writeStream(key: string, value: ReadableStream<Binary>, size?: number): MaybePromise<string>; // Returns uid, should only resolve when the stream is fully consumed
 	delete(key: string): MaybePromise<void>;
 	move(oldKey: string, newKey: string): MaybePromise<void>;
 	mkdir(key: string, recursive?: boolean): MaybePromise<void>;
@@ -24,15 +24,31 @@ export type RootFs = {
 export type WrappedFs = RootFs & { original: Fs };
 export type Fs = WrappedFs | RootFs;
 
-export type WriteAtom = { type: 'write'; key: string; execute: () => MaybePromise<string> };
-export type DeleteAtom = { type: 'delete'; key: string; execute: () => MaybePromise<void> };
+export type WriteAtom = {
+	type: 'write';
+	key: string;
+	execute: () => MaybePromise<string>;
+	resolve: (uid: string) => void;
+};
+export type DeleteAtom = {
+	type: 'delete';
+	key: string;
+	execute: () => MaybePromise<void>;
+	resolve: () => void;
+};
 export type MoveAtom = {
 	type: 'move';
 	oldKey: string;
 	newKey: string;
 	execute: () => MaybePromise<void>;
+	resolve: () => void;
 };
-export type MkdirAtom = { type: 'mkdir'; key: string; execute: () => MaybePromise<void> };
+export type MkdirAtom = {
+	type: 'mkdir';
+	key: string;
+	execute: () => MaybePromise<void>;
+	resolve: () => void;
+};
 export type InputAtom = WriteAtom | DeleteAtom | MoveAtom | MkdirAtom;
 export type CustomAtom = {
 	type: 'custom';

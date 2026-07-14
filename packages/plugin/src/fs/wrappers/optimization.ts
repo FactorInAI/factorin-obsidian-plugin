@@ -8,6 +8,7 @@ import type {
 	MkdirAtom,
 	MoveAtom,
 	WriteAtom,
+	OutputAtom,
 } from '../interface';
 
 type OptimizationOptions = {
@@ -15,6 +16,10 @@ type OptimizationOptions = {
 	thatPool: Array<string>;
 	batchOptimizer: BatchOptimizer;
 };
+
+type OmitResolve<T> = Omit<T, 'resolve'>;
+
+const executeAtom = (atom: OutputAtom) => atom.execute();
 
 class OptimizationFs implements WrappedFs {
 	private scheduled = false;
@@ -33,9 +38,12 @@ class OptimizationFs implements WrappedFs {
 		return this.original.getUid();
 	}
 
-	private enqueueExecution({ execute: e, ...rest }: MoveAtom | DeleteAtom | MkdirAtom) {
-		const { defer, execute } = createCachedPromise(e);
-		this.queue.push({ ...rest, execute });
+	private enqueueExecution({
+		execute: e,
+		...rest
+	}: OmitResolve<MoveAtom> | OmitResolve<DeleteAtom> | OmitResolve<MkdirAtom>) {
+		const { defer, execute, resolve } = createCachedPromise(e);
+		this.queue.push({ ...rest, execute, resolve });
 		this.scheduleFlush();
 		return defer;
 	}
@@ -112,10 +120,16 @@ class OptimizationFs implements WrappedFs {
 		if (this.queue.length === 1) await (this.queue.pop() as InputAtom).execute();
 		else {
 			const writeAtoms = this.options.thatPool.splice(0).map((key): WriteAtom => {
+				let result: string | undefined;
 				const anticipateWrite = new Promise<() => MaybePromise<string>>((resolve) => {
 					this.pendingWrites.set(key, (write: () => MaybePromise<string>) => {
 						this.pendingWrites.delete(key);
-						const { execute, defer } = createCachedPromise(write);
+						const {
+							execute,
+							defer,
+							resolve: resolveWrite,
+						} = createCachedPromise(write);
+						if (result !== undefined) resolveWrite(result);
 						resolve(execute);
 						return defer;
 					});
@@ -123,16 +137,17 @@ class OptimizationFs implements WrappedFs {
 				return {
 					execute: () => anticipateWrite.then((write) => write()),
 					key,
+					resolve: (uid: string) => (result = uid),
 					type: 'write',
 				};
 			});
 			const atoms = [...this.queue.splice(0), ...writeAtoms];
 			const optimizedAtoms = this.options.batchOptimizer({
 				atoms,
-				executeAtom: (atom) => atom.execute(),
+				executeAtom,
 				fs: this.original,
 			});
-			await Promise.all(optimizedAtoms.map((atom) => atom.execute()));
+			await Promise.all(optimizedAtoms.map(executeAtom));
 		}
 	}
 }
@@ -152,7 +167,14 @@ function createCachedPromise<T>(fn: () => MaybePromise<T>) {
 		else resolve(promise);
 		return promise;
 	};
-	return { defer, execute };
+	return {
+		defer,
+		execute,
+		resolve: (value: T) => {
+			promise = value;
+			resolve(value);
+		},
+	};
 }
 
 export default function remoteOptimizationWrapper(

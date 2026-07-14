@@ -68,7 +68,7 @@ export default class SyncEngine extends Plugin {
 			asymmetricStorage: true,
 			confirmDeleteInAutoSync: true,
 			confirmTasksInSync: true,
-			conflictResolver: 'latestSurvive',
+			conflictResolver: 'renameAndKeepBoth',
 			customHeaders: [],
 			decider: 'bidirectional',
 			exclusionRules: [

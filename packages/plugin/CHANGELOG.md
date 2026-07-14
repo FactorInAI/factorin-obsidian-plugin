@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Obsidian WebDAV Sync v2.5.12 - 2026-07-10
+
+- Added support for custom headers by @brycepollack.
+- Fixed the bug that causes independently and separately created same-name files on two devices fail to sync by @hesprs.
+- Prepare for v3 update by @hesprs.
+
 ## Obsidian WebDAV Sync v2.5.11 - 2026-06-02
 
 - Fixed the bug that causes smart merge to fail due to undefined iterator.
@@ -63,7 +69,7 @@ All notable changes to this project will be documented in this file.
 
 ## Obsidian WebDAV Sync v2.5.0 - 2026-05-03
 
-- Implemented client-side encryption. The encryption mechanism is faster, smaller, and more secure than similar solutions (like Remotely Save). See detail in [algorithm spec](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
+- Implemented client-side encryption. The encryption mechanism is faster, smaller, and more secure than similar solutions (like Remotely Save).
 - Adjusted settings entry description for better understanding.
 - Improved chunked downloading for better error
 - Fixed cancel button doesn't appear during pre-connecting.

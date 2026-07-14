@@ -3,7 +3,7 @@ import type { BaseTask, TaskNames } from '../tasks/interface';
 import AddRecord from '../tasks/AddRecord';
 import CreateLocalDir from '../tasks/CreateLocalDir';
 import CreateRemoteDir from '../tasks/CreateRemoteDir';
-import Download from '../tasks/Donwload';
+import Download from '../tasks/Download';
 import MoveLocal from '../tasks/MoveLocal';
 import MoveRemote from '../tasks/MoveRemote';
 import RemoveLocal from '../tasks/RemoveLocal';

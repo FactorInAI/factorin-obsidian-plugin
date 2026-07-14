@@ -33,6 +33,7 @@ import {
 	keepLocalResolver,
 	keepRemoteResolver,
 	latestSurviveResolver,
+	renameAndKeepBothResolver,
 } from '@/sync';
 import type { On } from './EventBus';
 import type { ObsidianLanguageCode, Translate, TranslationResource } from './I18n';
@@ -66,6 +67,7 @@ export default class Bootstrap {
 		latestSurvive: string;
 		keepLocal: string;
 		keepRemote: string;
+		renameAndKeepBoth: string;
 		skip: string;
 	} & ControlsSettingTranslations &
 		DevelopmentSettingTranslations &
@@ -141,7 +143,7 @@ export default class Bootstrap {
 		registerSyncTrigger('startup', { priority: 3000 });
 		registerSyncTrigger('interval', { priority: 2000 });
 		registerSyncTrigger('realtime', {
-			getRemoteList: async ({ record }) => {
+			getRemoteStats: async ({ record }) => {
 				if (!this.settings.realtimeSyncFastMode) return;
 				const stats = (await record.entries()).map(([key, stat]) => {
 					if (stat.isDir) return { isDir: true, key } as const;
@@ -238,6 +240,11 @@ export default class Bootstrap {
 		registerDecider('bidirectional', {
 			decider: bidirectionalDecider,
 			prettyName: t('bidirectional'),
+		});
+
+		registerConflictResolver('renameAndKeepBoth', {
+			prettyName: t('renameAndKeepBoth'),
+			resolver: renameAndKeepBothResolver,
 		});
 		registerConflictResolver('latestSurvive', {
 			prettyName: t('latestSurvive'),

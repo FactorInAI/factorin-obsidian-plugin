@@ -1,4 +1,4 @@
-import pipe from '@/utils/pipe';
+import { pipe } from '@/utils/pipe';
 import type { ConflictResolverPayload } from '../tasks/interface';
 
 export default async function latestSurviveResolver({

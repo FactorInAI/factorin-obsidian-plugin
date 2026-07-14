@@ -46,7 +46,7 @@ test('optimization wrapper forwards pooled write alongside queued ops', async ()
 		thisPool: localPool,
 	});
 	const remoteWrapper = optimizationWrapper(remote.fs, {
-		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer,
+		batchOptimizer: ({ atoms }) => atoms,
 		thatPool: localPool,
 		thisPool: remotePool,
 	});
@@ -88,7 +88,7 @@ test('optimization wrapper forwards pooled writeStream alongside queued ops', as
 		thisPool: localPool,
 	});
 	const remoteWrapper = optimizationWrapper(remote.fs, {
-		batchOptimizer: (({ atoms }) => atoms) as BatchOptimizer,
+		batchOptimizer: ({ atoms }) => atoms,
 		thatPool: localPool,
 		thisPool: remotePool,
 	});

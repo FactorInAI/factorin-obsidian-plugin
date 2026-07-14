@@ -3,6 +3,13 @@
 	"version": "0.0.1",
 	"private": true,
 	"license": "MIT",
+	"contributors": [
+		{
+			"name": "Hēsperus",
+			"email": "hesprs@outlook.com",
+			"github": "hesprs"
+		}
+	],
 	"type": "module",
 	"scripts": {
 		"dev": "MODE=dev tsdown",

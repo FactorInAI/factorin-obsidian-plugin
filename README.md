@@ -28,14 +28,11 @@
 </p>
 
 <p align="center">
-    <a href="./docs/public/README.zh-Hans.md">
+    <a href="./README.zh.md">
         <strong>简体中文</strong>
     </a> • 
     <a href="https://community.obsidian.md/plugins/webdav-sync">
         <strong>Plugin Store</strong>
-    </a> • 
-    <a href="#notices">
-        <strong>Notices</strong>
     </a> • 
     <a href="#license-copyright-and-originality">
         <strong>License</strong>
@@ -58,21 +55,13 @@ There's already a lot of plugins to sync your notes between devices. But the adv
 
 Sync engine is free (MIT License), extensible, community-driven, human curated, AI-friendly, with a highly optimized core.
 
-## Notices
-
-### 📢 Here is a Voting
-
-Here's ongoing polling about new directions in development! I recommend **everyone who sees this** participate in the 5-second anonymous polling to allow developers to obtain a fair result.
-
-- 🗳️ [Is `Smart Merge` worth the overhead?](https://github.com/hesprs/obsidian-webdav-sync/discussions/117)
-
 ## Features
 
 🧰 **Complete Basic Features**:
 
 - Bidirectional syncing.
 - Startup / periodic / save-on-change syncing.
-- Conflict resolution strategies (merge / latest survive / keep remote / keep local / skip).
+- Conflict resolution strategies (keep both / latest survive / keep remote / keep local / skip).
 - Advanced rate / memory control options.
 - Custom headers.
 - You can extend most above features by writing modules.
@@ -86,9 +75,9 @@ Here's ongoing polling about new directions in development! I recommend **everyo
 
 🧩 **Extensible Architecture**:
 
-- You can add backends, optimizers, sync triggers, i18n resources, decision strategies, setting entries, custom file processing, and all invoke operations possible in custom modules.
-- Documentation (in-progress), AI agent skills (in-progress), and SDK with debug and testing kit are provided.
-- Plugin provides dedicated module discovery and management panel UI.
+- You can add backends, optimizers, sync triggers, i18n resources, decision strategies, setting entries, custom file processing, and invoke all possible operations in custom modules.
+- Documentation, AI agent skills (in-progress), and SDK with debug and testing kit are provided.
+- Plugin provides dedicated module discovery and management UI.
 - Repo accepts any module contribution as long as it respects [contribution guide](./CONTRIBUTING.md).
 
 ⚡ **Lightening Fast**:
@@ -103,8 +92,8 @@ Here's ongoing polling about new directions in development! I recommend **everyo
 
 📦 **Module-provided Features**:
 
-- Client-side encryption: provided by `Encryption` official module. Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
-- Smart merge: merges documents when conflict is detected, can intelligently identify different languages and code, and applying different strategies.
+- 🔐 Client-side encryption: provided by `Encryption` official module. Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
+- 📑 Smart merge: provided by `Smart Merge` official module. Merges documents when conflict is detected, can intelligently identify different languages and code, and applying different strategies.
 
 ## Install & Setup
 

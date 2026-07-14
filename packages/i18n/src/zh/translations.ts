@@ -7,33 +7,36 @@ const zh: Translations = {
 	allRecordsCleared: '所有记录已清除',
 	asymmetricStorage: '非对称存储',
 	asymmetricStorageDescription: (frag) => {
-		frag.createSpan({ text: '使用 ' });
+		frag.appendText('使用 ');
 		frag.createEl('a', {
 			attr: {
 				href: 'https://github.com/hesprs/sync-engine/blob/main/blueprint/asymmetric-storage.md',
 			},
 			text: '非对称存储',
 		});
-		frag.createSpan({ text: ' 来大幅提升同步速度。' });
+		frag.appendText(' 来大幅提升同步速度。');
 	},
-	asymmetricStorageDisableMigration: (frag) => {
-		frag.createEl('p', { text: '⚠️ 在禁用非对称存储之前，您需要注意以下几点：' });
-		const ol = frag.createEl('ol');
-		ol.createEl('li', { text: '后续的所有上传都将镜像本地的层级结构。' });
-		ol.createEl('li', { text: '请确保所有设备都已禁用非对称存储。' });
-		ol.createEl('li', { text: '如果该库此前在启用非对称存储的情况下上传过，则必须进行迁移。' });
-	},
-	asymmetricStorageEnableMigration: (frag) => {
-		frag.createEl('p', { text: '⚠️ 在启用非对称存储之前，您需要注意以下几点：' });
-		const ol = frag.createEl('ol');
-		ol.createEl('li', {
-			text: '远程存储将不再镜像本地的层级结构。所有文件都将被平铺上传到基目录，并附加随机字符串锚点。',
-		});
-		ol.createEl('li', { text: '如果您需要远程端保持人类可读性，请不要启用此功能。' });
-		ol.createEl('li', { text: '启用后，请确保所有设备都已启用非对称存储。' });
-		ol.createEl('li', {
-			text: '如果该库此前在未启用非对称存储的情况下上传过，则必须进行迁移。',
-		});
+	asymmetricStorageMigration: (frag, flag) => {
+		if (flag === 'enable') {
+			frag.createEl('p', { text: '⚠️ 在启用非对称存储之前，您需要注意以下几点：' });
+			const ol = frag.createEl('ol');
+			ol.createEl('li', {
+				text: '远程存储将不再镜像本地的层级结构。所有文件都将被平铺上传到基目录，并附加随机字符串锚点。',
+			});
+			ol.createEl('li', { text: '如果您需要远程端保持人类可读性，请不要启用此功能。' });
+			ol.createEl('li', { text: '启用后，请确保所有设备都已启用非对称存储。' });
+			ol.createEl('li', {
+				text: '如果该库此前在未启用非对称存储的情况下上传过，则必须进行迁移。',
+			});
+		} else {
+			frag.createEl('p', { text: '⚠️ 在禁用非对称存储之前，您需要注意以下几点：' });
+			const ol = frag.createEl('ol');
+			ol.createEl('li', { text: '后续的所有上传都将镜像本地的层级结构。' });
+			ol.createEl('li', { text: '请确保所有设备都已禁用非对称存储。' });
+			ol.createEl('li', {
+				text: '如果该库此前在启用非对称存储的情况下上传过，则必须进行迁移。',
+			});
+		}
 	},
 	awaitingConfirmation: '等待确认',
 	backend: '存储后端',
@@ -162,6 +165,7 @@ const zh: Translations = {
 	removeLocal: '移除本地',
 	removeRecord: '移除记录',
 	removeRemote: '移除远程',
+	renameAndKeepBoth: '重命名并保留两者',
 	resolveConflict: '解决冲突',
 	save: '保存',
 	scheduledSync: '定时同步',

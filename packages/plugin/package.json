@@ -1,11 +1,30 @@
 {
 	"name": "@hesprs/sync-engine-sdk",
 	"version": "3.0.0",
+	"keywords": [
+		"obsidian-plugin",
+		"sdk",
+		"synchronization"
+	],
+	"homepage": "https://sync.consensia.cc",
+	"bugs": {
+		"url": "https://github.com/hesprs/sync-engine/issues"
+	},
 	"license": "MIT",
+	"author": {
+		"name": "Hēsperus",
+		"email": "hesprs@outlook.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/hesprs/sync-engine.git"
+	},
 	"files": [
 		"./dist-sdk"
 	],
 	"type": "module",
+	"sideEffects": false,
+	"module": "./dist-sdk/index.js",
 	"types": "./dist-sdk/index.d.ts",
 	"exports": {
 		".": {
@@ -16,6 +35,9 @@
 			"types": "./dist-sdk/dev.d.ts",
 			"default": "./dist-sdk/dev.js"
 		}
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"scripts": {
 		"dev": "MODE=dev BUILD=plugin tsdown && MODE=dev BUILD=sdk tsdown",
@@ -30,13 +52,13 @@
 	"devDependencies": {
 		"@repo/shared": "workspace:*",
 		"@types/glob-to-regexp": "^0.4.4",
-		"@unocss/postcss": "66.7.2",
+		"@unocss/postcss": "66.7.5",
 		"glob-to-regexp": "^0.4.1",
 		"postcss-merge-rules": "^8.0.1",
 		"solid-js": "^1.9.13",
 		"synthkernel": "./synthkernel.tgz",
 		"uni-kv": "../../uni-kv.tgz",
-		"unocss": "66.7.2",
-		"unplugin-solid": "^1.0.0"
+		"unocss": "66.7.5",
+		"unplugin-solid": "^2.0.0"
 	}
 }

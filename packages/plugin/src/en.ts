@@ -7,47 +7,48 @@ const en: Translations = {
 	allRecordsCleared: 'All records cleared',
 	asymmetricStorage: 'Asymmetric storage',
 	asymmetricStorageDescription: (frag) => {
-		frag.createSpan({ text: 'Use ' });
+		frag.appendText('Use ');
 		frag.createEl('a', {
 			attr: {
 				href: 'https://github.com/hesprs/sync-engine/blob/main/blueprint/asymmetric-storage.md',
 			},
 			text: 'asymmetric storage',
 		});
-		frag.createSpan({ text: ' to substantially accelerate syncing.' });
+		frag.appendText(' to substantially accelerate syncing.');
 	},
-	asymmetricStorageDisableMigration: (frag) => {
-		frag.createEl('p', {
-			text: '⚠️ You should be cautious about following points before disabling asymmetric storage:',
-		});
-		const ol = frag.createEl('ol');
-		ol.createEl('li', {
-			text: 'All subsequent uploads will mirror local hierarchal structure.',
-		});
-		ol.createEl('li', {
-			text: 'Please ensure all devices have asymmetric storage disabled.',
-		});
-		ol.createEl('li', {
-			text: 'Migration is necessary if this vault was previously uploaded with asymmetric storage enabled.',
-		});
-	},
-	asymmetricStorageEnableMigration: (frag) => {
-		frag.createEl('p', {
-			text: '⚠️ You should be cautious about following points before enabling asymmetric storage:',
-		});
-		const ol = frag.createEl('ol');
-		ol.createEl('li', {
-			text: 'Remote storage will no longer mirror local hierarchal structure. All files will be uploaded flatly to the base directory with random string anchors appended.',
-		});
-		ol.createEl('li', {
-			text: "If you need the remote to remain readable by humans, please don't enable this feature.",
-		});
-		ol.createEl('li', {
-			text: 'After enabling, please ensure all devices have asymmetric storage disabled.',
-		});
-		ol.createEl('li', {
-			text: 'Migration is necessary if this vault was previously uploaded without asymmetric storage.',
-		});
+	asymmetricStorageMigration: (frag, flag) => {
+		if (flag === 'enable') {
+			frag.createEl('p', {
+				text: '⚠️ You should be cautious about following points before enabling asymmetric storage:',
+			});
+			const ol = frag.createEl('ol');
+			ol.createEl('li', {
+				text: 'Remote storage will no longer mirror local hierarchal structure. All files will be uploaded flatly to the base directory with random string anchors appended.',
+			});
+			ol.createEl('li', {
+				text: "If you need the remote to remain readable by humans, please don't enable this feature.",
+			});
+			ol.createEl('li', {
+				text: 'After enabling, please ensure all devices have asymmetric storage disabled.',
+			});
+			ol.createEl('li', {
+				text: 'Migration is necessary if this vault was previously uploaded without asymmetric storage.',
+			});
+		} else {
+			frag.createEl('p', {
+				text: '⚠️ You should be cautious about following points before disabling asymmetric storage:',
+			});
+			const ol = frag.createEl('ol');
+			ol.createEl('li', {
+				text: 'All subsequent uploads will mirror local hierarchal structure.',
+			});
+			ol.createEl('li', {
+				text: 'Please ensure all devices have asymmetric storage disabled.',
+			});
+			ol.createEl('li', {
+				text: 'Migration is necessary if this vault was previously uploaded with asymmetric storage enabled.',
+			});
+		}
 	},
 	awaitingConfirmation: 'Awaiting confirmation',
 	backend: 'Storage backend',
@@ -179,6 +180,7 @@ const en: Translations = {
 	removeLocal: 'Remove local',
 	removeRecord: 'Remove record',
 	removeRemote: 'Remove remote',
+	renameAndKeepBoth: 'Rename and keep both',
 	resolveConflict: 'Resolve conflict',
 	save: 'Save',
 	scheduledSync: 'Scheduled sync',

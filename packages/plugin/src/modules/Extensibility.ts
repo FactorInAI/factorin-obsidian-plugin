@@ -74,10 +74,15 @@ export default class Extensibility {
 
 	private readonly createOperationFactory = () => {
 		const operations: Array<() => Promise<void>> = [];
-		const execute = () => Promise.all(operations.splice(0).map(async (op) => await op()));
+		const deletes: Array<() => Promise<void>> = [];
+		const execute = async () => {
+			// Run deletions first to prevent race condition
+			await Promise.all(deletes.splice(0).map((op) => op()));
+			await Promise.all(operations.splice(0).map((op) => op()));
+		};
 		const { adapter } = this.ctx.app.vault;
 		const factory = {
-			delete: (path: string) => operations.push(() => adapter.remove(path)),
+			delete: (path: string) => deletes.push(() => adapter.remove(path)),
 			download: (name: string, version: string, url: string) =>
 				operations.push(() => this.downloadModule(name, version, url, false)),
 			load: (name: string) => operations.push(() => this.loadModule(name)),

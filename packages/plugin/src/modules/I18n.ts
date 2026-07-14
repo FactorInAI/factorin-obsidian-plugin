@@ -79,12 +79,15 @@ export type ObsidianLanguageCode =
 
 const DEFAULT_LANGUAGE: ObsidianLanguageCode = 'en';
 type Primitive = string | number | boolean | null | undefined;
-export type Fragment = (frag: DocumentFragment) => void;
-export type TranslationResource = Record<string, string | Fragment>;
+export type Fragment<A = undefined> = (frag: DocumentFragment, args: A) => void;
+export type TranslationResource = Record<string, string | Fragment<General>>;
 export type InterpolationValues = Record<string, Primitive>;
+
+type TranslateParams<R extends Fragment<General> | string> =
+	R extends Fragment<infer A> ? ([undefined] extends [A] ? [] : [A]) : [] | [InterpolationValues];
 export type Translate<O extends TranslationResource> = <K extends keyof O>(
 	key: K,
-	interpolate?: InterpolationValues,
+	...args: TranslateParams<O[K]>
 ) => O[K] extends string ? string : DocumentFragment;
 
 export default class I18n {
@@ -101,14 +104,15 @@ export default class I18n {
 		else if (this.targetLangs.has(code)) Object.assign(this.i18n, resource);
 	};
 
-	private readonly translate: Translate<Translations> = ((key, params) => {
+	private readonly translate = ((key, params) => {
 		const i18n = this.i18n as Translations;
 		const value = i18n[key];
 		if (typeof value === 'string') {
-			if (params) return interpolate(value, params);
+			if (params) return interpolate(value, params as never);
 			return value;
 		}
-		if (typeof value === 'function') return createFragment(value);
+		if (typeof value === 'function')
+			return createFragment((frag) => value(frag, params as never));
 	}) as Translate<Translations>;
 
 	root = {

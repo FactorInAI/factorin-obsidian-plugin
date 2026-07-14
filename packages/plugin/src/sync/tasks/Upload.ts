@@ -1,4 +1,4 @@
-import pipe from '@/utils/pipe';
+import { pipe } from '@/utils/pipe';
 import type { OptionsWithLocalFileStat } from '../decision/interface';
 import { BaseTask } from './interface';
 

@@ -1,22 +1,15 @@
+import man from '../manifest.json' with { type: 'json' };
 import pkg from '../packages/plugin/package.json' with { type: 'json' };
+import versions from '../versions.json' with { type: 'json' };
 
-const targetVersion = pkg.version;
+const { version, minAppVersion } = man;
 
-// Read minAppVersion from manifest.json and bump version to target version
-const manifest = JSON.parse(await Bun.file('manifest.json').text()) as {
-	minAppVersion: string;
-	version?: string;
-};
-const { minAppVersion } = manifest;
-manifest.version = targetVersion;
-await Bun.write('manifest.json', JSON.stringify(manifest, undefined, '\t'));
+(versions as Record<string, string>)[version] = minAppVersion;
+pkg.version = version;
 
-// Update versions.json with target version and minAppVersion from manifest.json
-const versions = JSON.parse(await Bun.file('versions.json').text()) as Record<string, string>;
-versions[targetVersion] = minAppVersion;
-await Bun.write('versions.json', JSON.stringify(versions, undefined, '\t'));
+await Promise.all([
+	Bun.write('versions.json', JSON.stringify(versions, undefined, '\t')),
+	Bun.write('packages/plugin/package.json', JSON.stringify(pkg, undefined, '\t')),
+]);
 
 Bun.spawnSync({ cmd: ['bun', 'oxfmt', 'versions.json', 'manifest.json'] });
-
-// oxlint-disable-next-line unicorn/require-module-specifiers
-export {};

@@ -27,9 +27,9 @@ export type RequestMiddlewareEntry = {
 	apply: RequestMiddleware;
 };
 export type DeciderEntry = { decider: Decider; prettyName: string };
-export type RemoteListGetter = (infras: Infras) => MaybePromise<Array<Stat> | undefined>;
+export type RemoteStatsGetter = (infras: Infras) => MaybePromise<Array<Stat> | undefined>;
 export type SyncTriggerEntry = {
-	getRemoteList?: RemoteListGetter;
+	getRemoteStats?: RemoteStatsGetter;
 	priority: number;
 };
 export type OptimizerEntry = {
@@ -138,6 +138,11 @@ export default class Registrar {
 		this.requestMiddlewareRegistry.add(entry);
 		return () => this.requestMiddlewareRegistry.delete(entry);
 	};
+	private readonly registerCss = (css: string) => {
+		const style = createEl('style', { text: css, type: 'text/css' });
+		document.head.appendChild(style);
+		return () => style.remove();
+	};
 
 	private readonly createLocalFs = () => {
 		const wrappers: Record<number, (fs: Fs) => Fs> = {};
@@ -220,8 +225,8 @@ export default class Registrar {
 		return trigger ?? 'unknown';
 	};
 
-	private readonly getRemoteListGetter = (trigger: string) =>
-		this.syncTriggerRegistry.get(trigger)?.getRemoteList;
+	private readonly getRemoteStatsGetter = (trigger: string) =>
+		this.syncTriggerRegistry.get(trigger)?.getRemoteStats;
 
 	private readonly getNamespace = (localFs?: Fs, remoteFs?: Fs) => {
 		localFs ??= this.createLocalFs();
@@ -254,12 +259,13 @@ export default class Registrar {
 		getDecider: this.getDecider,
 		getLocalOptimizer: this.getLocalOptimizer,
 		getNamespace: this.getNamespace,
-		getRemoteListGetter: this.getRemoteListGetter,
 		getRemoteOptimizer: this.getRemoteOptimizer,
+		getRemoteStatsGetter: this.getRemoteStatsGetter,
 		getRequest: this.getRequest,
 		initializeSync: this.initializeSync,
 		reduceSyncTrigger: this.reduceSyncTrigger,
 		registerConflictResolver: this.registerConflictResolver,
+		registerCss: this.registerCss,
 		registerDecider: this.registerDecider,
 		registerLocalFsWrapper: this.registerLocalFsWrapper,
 		registerLocalOptimizer: this.registerLocalOptimizer,

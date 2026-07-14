@@ -273,8 +273,7 @@ export default class Observability {
 	};
 
 	readonly dispose = () => {
-		for (const unsub of this.cleanupCallbacks) unsub();
-		this.cleanupCallbacks.length = 0;
+		this.cleanupCallbacks.splice(0).forEach((fn) => fn());
 		this.progressText.dispose();
 	};
 
