@@ -1,25 +1,25 @@
 [
 	{
 		"name": "WebDAV",
-		"version": "0.1.0",
+		"version": "0.1.1",
 		"description": "[Official] WebDAV backend support.",
 		"main": "https://sync.consensia.cc/modules/WebDAV.js"
 	},
 	{
 		"name": "Encryption",
-		"version": "0.0.3",
+		"version": "0.0.4",
 		"description": "[Official] Client-side encrypt vault files before uploading to backend.",
 		"main": "https://sync.consensia.cc/modules/Encryption.js"
 	},
 	{
 		"name": "I18n 简体中文",
-		"version": "0.0.3",
+		"version": "0.0.4",
 		"description": "[Official] Simplified Chinese UI localization pack. / 简体中文 UI 本地化包。",
 		"main": "https://sync.consensia.cc/modules/I18n%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87.js"
 	},
 	{
 		"name": "Smart Merge",
-		"version": "0.0.2",
+		"version": "0.0.3",
 		"description": "[Official] Smart merge conflict resolution strategy that applies recursive three-way merge.",
 		"main": "https://sync.consensia.cc/modules/Smart%20Merge.js"
 	}

@@ -43,17 +43,17 @@ export default class Encryption {
 		this.cleanup.push(
 			registerRemoteFsWrapper({
 				apply: (fs) => {
+					if (!this.moduleSettings.enabled) return;
 					const { password: pwd } = this.moduleSettings;
 					const password = app.secretStorage.getSecret(pwd);
 					if (!password) throw new Error('Please configure encryption password!');
 					return encryptionWrapper(fs, { memoryDB, password });
 				},
-				condition: () => this.moduleSettings.enabled,
-				order: 7919,
+				priority: 7919,
 			}),
 			registerSetting({
-				order: 1355,
-				render: (el) => encryptionSetting(el, this.ctx as Context, this.moduleSettings),
+				apply: (el) => encryptionSetting(el, this.ctx as Context, this.moduleSettings),
+				priority: 1355,
 			}),
 		);
 	};

@@ -4,7 +4,6 @@ import type { GlobMatchOptions, TogglableValue } from '@/types';
 import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
 import untilTrue from '@/utils/until-true';
 import type { SyncStage } from './Observability';
-import type { SyncTriggerEntry } from './Registrar';
 import type { SyncTerminateReason } from './Sync';
 
 type SyncRequest = {
@@ -26,8 +25,6 @@ export default class Scheduler {
 			registerEvent: (ref: EventRef) => void;
 			app: App;
 			isIdle: Ref<boolean>;
-			reduceSyncTrigger: (batch: Array<string>) => string;
-			registerSyncTrigger: (trigger: string, entry: SyncTriggerEntry) => void;
 		},
 	) {}
 
@@ -126,9 +123,7 @@ export default class Scheduler {
 
 	private readonly flush = async () => {
 		const batch = this.pendingRequests.splice(0);
-		const result = await this.ctx.executeSync(
-			this.ctx.reduceSyncTrigger(batch.map((request) => request.trigger)),
-		);
+		const result = await this.ctx.executeSync(batch.last()?.trigger ?? 'unknown');
 		for (const request of batch) request.resolve(result);
 	};
 

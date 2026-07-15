@@ -11,6 +11,7 @@ import type {
 	Settings,
 } from '@hesprs/sync-engine-sdk';
 import type { App } from 'obsidian';
+import { digOriginal } from '@hesprs/sync-engine-sdk';
 import type { WebdavTranslations } from './setting';
 import baseDirWrapper from './base-dir';
 import { en, zh } from './i18n';
@@ -87,13 +88,15 @@ export default class Webdav {
 				prettyName: translate('webdav'),
 			}),
 			registerRemoteFsWrapper({
-				apply: (fs) => baseDirWrapper(fs, this.moduleSettings.baseDirectory),
-				condition: () => this.settings.remoteFs === 'webdav',
-				order: 6318,
+				apply: (fs) => {
+					if (digOriginal(fs) instanceof WebdavFs)
+						return baseDirWrapper(fs, this.moduleSettings.baseDirectory);
+				},
+				priority: 6318,
 			}),
 			registerSetting({
-				order: 749,
-				render: (el) => webdavSetting(el, this.ctx as Context, this.moduleSettings),
+				apply: (el) => webdavSetting(el, this.ctx as Context, this.moduleSettings),
+				priority: 749,
 			}),
 		);
 	};

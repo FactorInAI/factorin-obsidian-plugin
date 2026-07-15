@@ -25,4 +25,4 @@ jobs:
         run: bun run build -F @hesprs/sync-engine-sdk
 
       - name: Publish to npm
-        run: cd packages/plugin && bun publish
+        run: cd packages/plugin && bunx npm@latest publish

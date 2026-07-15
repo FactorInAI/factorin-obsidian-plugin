@@ -66,16 +66,16 @@ export default class SmartMerge {
 						fs,
 						indexedDB.getStore(`base-text-${getNamespace(undefined, fs)}`),
 					),
-				order: 20_098,
+				priority: 20_098,
 			}),
 			registerConflictResolver('smartMerge', {
 				prettyName: translate('smartMerge'),
 				resolver: smartMergeResolver(this.moduleSettings, indexedDB, getNamespace),
 			}),
 			registerSetting({
-				order: 4048,
-				render: (el) =>
+				apply: (el) =>
 					smartMergeSetting(el, { saveSettings, translate }, this.moduleSettings),
+				priority: 4048,
 			}),
 		);
 	};

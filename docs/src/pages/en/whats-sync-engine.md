@@ -5,13 +5,13 @@
 **Sync Engine** is born from the chaos of syncing plugin landscape:
 
 - The absolute dominator, [Remotely Save](https://github.com/remotely-save/remotely-save), has been unmaintained for years, with a series of stability issues. And requires subscription to access advanced features.
-- Some other famous solutions, like [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) and [Fast Note Sync](https://github.com/haierkeys/obsidian-fast-note-sync) requires custom server setup, which aren't great choices for users without technical understanding or economic power.
+- Some other famous solutions, like [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) and [Fast Note Sync](https://github.com/haierkeys/obsidian-fast-note-sync) require custom server setup, which aren't great choices for users without technical understanding or economic power.
 - Services like [Relay](https://github.com/No-Instructions/Relay) are based on proprietary infrastructure and requires payment. Your data isn't fully controlled by yourself.
 - Most tiny syncing plugins often focus on a single service, which is nice, but the optimization can be awful.
 - Newly emerged syncing plugins might be **vibe-coded**, they could have significant risk of maintenance and security deficiencies (especially in sensitive areas like encryption).
 - More importantly, all syncing plugins above are **monolithic**, the function of the plugin is fixed, extension requires the author to change source code. This closeness not only adds maintenance overhead, but also often makes the plugin overly **bloated**, full of features that only a fraction of users use.
 
-Sync Engine's perspective is not "to build another Remotely Save", but **to revolutionize the status quo** by adapting an architecture that nobody has tried before: **the plugin core offers no more than a module manager and a highly optimized sync routine, all backends, advanced features, translations, etc. come from optional module**. This architecture helps Sync Engine achieve infinite feature probability and higher performance and other plugins. You no longer need to find a new plugin to satisfy your syncing needs, you simply install a module.
+Sync Engine's perspective is not "to build another Remotely Save", but **to revolutionize the status quo** by adapting an architecture that nobody has tried before: **the plugin core offers no more than a module manager and a highly optimized sync routine, all backends, advanced features, translations, etc. come from optional modules**. This architecture helps Sync Engine achieve infinite feature probability and higher performance. You no longer need to find a new plugin to satisfy your syncing needs, you simply install a module.
 
 ## Features
 

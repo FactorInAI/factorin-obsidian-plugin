@@ -65,7 +65,7 @@ SDK exports following filesystem types:
 - `RootFs`, `WrappedFs`, `Fs`
 - `WriteAtom`, `DeleteAtom`, `MoveAtom`, `MkdirAtom`
 - `InputAtom`, `CustomAtom`, `OutputAtom`
-- `OptimizerInput`, `BatchOptimizer`
+- `OptimizerInput`, `OptimizerOutput`, `BatchOptimizer`
 
 [File System and Wrapper Chain](file-system.md) contains complete `RootFs` contract, key conventions, wrapper guidance, optimizer contracts, and backend implementation examples. Use it for:
 
@@ -90,7 +90,7 @@ export default class MyModule {
 
   start(): void {
     const wrapper: FsWrapperEntry = {
-      order: 4823,
+      priority: 4823,
       apply: (fs) => fs,
     };
     this.cleanup.push(this.ctx.registerRemoteFsWrapper(wrapper));
@@ -176,10 +176,9 @@ export default class MyModule {
 | -------------------------- | ------------------------------------------------------------ |
 | `getDecider`               | Gets selected `Decider`.                                     |
 | `getConflictResolver`      | Gets selected `ConflictResolver`.                            |
-| `getLocalOptimizer`        | Gets selected local `BatchOptimizer`.                        |
-| `getRemoteOptimizer`       | Gets selected remote `BatchOptimizer`.                       |
-| `getRemoteStatsGetter`     | Gets `RemoteStatsGetter` for a trigger.                      |
-| `reduceSyncTrigger`        | Chooses highest-priority trigger from trigger IDs.           |
+| `optimizeLocal`            | Applies selected local `BatchOptimizer`.                     |
+| `optimizeRemote`           | Applies selected remote `BatchOptimizer`.                    |
+| `listRemote`               | Lists remote entries for a sync trigger.                     |
 | `executeSync`              | Executes synchronization immediately for trigger.            |
 | `requestSync`              | Queues synchronization; resolves with `SyncTerminateReason`. |
 | `executionProgress`        | Reactive `Progress` for task execution.                      |
@@ -194,7 +193,7 @@ export default class MyModule {
 | `registerConflictResolver` | Registers `ConflictResolverEntry`.                           |
 | `registerLocalOptimizer`   | Registers local `OptimizerEntry`.                            |
 | `registerRemoteOptimizer`  | Registers remote `OptimizerEntry`.                           |
-| `registerSyncTrigger`      | Registers trigger ID and `SyncTriggerEntry`.                 |
+| `registerRemoteLister`     | Registers `RemoteListerEntry`.                               |
 | `registerSetting`          | Registers `SettingEntry`.                                    |
 
 #### Framework members
@@ -402,26 +401,26 @@ ctx.registerI18n('en', {
 
 ```ts
 type FsWrapperEntry = {
-  order: number;
-  apply: (fs: Fs) => Fs;
-  condition?: () => boolean;
+  priority: number;
+  apply: (fs: Fs) => Fs | undefined;
 };
 ```
 
-`order` controls wrapper position. `condition` limits application to matching state. See [Filesystem wrappers](file-system.md#wrapper-chain) for implementation guidance.
+`priority` controls wrapper position; lower priorities are applied first. Returning `undefined` from `apply` declines an entry, allowing another entry at the same priority to run. See [Filesystem wrappers](file-system.md#wrapper-chain) for implementation guidance.
 
 ```ts
 import { debugWrapper } from '@hesprs/sync-engine-sdk/dev';
 
 const removeLocalWrapper = ctx.registerLocalFsWrapper({
-  order: 100,
+  priority: 100,
   apply: (fs) => debugWrapper(fs, console.debug),
 });
 
 const removeRemoteWrapper = ctx.registerRemoteFsWrapper({
-  order: 100,
-  condition: () => ctx.settings.remoteFs === 'example',
-  apply: (fs) => debugWrapper(fs, console.debug),
+  priority: 100,
+  apply: (fs) => {
+    if (ctx.settings.remoteFs === 'example') return debugWrapper(fs, console.debug);
+  },
 });
 ```
 
@@ -467,19 +466,17 @@ type Request = (params: RequestParam | string) => Promise<{
   status: number;
 }>;
 
-type RequestMiddleware = (request: Request) => Request;
-
 type RequestMiddlewareEntry = {
-  order: number;
-  apply: RequestMiddleware;
+  priority: number;
+  apply: (request: Request) => Request | undefined;
 };
 ```
 
-`json()` intentionally returns untyped JSON. Middleware wraps request function in ascending `order`.
+`json()` intentionally returns untyped JSON. Middleware wraps request function in ascending `priority`; returning `undefined` declines an entry at that priority.
 
 ```ts
 const removeMiddleware = ctx.registerRequestMiddleware({
-  order: 100,
+  priority: 100,
   apply: (request) => async (params) => {
     const response = await request(params);
     console.debug(`Request returned ${response.status}`);
@@ -502,8 +499,8 @@ type ConflictResolverEntry = {
 };
 
 type OptimizerEntry = {
-  optimizer: BatchOptimizer;
-  condition?: () => boolean;
+  priority: number;
+  apply: (input: OptimizerInput) => OptimizerOutput | undefined;
 };
 ```
 
@@ -533,72 +530,76 @@ This minimal resolver copies local content to remote. Production policies should
 
 ### `registerLocalOptimizer` and `registerRemoteOptimizer`
 
-Both methods register an optimizer; `condition` selects a conditional optimizer over the default. See [Batch optimization](file-system.md#batch-optimization) for atom behavior.
+Both methods register an optimizer. Entries are evaluated in ascending `priority`; the first `apply` that returns an optimizer output is selected. Returning `undefined` declines an entry. See [Batch optimization](file-system.md#batch-optimization) for atom behavior.
 
 ```ts
 const removeLocalOptimizer = ctx.registerLocalOptimizer({
-  optimizer: ({ atoms }) => atoms,
+  priority: 2323,
+  apply: ({ atoms }) => atoms,
 });
 
 const removeRemoteOptimizer = ctx.registerRemoteOptimizer({
-  optimizer: ({ atoms }) => atoms,
-  condition: () => ctx.settings.remoteFs === 'example',
+  priority: 4928,
+  apply: ({ atoms }) => {
+    if (ctx.settings.remoteFs === 'example') return atoms;
+  },
 });
 ```
 
-### `registerSyncTrigger`
+### `registerRemoteLister`
 
 ```ts
-type RemoteStatsGetter = (infrastructure: {
+type RemoteLister = (info: {
   localFs: Fs;
   remoteFs: Fs;
   record: RecordStore;
-}) => MaybePromise<Array<Stat> | undefined>;
+  trigger: string;
+}) => MaybePromise<Array<Stat>>;
 
-type SyncTriggerEntry = {
+type RemoteListerEntry = {
   priority: number;
-  getRemoteStats?: RemoteStatsGetter;
+  apply: (info: Parameters<RemoteLister>[0]) => MaybePromise<Array<Stat>> | undefined;
 };
 ```
 
-`priority` resolves concurrent sync requests: highest priority wins. `getRemoteStats` can bypass normal remote traversal by returning stats.
+`listRemote` runs during sync and passes the current infrastructure and trigger to registered listers. Entries are evaluated in ascending numeric `priority`; the first result is used. Returning `undefined` declines an entry. When several sync requests are queued together, the last queued trigger is used for the batch.
 
 ```ts
-const removeTrigger = ctx.registerSyncTrigger('command', {
+const removeLister = ctx.registerRemoteLister({
   priority: 1000,
+  apply: async ({ remoteFs, trigger }) => {
+    if (trigger !== 'command') return;
+    return remoteFs.list('/');
+  },
 });
 ```
 
-#### Core sync triggers
+#### Core remote listers
 
-Sync Engine pre-registers these triggers. When multiple sync requests are queued together, the registered trigger with highest priority determines behavior for that batch.
+Sync Engine registers a normal remote traversal and a realtime fast-mode candidate. The normal traversal recreates a missing remote root and clears its records, then reports remote walk progress.
 
-| Trigger                | Priority | Purpose                                                            |
-| ---------------------- | -------: | ------------------------------------------------------------------ |
-| `migration`            |   `6000` | Syncs before and after migration work.                             |
-| `manual`               |   `5000` | Interactive ribbon or command sync; may request task confirmation. |
-| `nonInteractiveManual` |   `4000` | User-started command sync without task confirmation.               |
-| `startup`              |   `3000` | Runs once after configured startup delay.                          |
-| `interval`             |   `2000` | Runs periodically while scheduled sync is enabled.                 |
-| `realtime`             |   `1000` | Runs after an included vault change and configured debounce delay. |
+| Lister                  | Priority | Purpose                                                           |
+| ----------------------- | -------: | ----------------------------------------------------------------- |
+| Normal remote traversal |  `10000` | Walks remote storage and recreates a missing remote root.         |
+| Realtime fast-mode      |   `1000` | Derives remote stats from records for realtime sync when enabled. |
 
-`realtime` also provides core `getRemoteStats` optimization. When `realtimeSyncFastMode` is enabled, it derives remote stats from existing records instead of walking remote filesystem. Returning `undefined` when fast mode is disabled or records are empty restores normal remote traversal.
+Listers currently run in ascending priority, so realtime fast mode `1000` is selected before normal traversal at `10000` if fast mode conditions are satisfied.
 
 ### `registerSetting` and `registerCss`
 
 ```ts
 type SettingEntry = {
-  order: number;
-  render: (element: HTMLElement) => void;
+  priority: number;
+  apply: (element: HTMLElement) => void;
 };
 ```
 
-`registerSetting` renders setting sections in ascending `order`. `registerCss(css)` injects CSS and returns callback that removes injected style element.
+`registerSetting` renders setting sections in ascending `priority`. `registerCss(css)` injects CSS and returns callback that removes injected style element.
 
 ```ts
 const removeSetting = ctx.registerSetting({
-  order: 100,
-  render: (element) => {
+  priority: 156,
+  apply: (element) => {
     element.createEl('p', { text: 'Example module setting' });
   },
 });
@@ -612,16 +613,16 @@ const removeCss = ctx.registerCss(`
 
 #### Core setting sections
 
-Sync Engine pre-registers these setting sections. Rendering uses ascending `order`; choose module order between these values when contribution needs specific placement.
+Sync Engine pre-registers these setting sections. Rendering uses ascending `priority`; choose a priority between these values when contribution needs specific placement.
 
-| Section           |  Order | Contents                                                                       |
-| ----------------- | -----: | ------------------------------------------------------------------------------ |
-| Top configuration |    `0` | Backend, module management and auto-update, decider, and conflict resolver.    |
-| Features          | `1000` | Realtime, startup, and scheduled sync; realtime fast mode; asymmetric storage. |
-| Controls          | `2000` | File-size, request-concurrency, request-interval, and memory limits.           |
-| Filter rules      | `3000` | Inclusion and exclusion glob rules.                                            |
-| Miscellaneous     | `4000` | Custom headers, mobile notices, task confirmation, and deletion confirmation.  |
-| Development       | `5000` | Record cleanup and log export tools.                                           |
+| Section           | Priority | Contents                                                                       |
+| ----------------- | -------: | ------------------------------------------------------------------------------ |
+| Top configuration |      `0` | Backend, module management and auto-update, decider, and conflict resolver.    |
+| Features          |   `1000` | Realtime, startup, and scheduled sync; realtime fast mode; asymmetric storage. |
+| Controls          |   `2000` | File-size, request-concurrency, request-interval, and memory limits.           |
+| Filter rules      |   `3000` | Inclusion and exclusion glob rules.                                            |
+| Miscellaneous     |   `4000` | Custom headers, mobile notices, task confirmation, and deletion confirmation.  |
+| Development       |   `5000` | Record cleanup and log export tools.                                           |
 
 ## Sync and conflict types
 
@@ -736,7 +737,7 @@ type ModuleMeta = {
 ### `digOriginal`
 
 ```ts
-function digOriginal<FS extends RootFs | undefined = undefined>(wrapped: Fs): RootFs | FS;
+function digOriginal(wrapped: Fs): Fs;
 ```
 
 Unwraps nested filesystem wrappers to underlying root filesystem. See [existing filesystem example](file-system.md#digoriginal).
@@ -773,7 +774,7 @@ Wraps filesystem and logs method calls and results.
 
 ```ts
 ctx.registerRemoteFsWrapper({
-  order: 9999,
+  priority: 9999,
   apply: (fs) => debugWrapper(fs, console.log),
 });
 ```
@@ -818,8 +819,8 @@ export default defineConfig({
 | Context              | `Context`, `Settings`, `Events`, `Translations`, `SelectFromContext`                                                                                                                                                                                                                                         |
 | Events               | `Dispatch`, `On`                                                                                                                                                                                                                                                                                             |
 | Core data            | `Binary`, `MaybePromise`, `Progress`, `FileStat`, `FolderStat`, `Stat`, `StatsMap`, `RecordStat`, `RecordStatsMap`                                                                                                                                                                                           |
-| Filesystem           | `RootFs`, `WrappedFs`, `Fs`, `WriteAtom`, `DeleteAtom`, `MoveAtom`, `MkdirAtom`, `InputAtom`, `CustomAtom`, `OutputAtom`, `OptimizerInput`, `BatchOptimizer`                                                                                                                                                 |
-| Registration         | `FsWrapperEntry`, `RemoteFsEntry`, `RequestMiddlewareEntry`, `DeciderEntry`, `SyncTriggerEntry`, `RemoteStatsGetter`, `OptimizerEntry`, `SettingEntry`, `ConflictResolverEntry`, `Request`, `RequestMiddleware`, `RequestParam`, `CheckConnectionResult`                                                     |
+| Filesystem           | `RootFs`, `WrappedFs`, `Fs`, `WriteAtom`, `DeleteAtom`, `MoveAtom`, `MkdirAtom`, `InputAtom`, `CustomAtom`, `OutputAtom`, `OptimizerInput`, `OptimizerOutput`, `BatchOptimizer`                                                                                                                              |
+| Registration         | `FsWrapperEntry`, `RemoteFsEntry`, `RequestMiddlewareEntry`, `RemoteLister`, `RemoteListerEntry`, `DeciderEntry`, `OptimizerEntry`, `SettingEntry`, `ConflictResolverEntry`, `Request`, `RequestParam`, `CheckConnectionResult`                                                                              |
 | Sync                 | `TaskNames`, `BaseTask`, `AddRecord`, `RemoveRecord`, `Download`, `Upload`, `CreateLocalDir`, `CreateRemoteDir`, `RemoveLocal`, `RemoveRemote`, `MoveLocal`, `MoveRemote`, `ResolveConflict`, `TaskFactory`, `DeciderInput`, `Decider`, `ConflictResolver`, `ConflictResolverPayload`, `SyncTerminateReason` |
 | Storage              | `RecordStore`, `StoreAsync`, `StoreSync`, `DatabaseAsync`, `DatabaseSync`                                                                                                                                                                                                                                    |
 | Modules              | `ModuleMeta`                                                                                                                                                                                                                                                                                                 |

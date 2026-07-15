@@ -17,7 +17,7 @@ import toErrorMessage from '@/utils/to-error-message';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
 import type { DeleteConfirmReturn } from './ProgressModal';
-import type { Infras, RemoteStatsGetter } from './Registrar';
+import type { Infras, RemoteLister } from './Registrar';
 
 export type SyncTerminateReason =
 	| { result: 'cancelled' }
@@ -39,7 +39,7 @@ export default class Sync {
 			getDecider: () => Decider;
 			on: On<Events>;
 			translate: Translate<Translations>;
-			getRemoteStatsGetter: (trigger: string) => RemoteStatsGetter | undefined;
+			listRemote: RemoteLister;
 			getConflictResolver: () => ConflictResolver;
 		},
 	) {
@@ -121,23 +121,11 @@ export default class Sync {
 			this.dispatch('syncStarted', { isCancelled, trigger });
 
 			const infras = this.ctx.initializeSync();
-			const { record, localFs, remoteFs } = infras;
-			const traverseRemote = async () => {
-				try {
-					return await remoteFs.list('/', (progress) =>
-						this.dispatch('remoteWalkProgress', progress),
-					);
-				} catch (error) {
-					if (await remoteFs.exists('/')) throw error;
-					this.dispatch('logSync', 'Remote root deleted, recreating.');
-					await Promise.all([remoteFs.mkdir('/', true), record.clear()]);
-					return [];
-				}
-			};
-			const getRemoteList = async () =>
-				(await this.ctx.getRemoteStatsGetter(trigger)?.(infras)) ??
-				(await traverseRemote());
-			const [localList, remoteList] = await Promise.all([localFs.list('/'), getRemoteList()]);
+			const { record, localFs } = infras;
+			const [localList, remoteList] = await Promise.all([
+				localFs.list('/'),
+				this.ctx.listRemote({ ...infras, trigger }),
+			]);
 			if (cancelled) throw syncCancelledError;
 			const records = new Map(await record.entries());
 			const localStats = this.postProcess(localList);

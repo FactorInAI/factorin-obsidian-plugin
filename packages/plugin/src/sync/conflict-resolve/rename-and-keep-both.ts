@@ -1,3 +1,4 @@
+import { uint8ArrayEquals } from '@repo/shared/binary';
 import { readWithSize, writeWithValue } from '@/utils/pipe';
 import type { ConflictResolverPayload } from '../tasks/interface';
 
@@ -15,6 +16,16 @@ export default async function renameAndKeepBothResolver({
 		readWithSize(remoteFs, key, remote.size),
 	]);
 	if (!localValue || !remoteValue) return;
+
+	if (
+		localValue instanceof Uint8Array &&
+		remoteValue instanceof Uint8Array &&
+		uint8ArrayEquals(localValue, remoteValue)
+	) {
+		await record.set(key, { isDir: false, local: local.uid, remote: remote.uid });
+		return;
+	}
+
 	if (local.mtime > remote.mtime) {
 		await remoteFs.move(key, conflictKey);
 		const [remoteCanonicalUid, localConflictUid] = await Promise.all([

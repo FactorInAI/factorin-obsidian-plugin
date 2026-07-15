@@ -61,6 +61,5 @@ export type OptimizerInput = {
 	fs: Fs;
 	executeAtom: (atom: OutputAtom) => MaybePromise<void | string>;
 };
-
-// Batch optimizer works by wrapping each atom's `execute()` to await for the resolve of other dependency atoms' `execute()`. It may also add / delete atoms.
-export type BatchOptimizer = (input: OptimizerInput) => Array<OutputAtom>;
+export type OptimizerOutput = Array<OutputAtom>;
+export type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;

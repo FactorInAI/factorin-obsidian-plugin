@@ -1,12 +1,10 @@
 import type { Context } from '@';
-import type { Fs, RootFs } from '@/fs';
+import type { Fs } from '@/fs';
 
-type DigOriginalResult<F extends RootFs | undefined> = [F] extends [undefined] ? RootFs : F;
-
-export function digOriginal<FS extends RootFs | undefined = undefined>(wrapped: Fs) {
+export function digOriginal(wrapped: Fs) {
 	let original = wrapped;
 	while ('original' in original) original = original.original;
-	return original as DigOriginalResult<FS>;
+	return original;
 }
 export { default as MigrationModal } from '@/components/MigrationModal';
 
@@ -55,13 +53,12 @@ export type {
 	RemoteFsEntry,
 	FsWrapperEntry,
 	RequestMiddlewareEntry,
-	SyncTriggerEntry,
-	RemoteStatsGetter,
+	RemoteLister,
+	RemoteListerEntry,
 	OptimizerEntry,
 	SettingEntry,
 	ConflictResolverEntry,
 	Request,
-	RequestMiddleware,
 	CheckConnectionResult,
 	RequestParam,
 } from '@/modules/Registrar';

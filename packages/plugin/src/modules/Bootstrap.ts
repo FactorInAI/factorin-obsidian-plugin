@@ -8,7 +8,7 @@ import type { FeaturesSettingTranslations } from '@/settings/features';
 import type { FilterSettingTranslations } from '@/settings/filter';
 import type { HeadSettingTranslations } from '@/settings/head';
 import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous';
-import type { Progress, TogglableValue } from '@/types';
+import type { Progress, Stat, TogglableValue } from '@/types';
 import en from '@/en';
 import {
 	rateLimiterMiddleware,
@@ -35,17 +35,17 @@ import {
 	latestSurviveResolver,
 	renameAndKeepBothResolver,
 } from '@/sync';
-import type { On } from './EventBus';
+import type { Dispatch, On } from './EventBus';
 import type { ObsidianLanguageCode, Translate, TranslationResource } from './I18n';
 import type {
 	ConflictResolverEntry,
 	DeciderEntry,
-	FsWrapperEntry,
 	RemoteFsEntry,
 	OptimizerEntry,
 	SettingEntry,
-	SyncTriggerEntry,
+	FsWrapperEntry,
 	RequestMiddlewareEntry,
+	RemoteListerEntry,
 } from './Registrar';
 
 export type CustomHeaders = Array<{ type: 'plaintext' | 'secret'; value: string; key: string }>;
@@ -56,7 +56,7 @@ export default class Bootstrap {
 		size: number;
 		resume: () => void;
 	}> = [];
-	private isCancelled = () => false;
+	private isCancelled?: () => boolean;
 	private memoryConsumption = 0;
 
 	private readonly localPool: Array<string> = [];
@@ -94,17 +94,18 @@ export default class Bootstrap {
 			app: App;
 			registerI18n: (code: ObsidianLanguageCode, resource: TranslationResource) => void;
 			on: On<Events>;
+			dispatch: Dispatch<Events>;
 			memoryDB: ContextMemoryDB;
 			registerDecider: (id: string, entry: DeciderEntry) => void;
 			registerLocalFsWrapper: (entry: FsWrapperEntry) => void;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => void;
 			registerRemoteFsWrapper: (entry: FsWrapperEntry) => void;
 			translate: Translate<Translations>;
-			getLocalOptimizer: () => BatchOptimizer;
-			getRemoteOptimizer: () => BatchOptimizer;
+			optimizeLocal: BatchOptimizer;
+			optimizeRemote: BatchOptimizer;
 			registerLocalOptimizer: (optimizer: OptimizerEntry) => void;
 			registerRemoteOptimizer: (optimizer: OptimizerEntry) => void;
-			registerSyncTrigger: (id: string, entry: SyncTriggerEntry) => void;
+			registerRemoteLister: (entry: RemoteListerEntry) => () => boolean;
 			registerSetting: (entry: SettingEntry) => () => boolean;
 			registerConflictResolver: (id: string, entry: ConflictResolverEntry) => void;
 			registerRequestMiddleware: (entry: RequestMiddlewareEntry) => void;
@@ -124,10 +125,13 @@ export default class Bootstrap {
 			translate: t,
 			registerLocalOptimizer,
 			registerRemoteOptimizer,
-			registerSyncTrigger,
+			registerRemoteLister,
 			registerSetting,
 			registerConflictResolver,
 			registerRequestMiddleware,
+			dispatch,
+			optimizeLocal,
+			optimizeRemote,
 		} = this.ctx;
 		const { maxMemoryConsumption, maxRequestConcurrency, minRequestInterval } = this.settings;
 
@@ -137,25 +141,36 @@ export default class Bootstrap {
 			maxRequestConcurrency.enabled ? maxRequestConcurrency.value : Infinity;
 		const getMinInterval = () => (minRequestInterval.enabled ? minRequestInterval.value : 0);
 
-		registerSyncTrigger('migration', { priority: 6000 });
-		registerSyncTrigger('manual', { priority: 5000 });
-		registerSyncTrigger('nonInteractiveManual', { priority: 4000 });
-		registerSyncTrigger('startup', { priority: 3000 });
-		registerSyncTrigger('interval', { priority: 2000 });
-		registerSyncTrigger('realtime', {
-			getRemoteStats: async ({ record }) => {
-				if (!this.settings.realtimeSyncFastMode) return;
-				const stats = (await record.entries()).map(([key, stat]) => {
-					if (stat.isDir) return { isDir: true, key } as const;
-					return { isDir: false, key, mtime: 0, size: 0, uid: stat.remote } as const;
-				});
-				return stats.length ? stats : undefined;
+		registerRemoteLister({
+			apply: ({ record, trigger }) => {
+				if (trigger === 'realtime' && this.settings.realtimeSyncFastMode)
+					return record.entries().then((entries) =>
+						entries.map(([key, stat]): Stat => {
+							if (stat.isDir) return { isDir: true, key };
+							return { isDir: false, key, mtime: 0, size: 0, uid: stat.remote };
+						}),
+					);
 			},
 			priority: 1000,
 		});
+		registerRemoteLister({
+			apply: async ({ remoteFs, record }) => {
+				try {
+					return await remoteFs.list('/', (progress) =>
+						dispatch('remoteWalkProgress', progress),
+					);
+				} catch (error) {
+					if (await remoteFs.exists('/')) throw error;
+					dispatch('logSync', 'Remote root deleted, recreating.');
+					await Promise.all([remoteFs.mkdir('/', true), record.clear()]);
+					return [];
+				}
+			},
+			priority: 10_000,
+		});
 
-		registerLocalOptimizer({ optimizer: hierarchalOptimizer });
-		registerRemoteOptimizer({ optimizer: hierarchalOptimizer });
+		registerLocalOptimizer({ apply: hierarchalOptimizer, priority: 1000 });
+		registerRemoteOptimizer({ apply: hierarchalOptimizer, priority: 1000 });
 		registerLocalFsWrapper({
 			apply: (fs) =>
 				memoryControlWrapper(fs, {
@@ -163,24 +178,26 @@ export default class Bootstrap {
 					maxMemory: getMaxMemory(),
 					memoryConsumption: this.memoryConsumption,
 				}),
-			order: 1000,
+			priority: 1000,
 		});
 		registerLocalFsWrapper({
 			apply: (fs) =>
 				optimizationWrapper(fs, {
-					batchOptimizer: this.ctx.getLocalOptimizer(),
+					batchOptimizer: optimizeLocal,
 					thatPool: this.remotePool,
 					thisPool: this.localPool,
 				}),
-			order: 2000,
+			priority: 2000,
 		});
 		registerLocalFsWrapper({
-			apply: (fs) => cancellationWrapper(fs, this.isCancelled),
-			order: 3000,
+			apply: (fs) => {
+				if (this.isCancelled) return cancellationWrapper(fs, this.isCancelled);
+			},
+			priority: 3000,
 		});
 		registerLocalFsWrapper({
 			apply: (fs) => contextWrapper(fs, memoryDB, 'local'),
-			order: 10_000,
+			priority: 10_000,
 		});
 
 		registerRemoteFsWrapper({
@@ -190,39 +207,42 @@ export default class Bootstrap {
 					maxMemory: getMaxMemory(),
 					memoryConsumption: this.memoryConsumption,
 				}),
-			order: 1000,
+			priority: 1000,
 		});
 		registerRemoteFsWrapper({
 			apply: (fs) =>
 				optimizationWrapper(fs, {
-					batchOptimizer: this.ctx.getRemoteOptimizer(),
+					batchOptimizer: optimizeRemote,
 					thatPool: this.localPool,
 					thisPool: this.remotePool,
 				}),
-			order: 2000,
+			priority: 2000,
 		});
 		registerRemoteFsWrapper({
-			apply: (fs) => cancellationWrapper(fs, this.isCancelled),
-			order: 3000,
+			apply: (fs) => {
+				if (this.isCancelled) return cancellationWrapper(fs, this.isCancelled);
+			},
+			priority: 3000,
 		});
 		registerRemoteFsWrapper({
 			apply: (fs) => contextWrapper(fs, memoryDB, 'remote'),
-			order: 10_000,
+			priority: 10_000,
 		});
 		registerRemoteFsWrapper({
-			apply: (fs) => asymmetricStorageWrapper(fs, memoryDB),
-			condition: () => this.settings.asymmetricStorage,
-			order: 11_000,
+			apply: (fs) => {
+				if (this.settings.asymmetricStorage) return asymmetricStorageWrapper(fs, memoryDB);
+			},
+			priority: 11_000,
 		});
 
-		registerRequestMiddleware({ apply: retryMiddleware, order: 1000 });
+		registerRequestMiddleware({ apply: retryMiddleware, priority: 1000 });
 		registerRequestMiddleware({
 			apply: (request) =>
 				rateLimiterMiddleware(request, {
 					maxConcurrency: getMaxConcurrency(),
 					minInterval: getMinInterval(),
 				}),
-			order: 2000,
+			priority: 2000,
 		});
 		registerRequestMiddleware({
 			apply: (fs) =>
@@ -230,11 +250,13 @@ export default class Bootstrap {
 					fs,
 					synthesizeHeaders(this.settings.customHeaders, secretStorage),
 				),
-			order: 3000,
+			priority: 3000,
 		});
 		registerRequestMiddleware({
-			apply: (request) => cancellationMiddleware(request, this.isCancelled),
-			order: 4000,
+			apply: (request) => {
+				if (this.isCancelled) return cancellationMiddleware(request, this.isCancelled);
+			},
+			priority: 4000,
 		});
 
 		registerDecider('bidirectional', {
@@ -263,17 +285,23 @@ export default class Bootstrap {
 			resolver: () => {},
 		});
 
-		registerSetting({ order: 0, render: (el) => headSettings(el, this.ctx as Context) });
-		registerSetting({ order: 1000, render: (el) => featuresSettings(el, this.ctx as Context) });
-		registerSetting({ order: 2000, render: (el) => controlsSettings(el, this.ctx as Context) });
-		registerSetting({ order: 3000, render: (el) => filterSettings(el, this.ctx as Context) });
+		registerSetting({ apply: (el) => headSettings(el, this.ctx as Context), priority: 0 });
 		registerSetting({
-			order: 4000,
-			render: (el) => miscellaneousSettings(el, this.ctx as Context),
+			apply: (el) => featuresSettings(el, this.ctx as Context),
+			priority: 1000,
 		});
 		registerSetting({
-			order: 5000,
-			render: (el) => developmentSettings(el, this.ctx as Context),
+			apply: (el) => controlsSettings(el, this.ctx as Context),
+			priority: 2000,
+		});
+		registerSetting({ apply: (el) => filterSettings(el, this.ctx as Context), priority: 3000 });
+		registerSetting({
+			apply: (el) => miscellaneousSettings(el, this.ctx as Context),
+			priority: 4000,
+		});
+		registerSetting({
+			apply: (el) => developmentSettings(el, this.ctx as Context),
+			priority: 5000,
 		});
 
 		this.cleanupCallbacks.push(
@@ -283,7 +311,7 @@ export default class Bootstrap {
 				this.localPool.length = this.remotePool.length = 0;
 			}),
 			on('syncTerminated', () => {
-				this.isCancelled = () => false;
+				this.isCancelled = undefined;
 			}),
 		);
 	};

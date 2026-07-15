@@ -26,7 +26,7 @@ type ModuleInstance = {
 type ModuleCtor = new (ctx: object) => ModuleInstance;
 
 const MODULE_EXTENSION = '.js';
-const AUTO_UPDATE_DELAY = 10_000;
+const AUTO_UPDATE_DELAY = 200;
 
 export default class Extensibility {
 	private readonly moduleDir: string;
@@ -211,13 +211,13 @@ export default class Extensibility {
 		void this.ctx.saveSettings();
 	};
 
-	private readonly fetchSources = async (cached = true) => {
+	private readonly fetchSources = async (manual = false) => {
 		const { dispatch, translate } = this.ctx;
 		const { moduleSources } = this.settings;
 		const contents = (
 			await Promise.all(
 				moduleSources.map(async (url) => {
-					if (cached) {
+					if (!manual) {
 						const cachedContent = this.sourceCache.get(url);
 						if (cachedContent) return cachedContent;
 					}
@@ -235,7 +235,8 @@ export default class Extensibility {
 							'errorGeneral',
 							`Failed to fetch source from \`${url}\`: ${message}`,
 						);
-						new Notice(`${translate('failedToFetchSource', { url })}: ${message}`);
+						if (manual)
+							new Notice(`${translate('failedToFetchSource', { url })}: ${message}`);
 						return [];
 					}
 				}),

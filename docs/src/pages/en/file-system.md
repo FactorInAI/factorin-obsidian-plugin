@@ -130,26 +130,26 @@ Examples: [Vault](https://github.com/hesprs/sync-engine/tree/main/packages/plugi
 
 ## Wrapper Chain
 
-Wrappers are middleware that wrap a `type Fs = RootFs | WrappedFs;`, transforming calls as they pass through, and return a `WrappedFs`. The chain is ordered numerically — lower `order` values are applied first (innermost wrapper).
+Wrappers are middleware that wrap a `type Fs = RootFs | WrappedFs;`, transforming calls as they pass through, and return a `WrappedFs`. The chain is ordered numerically, lower `priority` values are applied first (innermost wrapper).
 
 **Existing remote wrapper chain**:
 
-| Order | Wrapper             | Description                                  |
-| ----- | ------------------- | -------------------------------------------- |
-| 1000  | `MemoryControl`     | Tracks memory, pauses when limit reached     |
-| 2000  | `Optimization`      | Applies `BatchOptimizer` to batch operations |
-| 3000  | `Cancellation`      | Checks `isCancelled` before each operation   |
-| 10000 | `Context`           | Caches stat results in in-memory DB          |
-| 11000 | `AsymmetricStorage` | Enables asymmetric storage mode              |
+| Priority | Wrapper             | Description                                  |
+| -------- | ------------------- | -------------------------------------------- |
+| 1000     | `MemoryControl`     | Tracks memory, pauses when limit reached     |
+| 2000     | `Optimization`      | Applies `BatchOptimizer` to batch operations |
+| 3000     | `Cancellation`      | Checks `isCancelled` before each operation   |
+| 10000    | `Context`           | Caches stat results in in-memory DB          |
+| 11000    | `AsymmetricStorage` | Enables asymmetric storage mode              |
 
 **Existing local wrapper chain**:
 
-| Order | Wrapper         |
-| ----- | --------------- |
-| 1000  | `MemoryControl` |
-| 2000  | `Optimization`  |
-| 3000  | `Cancellation`  |
-| 10000 | `Context`       |
+| Priority | Wrapper         |
+| -------- | --------------- |
+| 1000     | `MemoryControl` |
+| 2000     | `Optimization`  |
+| 3000     | `Cancellation`  |
+| 10000    | `Context`       |
 
 ### Writing a Wrapper
 
@@ -197,19 +197,22 @@ Examples: [Optimization Wrapper](https://github.com/hesprs/sync-engine/tree/main
 ### Registering a Wrapper
 
 ```ts
+import { digOriginal } from '@hesprs/sync-engine-sdk';
+
+// it is the same for `registerLocalFsWrapper`
 this.ctx.registerRemoteFsWrapper({
-  // it is the same for `registerLocalFsWrapper`
-  apply: (fs) => prefixWrapper(fs, this.moduleSettings.prefix),
-  condition: () => this.ctx.settings.remoteFs === 'my-backend', // only wrap this FS backend
-  order: 4823, // standard prefix position, avoid whole hundred and thousands to prevent collision
+  apply: (fs) => {
+    if (digOriginal(fs) instanceof MyFs) return prefixWrapper(fs, this.moduleSettings.prefix);
+  },
+  priority: 4823, // avoid whole hundred and thousands to prevent collision
 });
 ```
 
-The `condition` option ties the wrapper to a specific trigger. If omitted, the wrapper applies to all FS backends.
+Returning `undefined` from `apply` declines the wrapper for the current filesystem. If the function always returns a wrapper, it applies to all matching filesystem instances.
 
 ## Batch Optimization
 
-The optimization wrapper (order 2000) collects atomic FS operations and passes them to a `BatchOptimizer` function. This allows backend-specific optimizations like S3 batch deletion or hierarchical operation reordering.
+The optimization wrapper (priority 2000) collects atomic FS operations and passes them to a `BatchOptimizer` function. This allows backend-specific optimizations like S3 batch deletion or hierarchical operation reordering.
 
 ### Optimizer Input/Output
 
@@ -246,6 +249,7 @@ type CustomAtom = {
   execute: () => MaybePromise<void>;
 };
 type OutputAtom = InputAtom | CustomAtom;
+type OptimizerOutput = Array<OutputAtom>;
 
 type OptimizerInput = {
   atoms: Array<InputAtom>; // The original atoms
@@ -253,7 +257,7 @@ type OptimizerInput = {
   executeAtom: (atom: OutputAtom) => MaybePromise<void | string>; // Helper to execute an atom according to its reference, and cache the result so multiple execution only invokes `execute()` once
 };
 
-type BatchOptimizer = (input: OptimizerInput) => Array<OutputAtom>;
+type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;
 ```
 
 The optimizer receives the full list of atoms and can:
@@ -268,10 +272,10 @@ The optimizer receives the full list of atoms and can:
 
 ```ts
 import type { RemoteFs, OutputAtom, OptimizerInput } from '@hesprs/sync-engine-sdk';
-import { digOriginal } from '@hesprs/sync-engine-sdk';
-import { S3Fs, BATCH_DELETE_MAX_KEYS } from './s3/fs';
+import type { S3Fs } from './s3/fs';
+import { BATCH_DELETE_MAX_KEYS } from './s3/fs';
 
-export default function batchDeleteOptimizer({ atoms, fs }: OptimizerInput): Array<OutputAtom> {
+export default function batchDeleteOptimizer(atoms: Array<InputAtom>, fs: S3Fs): Array<OutputAtom> {
   const deleteAtoms = atoms.filter((a) => a.type === 'delete');
   const otherAtoms: Array<OutputAtom> = atoms.filter((a) => a.type !== 'delete');
 
@@ -281,12 +285,11 @@ export default function batchDeleteOptimizer({ atoms, fs }: OptimizerInput): Arr
   const batches: Array<Array<{ key: string; resolve: () => void }>> = [];
   for (let i = 0; i < keys.length; i += BATCH_DELETE_MAX_KEYS)
     batches.push(keys.slice(i, i + BATCH_DELETE_MAX_KEYS));
-  const s3Fs = digOriginal<S3Fs>(fs);
 
   const batchAtoms: Array<OutputAtom> = batches.map((batch) => ({
     type: 'custom' as const,
     execute: async () => {
-      await s3Fs.batchDelete(batch.map(({ key }) => key));
+      await fs.batchDelete(batch.map(({ key }) => key));
       batch.foreach(({ resolve }) => resolve());
     },
   }));
@@ -302,20 +305,25 @@ More complex example: [Hierarchical Optimizer](https://github.com/hesprs/sync-en
 ### Registering an Optimizer
 
 ```ts
+import { digOriginal } from '@hesprs/sync-engine-sdk';
+import { S3Fs } from './s3/fs';
+
 // Same for `registerLocalOptimizer`
 this.ctx.registerRemoteOptimizer({
-  optimizer: batchDeleteOptimizer,
-  condition: () => this.ctx.settings.remoteFs === 's3',
+  priority: 4823,
+  apply: ({ fs, atoms }) => {
+    if (digOriginal(fs) instanceof S3Fs) return batchDeleteOptimizer(input);
+  },
 });
 ```
 
-`condition` restricts the optimizer to only run when the predicate matches. If omitted, the optimizer is qualified for all backends. The final optimizer that will run is the last one registers.
+Optimizer entries are evaluated in ascending `priority`. The first `apply` that returns an output is selected; returning `undefined` declines an entry. Entries at the same priority are tried in registration order.
 
 ## `digOriginal`
 
-When an optimizer needs to call a method on the root FS that isn't part of the `Fs` interface (e.g., `S3Fs.batchDelete()`), use `digOriginal<Fs>` to unwrap through the `.original` chain:
+When an optimizer needs to call a method on the root FS that isn't part of the `Fs` interface (e.g., `S3Fs.batchDelete()`), use `digOriginal` to unwrap through the `.original` chain:
 
 ```ts
 import { digOriginal } from '@hesprs/sync-engine-sdk';
-const rootFs = digOriginal<S3Fs>(wrappedFs);
+const rootFs = digOriginal(wrappedFs);
 ```

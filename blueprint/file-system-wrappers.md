@@ -42,7 +42,7 @@ Mechanism: Microtask-batched atom queue
 
 Sync routines must remain backend-independent, but optimal execution strategies vary (e.g., WebDAV requires sequential parent directory creation; S3 allows concurrent uploads). This wrapper decouples logic from optimization by intercepting FS API calls at the root layer to reorder, batch, or schedule execution within promises.
 
-Backends may extend `RootRemoteFs`. Optimizers access these extensions via `digOriginal<SpecialFs>(fs)` to apply backend-specific optimizations without polluting core sync logic.
+Backends may extend `RootRemoteFs`. Optimizers access these extensions via `digOriginal(fs)` to apply backend-specific optimizations without polluting core sync logic. Cast the result to the backend-specific type when needed.
 
 ### Operation Coalescing
 

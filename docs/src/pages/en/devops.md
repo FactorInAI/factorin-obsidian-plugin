@@ -44,7 +44,7 @@ import { debugWrapper } from '@hesprs/sync-engine-sdk/dev';
 
 registerRemoteFsWrapper({
   apply: (fs) => debugWrapper(fs, console.log),
-  order: 9999, // any position you need
+  priority: 9999, // any position you need
 });
 ```
 
@@ -179,7 +179,7 @@ Users can add or remove source URLs via the **Edit sources** modal in the Module
 
 On plugin load, if `Auto update modules` is enabled, the plugin:
 
-1. Waits 10 seconds.
+1. Waits 200 milliseconds.
 2. Fetches all configured source URLs.
 3. For each module already installed locally, compares the remote version with the local version.
 4. If the remote version is newer, queues a download.
