@@ -86,7 +86,7 @@ export default function headSettings(
 		ele.addClasses(['color-rose-500']);
 	};
 	const scheduleCheckConnection = () =>
-		window.setTimeout(checkConnection, CHECK_CONNECTION_INTERVAL);
+		window.setTimeout(() => void checkConnection(), CHECK_CONNECTION_INTERVAL);
 
 	const checkConnection = async (force = false, skipGC = false) => {
 		if (!statusButton) return;

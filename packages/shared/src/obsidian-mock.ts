@@ -43,5 +43,3 @@ export function requireApiVersion() {
 }
 
 export const apiVersion = '1.12.7';
-
-Object.assign(globalThis, { window: { clearInterval, clearTimeout, setInterval, setTimeout } });

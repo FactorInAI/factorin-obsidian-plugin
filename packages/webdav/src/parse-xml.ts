@@ -1,4 +1,5 @@
-export default function parseXML(xml: string): never {
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
+export default function parseXML<T extends object>(xml: string): T {
 	const parser = new DOMParser();
 	const doc = parser.parseFromString(xml, 'application/xml');
 
@@ -43,5 +44,5 @@ export default function parseXML(xml: string): never {
 	};
 
 	const root = doc.documentElement;
-	return { [root.localName]: convertNode(root) } as never;
+	return { [root.localName]: convertNode(root) } as T;
 }

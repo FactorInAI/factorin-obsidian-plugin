@@ -143,7 +143,7 @@ async function propfind(
 		url: buildUrl(endpoint, propfindOptions.key),
 	});
 
-	const parsed = parseXML(response.text()) as WebDAVMultistatus;
+	const parsed = parseXML<WebDAVMultistatus>(response.text());
 	return asArray(parsed.multistatus.response);
 }
 

@@ -69,7 +69,10 @@ export default class Extensibility {
 	readonly start = () => {
 		const enabled = this.settings.moduleAutoUpdate;
 		if (!enabled) return;
-		this.autoUpdateTimeout = window.setTimeout(this.updateModules, AUTO_UPDATE_DELAY);
+		this.autoUpdateTimeout = window.setTimeout(
+			() => void this.updateModules(),
+			AUTO_UPDATE_DELAY,
+		);
 	};
 
 	private readonly createOperationFactory = () => {

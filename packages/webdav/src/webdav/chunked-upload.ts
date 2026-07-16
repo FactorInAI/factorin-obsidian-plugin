@@ -46,14 +46,18 @@ export default async function writeNextcloudChunkedUpload(
 	const inFlight = new Set<Promise<void>>();
 	let nextChunkNumber = 1;
 	let pending = new Uint8Array(0);
-	let failed: unknown;
+	let failed: Error | undefined;
 
 	const trackUpload = (promise: Promise<void>) => {
 		inFlight.add(promise);
 		promise
-			.catch((error) => {
-				if (failed === undefined) failed = error;
-			})
+			.catch(
+				(error: unknown) =>
+					(failed ??=
+						error instanceof Error
+							? error
+							: new Error(String(error), { cause: error })),
+			)
 			.finally(() => {
 				inFlight.delete(promise);
 			})

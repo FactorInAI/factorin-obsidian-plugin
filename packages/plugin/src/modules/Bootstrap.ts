@@ -1,7 +1,7 @@
 import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
-import type { BatchOptimizer, ContextMemoryDB } from '@/fs';
+import type { BatchOptimizer, ContextMemoryDB, MemoryControlSharedState } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
 import type { FeaturesSettingTranslations } from '@/settings/features';
@@ -52,12 +52,11 @@ export type CustomHeaders = Array<{ type: 'plaintext' | 'secret'; value: string;
 
 export default class Bootstrap {
 	private readonly cleanupCallbacks: Array<() => void> = [];
-	private readonly hangingOperations: Array<{
-		size: number;
-		resume: () => void;
-	}> = [];
+	private readonly memoryStates: Omit<MemoryControlSharedState, 'maxMemory'> = {
+		hangingOperations: [],
+		memoryConsumption: 0,
+	};
 	private isCancelled?: () => boolean;
-	private memoryConsumption = 0;
 
 	private readonly localPool: Array<string> = [];
 	private readonly remotePool: Array<string> = [];
@@ -173,11 +172,10 @@ export default class Bootstrap {
 		registerRemoteOptimizer({ apply: hierarchalOptimizer, priority: 1000 });
 		registerLocalFsWrapper({
 			apply: (fs) =>
-				memoryControlWrapper(fs, {
-					hangingOperations: this.hangingOperations,
-					maxMemory: getMaxMemory(),
-					memoryConsumption: this.memoryConsumption,
-				}),
+				memoryControlWrapper(
+					fs,
+					Object.assign(this.memoryStates, { maxMemory: getMaxMemory() }),
+				),
 			priority: 1000,
 		});
 		registerLocalFsWrapper({
@@ -202,11 +200,10 @@ export default class Bootstrap {
 
 		registerRemoteFsWrapper({
 			apply: (fs) =>
-				memoryControlWrapper(fs, {
-					hangingOperations: this.hangingOperations,
-					maxMemory: getMaxMemory(),
-					memoryConsumption: this.memoryConsumption,
-				}),
+				memoryControlWrapper(
+					fs,
+					Object.assign(this.memoryStates, { maxMemory: getMaxMemory() }),
+				),
 			priority: 1000,
 		});
 		registerRemoteFsWrapper({
@@ -307,7 +304,7 @@ export default class Bootstrap {
 		this.cleanupCallbacks.push(
 			on('syncStarted', ({ isCancelled }) => {
 				this.isCancelled = isCancelled;
-				this.hangingOperations.length = this.memoryConsumption = 0;
+				this.memoryStates.hangingOperations.length = 0;
 				this.localPool.length = this.remotePool.length = 0;
 			}),
 			on('syncTerminated', () => {
@@ -317,9 +314,8 @@ export default class Bootstrap {
 	};
 
 	readonly dispose = () => {
-		this.cleanupCallbacks.forEach((cb) => cb());
-		this.cleanupCallbacks.length = 0;
-		this.hangingOperations.length = 0;
+		this.cleanupCallbacks.splice(0).forEach((cb) => cb());
+		this.memoryStates.hangingOperations.length = 0;
 	};
 }
 
