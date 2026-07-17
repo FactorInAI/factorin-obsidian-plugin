@@ -1,9 +1,11 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
 		"paths": {
-			"@/*": ["./src/*"],
-			"@": ["./src"]
+			"@": ["./src"],
+			"@/*": ["./src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "tsdown.config.ts", "uno.config.ts"]

@@ -5,10 +5,13 @@
 	"license": "MIT",
 	"type": "module",
 	"exports": {
-		"./*": "./src/*.ts"
+		"./*": {
+			"default": "./src/*.ts",
+			"types": "./src/*.ts"
+		}
 	},
 	"scripts": {
-		"lint": "oxlint --fix --type-aware && oxfmt",
+		"fix": "oxlint --silent --fix --type-aware && oxfmt",
 		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun test"
 	}

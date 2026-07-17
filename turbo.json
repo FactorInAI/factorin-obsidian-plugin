@@ -14,7 +14,7 @@
 			"outputs": ["dist/**"],
 			"cache": true
 		},
-		"lint": {
+		"fix": {
 			"dependsOn": [],
 			"cache": true
 		},

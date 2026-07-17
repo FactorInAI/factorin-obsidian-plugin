@@ -17,8 +17,10 @@ import smartMergeResolver from './resolver';
 import smartMergeSetting from './setting';
 import smartMergeBaseTextWrapper from './wrapper';
 
-export type SmartMergeStoreSchema = Record<`base-text-${string}`, string>;
-export type SmartMergeStoreMeta = Record<string, never>;
+type SmartMergeStoreSchema = Record<`base-text-${string}`, string>;
+type SmartMergeStoreMeta = Record<string, never>;
+
+export type SmartMergeDatabase = DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>;
 export type BaseTextStore = StoreAsync<string>;
 
 export default class SmartMerge {
@@ -26,7 +28,7 @@ export default class SmartMerge {
 
 	constructor(
 		private readonly ctx: SelectFromContext<{
-			indexedDB: DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>;
+			indexedDB: SmartMergeDatabase;
 			translate: Translate<SmartMergeTranslations>;
 			saveSettings: () => Promise<void>;
 			getNamespace: (localFs?: Fs, remoteFs?: Fs) => string;

@@ -70,14 +70,14 @@ Sync Engine Monorepo
 
 **Commands**:
 
-| Command                           | Usage                              |
-| --------------------------------- | ---------------------------------- |
-| `bun dev`                         | Build without clearing dist folder |
-| `bun run build`                   | Production build                   |
-| `bun lint`                        | Format and fix fixable lint errors |
-| `bun check`                       | Check types, lint and format       |
-| `bun tests`                       | Run all tests                      |
-| `bun <command> -F <package-name>` | Run command targeting one package  |
+| Command                           | Usage                                          |
+| --------------------------------- | ---------------------------------------------- |
+| `bun dev`                         | Build without clearing dist folder             |
+| `bun run build`                   | Don't run unless truly building for production |
+| `bun fix`                         | Format and fix fixable lint errors             |
+| `bun check`                       | Check types, lint and format                   |
+| `bun tests`                       | Run all tests                                  |
+| `bun <command> -F <package-name>` | Run command targeting one package              |
 
 **CI/CD**:
 

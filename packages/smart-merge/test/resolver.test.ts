@@ -1,16 +1,17 @@
-import type { DatabaseAsync, FileStat, RecordStore } from '@hesprs/sync-engine-sdk';
+import type { DatabaseAsync, FileStat, RecordStat, RecordStore } from '@hesprs/sync-engine-sdk';
 import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { uint8ArrayToText } from '@repo/shared/binary';
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
-import type { SmartMergeStoreMeta, SmartMergeStoreSchema } from '@/index';
+import type { SmartMergeDatabase } from '@/index';
 import type { MergeOptions } from '@/utils/merge';
 import smartMergeResolver from '@/resolver';
 
 const { bytes, file, fs, stream } = testKit;
-const memoryDB = openMemoryDB<Record<string, unknown>, Record<string, never>>(
-	'smart-merge-resolver-test',
-);
+const memoryDB = openMemoryDB('smart-merge-resolver-test') as unknown as DatabaseAsync<
+	{ record: RecordStat },
+	{}
+>;
 
 const mergeOptions: MergeOptions = {
 	conflictAEnd: '</a>',
@@ -21,13 +22,13 @@ const mergeOptions: MergeOptions = {
 	deletionStart: '<del>',
 };
 
-let db: DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>;
+let db: SmartMergeDatabase;
 let record: RecordStore;
 
 beforeEach(() => {
-	memoryDB.clearStores();
-	db = memoryDB as unknown as DatabaseAsync<SmartMergeStoreSchema, SmartMergeStoreMeta>;
-	record = memoryDB.getStore('record') as unknown as RecordStore;
+	void memoryDB.clearStores();
+	db = memoryDB;
+	record = memoryDB.getStore('record');
 });
 
 test('resolver should merge when base text exists', async () => {

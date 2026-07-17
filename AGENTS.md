@@ -20,9 +20,9 @@ Study the structure of other modules and read documentation in `docs` when worki
 
 ## Commands
 
-- `bun lint`: format and fix fixable lint errors (always run before `bun check`).
+- `bun fix`: format and fix fixable lint errors (always run before `bun check`).
 - `bun check`: check types, lint and format (no file change).
-- `bun dev`: fast build for daily debug.
+- `bun dev`: dev time build (not persistent)
 - `bun tests`: run all tests (do not use `bun test`).
 - `bun tests -F <package-name> -- <test path>`: run tests in specific file.
 - `bun <command> -F <package-name>`: run command targeting a specific package.

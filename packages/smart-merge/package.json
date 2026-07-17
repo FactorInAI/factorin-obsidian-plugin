@@ -14,7 +14,7 @@
 	"scripts": {
 		"dev": "MODE=dev tsdown",
 		"build": "tsdown",
-		"lint": "oxlint --fix --type-aware && oxfmt",
+		"fix": "oxlint --silent --fix --type-aware && oxfmt",
 		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun test"
 	},

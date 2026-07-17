@@ -8,6 +8,14 @@ import toErrorMessage from '@/utils/to-error-message';
 import untilTrue from '@/utils/until-true';
 import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
+import loadModule from '../../test/e2e-utils';
+
+export type ModuleInstance = {
+	moduleSettings: object;
+	dispose?: () => void;
+	start?: () => void;
+};
+export type ModuleCtor = new (ctx: object) => ModuleInstance;
 
 export type ModuleMeta = {
 	name: string;
@@ -18,12 +26,6 @@ export type ModuleMeta = {
 type ModuleSourceSchema = Array<ModuleMeta>;
 
 type NameVersion = { name: string; version: string };
-type ModuleInstance = {
-	moduleSettings: object;
-	dispose?: () => void;
-	start?: () => void;
-};
-type ModuleCtor = new (ctx: object) => ModuleInstance;
 
 const MODULE_EXTENSION = '.js';
 const AUTO_UPDATE_DELAY = 200;
@@ -137,8 +139,9 @@ export default class Extensibility {
 		const { dispatch, translate, app, __addModule__, __getModule__, allModules, saveSettings } =
 			this.ctx;
 		try {
-			const { default: ctor } = await import(
-				app.vault.adapter.getResourcePath(this.getModulePath(name))
+			const ctor = await loadModule(
+				name,
+				app.vault.adapter.getResourcePath(this.getModulePath(name)),
 			);
 			__addModule__(ctor);
 			const instance: ModuleInstance = __getModule__(ctor);
