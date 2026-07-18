@@ -1,4 +1,4 @@
-import type { General } from '@/types';
+export type General = any;
 
 type GeneralCtor = new (...args: ReadonlyArray<General>) => General;
 

@@ -59,7 +59,7 @@ export type OutputAtom = InputAtom | CustomAtom;
 export type OptimizerInput = {
 	atoms: Array<InputAtom>;
 	fs: Fs;
-	executeAtom: (atom: OutputAtom) => MaybePromise<void | string>;
+	executeAtom: (atom: OutputAtom) => Promise<void | string>;
 };
 export type OptimizerOutput = Array<OutputAtom>;
 export type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;

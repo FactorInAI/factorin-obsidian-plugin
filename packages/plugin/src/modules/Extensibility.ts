@@ -1,6 +1,7 @@
 import type { Context, Events, Translations } from '@';
 import type { App } from 'obsidian';
 import type { Ref } from 'synthkernel';
+import loadModule from '$/e2e-utils';
 import obsidian, { Notice, requestUrl } from 'obsidian';
 import type { General } from '@/types';
 import compareVersions from '@/utils/compare-versions';
@@ -8,7 +9,6 @@ import toErrorMessage from '@/utils/to-error-message';
 import untilTrue from '@/utils/until-true';
 import type { Dispatch } from './EventBus';
 import type { Translate } from './I18n';
-import loadModule from '../../test/e2e-utils';
 
 export type ModuleInstance = {
 	moduleSettings: object;

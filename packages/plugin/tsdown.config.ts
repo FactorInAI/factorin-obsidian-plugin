@@ -22,7 +22,7 @@ const pluginConfig = defineConfig({
 	copy: [
 		{
 			from: '../../manifest.json',
-			to: 'dist',
+			to: 'dist-plugin',
 		},
 	],
 	css: {
@@ -46,7 +46,7 @@ const pluginConfig = defineConfig({
 			mainFields: ['browser', 'module', 'main'],
 		},
 	},
-	outDir: 'dist',
+	outDir: 'dist-plugin',
 	outputOptions: {
 		codeSplitting: false,
 	},
@@ -63,7 +63,6 @@ const sdkConfig = defineConfig({
 		dev: 'src/sdk/dev.ts',
 		index: 'src/sdk/index.ts',
 	},
-	outDir: 'dist-sdk',
 });
 
 export default buildingPlugin ? pluginConfig : sdkConfig;

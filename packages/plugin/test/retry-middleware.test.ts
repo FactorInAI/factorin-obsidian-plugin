@@ -1,6 +1,6 @@
+import testKit from '$/test-kit';
 import { expect, spyOn, test } from 'bun:test';
 import { retryMiddleware } from '@/fs';
-import { testKit } from '@/sdk/dev';
 // oxlint-disable-next-line import/no-namespace
 import * as sleepModule from '@/utils/sleep';
 

@@ -1,13 +1,12 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { InputAtom, OutputAtom } from '@/fs';
-import type { MaybePromise } from '@/types';
 import { hierarchalOptimizer } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 const { deferred, flush } = testKit;
 
 function runOptimizer(atoms: Array<InputAtom>) {
-	const started = new WeakMap<OutputAtom, MaybePromise<string | void>>();
+	const started = new WeakMap<OutputAtom, Promise<string | void>>();
 	const executeAtom = (atom: OutputAtom) => {
 		const pending = started.get(atom);
 		if (pending) return pending;

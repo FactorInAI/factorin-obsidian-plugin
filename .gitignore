@@ -1,8 +1,12 @@
 plans
 .ignore
 .vscode
+**/dist-plugin
 **/dist
-**/dist-sdk
 **/.turbo
 **/node_modules
 **/cache
+
+# Must commit to make Obsidian scorecard linter work
+packages/plugin/dist/*.js
+!packages/plugin/dist

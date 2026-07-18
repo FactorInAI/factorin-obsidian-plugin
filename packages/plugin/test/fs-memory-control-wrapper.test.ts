@@ -1,8 +1,8 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { MemoryControlSharedState } from '@/fs';
 import type { Binary } from '@/types';
 import { memoryControlWrapper } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 const { bytes, deferred, fs, flush, stream } = testKit;
 

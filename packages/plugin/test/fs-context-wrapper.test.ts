@@ -1,10 +1,10 @@
+import testKit from '$/test-kit';
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import type { ContextMemoryDB } from '@/fs';
 import type { Stat } from '@/types';
 import { contextWrapper } from '@/fs';
 import { STORAGE_NAME } from '@/modules/Storage';
-import { testKit } from '@/sdk/dev';
 
 const { bytes, file, folder, fs, stream } = testKit;
 const db: ContextMemoryDB = openMemoryDB(STORAGE_NAME);

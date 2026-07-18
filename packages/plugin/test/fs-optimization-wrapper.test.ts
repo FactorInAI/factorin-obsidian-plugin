@@ -1,7 +1,7 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { OptimizerInput, OptimizerOutput } from '@/fs';
 import { optimizationWrapper } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;
 const { bytes, deferred, flush, fs, stream } = testKit;

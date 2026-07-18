@@ -1,6 +1,6 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import { cancellationMiddleware } from '@/fs';
-import { testKit } from '@/sdk/dev';
 import { syncCancelledError } from '@/sync';
 
 const { bytes, deferred, flush, request } = testKit;

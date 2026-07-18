@@ -259,7 +259,6 @@ const SAFE_85 =
 	" !#$%&'()+,-.0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
 const SAFE_83 =
 	"!#$%&'()+,-0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
-const REGENERATE_MARKER = '☭';
 
 function generateId(str: string): string {
 	let h1 = 0xde_ad_be_ef | 0,
@@ -287,10 +286,7 @@ function generateId(str: string): string {
 }
 function generateAnchor(source: string, existing: Set<string>) {
 	let anchor: string;
-	do {
-		anchor = generateId(source);
-		if (!existing.has(anchor)) break;
-		source += REGENERATE_MARKER;
-	} while (true);
+	do anchor = generateId(source);
+	while (existing.has(anchor) || ((source += '☭') && false));
 	return anchor;
 }

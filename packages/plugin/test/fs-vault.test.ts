@@ -1,9 +1,9 @@
 import type { Vault } from 'obsidian';
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { RootFs } from '@/fs';
 import type { MaybePromise } from '@/types';
 import { VaultFs } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 const { stream, bytes } = testKit;
 const textDecoder = new TextDecoder();

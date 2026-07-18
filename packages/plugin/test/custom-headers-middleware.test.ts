@@ -1,6 +1,6 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import { customHeadersMiddleware } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 const { bytes, request } = testKit;
 

@@ -9,7 +9,8 @@
 	],
 	"type": "module",
 	"scripts": {
-		"postinstall": "bun --bun turbo run dev -F @hesprs/sync-engine-sdk",
+		"dev:plugin": "cd packages/plugin && bun --bun dev:plugin",
+		"build:plugin": "cd packages/plugin && bun --bun build:plugin",
 		"dev:docs": "cd docs && bun --bun dev:docs",
 		"build:docs": "cd docs && bun --bun build:docs",
 		"dev": "bun --bun turbo run dev",

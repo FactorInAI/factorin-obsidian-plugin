@@ -19,7 +19,11 @@ type OptimizationOptions = {
 
 type OmitResolve<T> = Omit<T, 'resolve'>;
 
-const executeAtom = (atom: OutputAtom) => atom.execute();
+const executeAtom = (atom: OutputAtom) => {
+	const result = atom.execute();
+	if (result instanceof Promise) return result;
+	return Promise.resolve(result);
+};
 
 class OptimizationFs implements WrappedFs {
 	private scheduled = false;

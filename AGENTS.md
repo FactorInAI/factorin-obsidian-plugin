@@ -20,9 +20,11 @@ Study the structure of other modules and read documentation in `docs` when worki
 
 ## Commands
 
+- `bun dev:plugin`: build plugin without cleaning dist
+- `bun dev:docs`: start docs dev server
 - `bun fix`: format and fix fixable lint errors (always run before `bun check`).
 - `bun check`: check types, lint and format (no file change).
-- `bun dev`: dev time build (not persistent)
+- `bun dev`: building without clearing dist.
 - `bun tests`: run all tests (do not use `bun test`).
 - `bun tests -F <package-name> -- <test path>`: run tests in specific file.
 - `bun <command> -F <package-name>`: run command targeting a specific package.
@@ -31,7 +33,7 @@ Study the structure of other modules and read documentation in `docs` when worki
 
 ## Packages
 
-- Plugin & module SDK: `packages/plugin/`, package name `@hesprs/sync-engine-sdk`.
+- Plugin & module SDK: `packages/plugin/`, package name `@hesprs/sync-engine-sdk`, `dev` builds SDK.
 - WebDAV module: `packages/webdav/`, package name `webdav`.
 - Encryption module: `packages/encryption/`, package name `encryption`.
 - Shared utils: `packages/shared/`, package name `@repo/shared`.

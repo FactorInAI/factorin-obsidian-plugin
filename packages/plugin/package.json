@@ -20,28 +20,30 @@
 		"url": "git+https://github.com/hesprs/sync-engine.git"
 	},
 	"files": [
-		"./dist-sdk"
+		"./dist"
 	],
 	"type": "module",
 	"sideEffects": false,
-	"module": "./dist-sdk/index.js",
-	"types": "./dist-sdk/index.d.ts",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist-sdk/index.d.ts",
-			"default": "./dist-sdk/index.js"
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
 		},
 		"./dev": {
-			"types": "./dist-sdk/dev.d.ts",
-			"default": "./dist-sdk/dev.js"
+			"types": "./dist/dev.d.ts",
+			"default": "./dist/dev.js"
 		}
 	},
 	"publishConfig": {
 		"access": "public"
 	},
 	"scripts": {
-		"dev": "MODE=dev BUILD=plugin tsdown && MODE=dev BUILD=sdk tsdown",
-		"build": "BUILD=plugin tsdown && BUILD=sdk tsdown",
+		"dev:plugin": "MODE=dev BUILD=plugin tsdown",
+		"build:plugin": "BUILD=plugin tsdown",
+		"dev": "MODE=dev BUILD=sdk tsdown",
+		"build": "BUILD=sdk tsdown",
 		"fix": "oxlint --silent --fix --type-aware && oxfmt",
 		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun --preload=./test/mocks test"

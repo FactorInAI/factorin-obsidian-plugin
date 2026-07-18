@@ -67,7 +67,7 @@ export default async function writeNextcloudChunkedUpload(
 	const waitForSlot = async () => {
 		while (inFlight.size >= NEXTCLOUD_MAX_CONCURRENT) {
 			await Promise.race(inFlight);
-			if (failed !== undefined) throw failed;
+			if (failed) throw failed;
 		}
 	};
 
@@ -85,7 +85,7 @@ export default async function writeNextcloudChunkedUpload(
 	};
 
 	const enqueueChunk = async (chunk: Binary) => {
-		if (failed !== undefined) throw failed;
+		if (failed) throw failed;
 		await waitForSlot();
 		const chunkNumber = nextChunkNumber;
 		nextChunkNumber += 1;
@@ -101,7 +101,7 @@ export default async function writeNextcloudChunkedUpload(
 
 		while (true) {
 			const { done, value: chunk } = await reader.read();
-			if (failed !== undefined) throw failed;
+			if (failed) throw failed;
 			if (done) break;
 			pending = concatBinary(pending, chunk);
 			while (pending.byteLength >= NEXTCLOUD_CHUNK_SIZE) {
@@ -113,7 +113,7 @@ export default async function writeNextcloudChunkedUpload(
 
 		if (pending.byteLength > 0) await enqueueChunk(pending);
 		await Promise.all(inFlight);
-		if (failed !== undefined) throw failed;
+		if (failed) throw failed;
 
 		const response = await options.request({
 			headers: { Authorization: options.auth, Destination: destination },

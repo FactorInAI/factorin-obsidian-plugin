@@ -1,6 +1,7 @@
 import type { UserOptions } from './utils/glob-match-reusable';
 
-export type General = any;
+export type { General } from '$/e2e-utils';
+
 export type MaybePromise<T> = Promise<T> | T;
 export type TogglableValue<T = number> = { enabled: boolean; value: T };
 

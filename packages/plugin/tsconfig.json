@@ -5,7 +5,8 @@
 		"jsxImportSource": "solid-js",
 		"paths": {
 			"@": ["./src"],
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"$/*": ["./test/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "tsdown.config.ts", "uno.config.ts"]

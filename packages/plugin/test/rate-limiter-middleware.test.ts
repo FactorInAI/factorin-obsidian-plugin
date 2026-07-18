@@ -1,6 +1,6 @@
+import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import { rateLimiterMiddleware } from '@/fs';
-import { testKit } from '@/sdk/dev';
 
 const { bytes, deferred, flush, request } = testKit;
 
