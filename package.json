@@ -9,6 +9,7 @@
 	],
 	"type": "module",
 	"scripts": {
+		"compile": "cd packages/plugin && bun --bun build:plugin && bun --bun build",
 		"dev:plugin": "cd packages/plugin && bun --bun dev:plugin",
 		"build:plugin": "cd packages/plugin && bun --bun build:plugin",
 		"dev:docs": "cd docs && bun --bun dev:docs",

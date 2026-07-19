@@ -6,7 +6,3 @@ plans
 **/.turbo
 **/node_modules
 **/cache
-
-# Must commit to make Obsidian scorecard linter work
-packages/plugin/dist/*.js
-!packages/plugin/dist
