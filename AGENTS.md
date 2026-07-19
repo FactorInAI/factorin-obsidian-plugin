@@ -50,4 +50,4 @@ Study the structure of other modules and read documentation in `docs` when worki
 - When any function or class needs to use `Context` as argument, prefer plain object structural typing instead of direct `Context` type.
 - Excluding main plugin, shared utils and documentation site, all packages are Sync Engine modules, they use the SDK and follow unified module structure.
 - `null` forbidden, use `undefined` consistently.
-- lint warnings must be cleared.
+- Lint warnings must be cleared.

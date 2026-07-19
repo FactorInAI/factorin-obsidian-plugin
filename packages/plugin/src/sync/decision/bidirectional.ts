@@ -27,7 +27,7 @@ export default function bidirectionalDecider(input: DeciderInput): Array<BaseTas
 	new Set([...localStats.keys(), ...remoteStats.keys(), ...records.keys()]).forEach((key) => {
 		const remote = remoteStats.get(key);
 		const local = localStats.get(key);
-		if (!(local?.isDir || remote?.isDir)) files.push({ key, local, remote });
+		if (!(local?.isDir === true || remote?.isDir === true)) files.push({ key, local, remote });
 		else if (!(remote?.isDir === false || local?.isDir === false))
 			folders.push({ key, local, remote });
 		else if (remote && local) fileFolders.push({ key, local, remote });

@@ -229,12 +229,10 @@ export default class Extensibility {
 					}
 					try {
 						const content = await requestUrl(url).json;
-						if (isValidSource(content)) {
-							content.forEach((meta) => (meta.name = meta.name.normalize('NFC')));
-							this.sourceCache.set(url, content);
-							return content;
-						}
-						throw new Error('Wrong source schema!');
+						if (!isValidSource(content)) throw new Error('Wrong source schema!');
+						content.forEach((meta) => (meta.name = meta.name.normalize('NFC')));
+						this.sourceCache.set(url, content);
+						return content;
 					} catch (error) {
 						const message = toErrorMessage(error);
 						dispatch(
@@ -308,13 +306,17 @@ export default class Extensibility {
 	};
 }
 
-function isValidSource(d: unknown): d is ModuleSourceSchema {
-	return (
-		Array.isArray(d) &&
-		d.every(
-			(i) =>
-				i &&
-				['name', 'version', 'description', 'main'].every((k) => typeof i[k] === 'string'),
-		)
+function isValidSource(source: unknown): source is ModuleSourceSchema {
+	if (!Array.isArray(source)) return false;
+	if (
+		!source.every((item): item is ModuleMeta => {
+			if (!item || typeof item !== 'object') return false;
+			const requiredFields = ['name', 'version', 'description', 'main'] as const;
+			return requiredFields.every((field) => typeof item[field] === 'string');
+		})
+	)
+		return false;
+	return source.every(
+		({ name, version }) => !/[<>:"/\\|?*~]/.test(name) && /^\d+(?:\.\d+)*$/.test(version),
 	);
 }

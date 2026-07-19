@@ -1,7 +1,8 @@
 import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
+import type { DatabaseSync } from 'uni-kv';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
-import type { BatchOptimizer, ContextMemoryDB, MemoryControlSharedState } from '@/fs';
+import type { BatchOptimizer, MemoryControlSharedState } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
 import type { FeaturesSettingTranslations } from '@/settings/features';
@@ -49,6 +50,14 @@ import type {
 } from './Registrar';
 
 export type CustomHeaders = Array<{ type: 'plaintext' | 'secret'; value: string; key: string }>;
+export type ExistingMemoryDB = DatabaseSync<
+	{ localContext20000: Stat; remoteContext10000: Stat; remoteContext20000: Stat },
+	{
+		localContext20000Marker: string;
+		remoteContext10000Marker: string;
+		remoteContext20000Marker: string;
+	}
+>;
 
 export default class Bootstrap {
 	private readonly cleanupCallbacks: Array<() => void> = [];
@@ -94,7 +103,7 @@ export default class Bootstrap {
 			registerI18n: (code: ObsidianLanguageCode, resource: TranslationResource) => void;
 			on: On<Events>;
 			dispatch: Dispatch<Events>;
-			memoryDB: ContextMemoryDB;
+			memoryDB: ExistingMemoryDB;
 			registerDecider: (id: string, entry: DeciderEntry) => void;
 			registerLocalFsWrapper: (entry: FsWrapperEntry) => void;
 			registerRemoteFs: (id: string, entry: RemoteFsEntry) => void;
@@ -141,14 +150,14 @@ export default class Bootstrap {
 		const getMinInterval = () => (minRequestInterval.enabled ? minRequestInterval.value : 0);
 
 		registerRemoteLister({
-			apply: ({ record, trigger }) => {
-				if (trigger === 'realtime' && this.settings.realtimeSyncFastMode)
-					return record.entries().then((entries) =>
-						entries.map(([key, stat]): Stat => {
-							if (stat.isDir) return { isDir: true, key };
-							return { isDir: false, key, mtime: 0, size: 0, uid: stat.remote };
-						}),
-					);
+			apply: ({ trigger }) => {
+				if (trigger === 'realtime' && this.settings.realtimeSyncFastMode) {
+					const entries = memoryDB
+						.getStore('remoteContext20000')
+						.entries()
+						.map(([, stat]): Stat => stat);
+					if (entries.length) return entries;
+				}
 			},
 			priority: 1000,
 		});
@@ -194,8 +203,14 @@ export default class Bootstrap {
 			priority: 3000,
 		});
 		registerLocalFsWrapper({
-			apply: (fs) => contextWrapper(fs, memoryDB, 'local'),
-			priority: 10_000,
+			apply: (fs) =>
+				contextWrapper(fs, {
+					db: memoryDB,
+					marker: 'localContext20000Marker',
+					thatStore: 'remoteContext20000',
+					thisStore: 'localContext20000',
+				}),
+			priority: 20_000,
 		});
 
 		registerRemoteFsWrapper({
@@ -222,14 +237,30 @@ export default class Bootstrap {
 			priority: 3000,
 		});
 		registerRemoteFsWrapper({
-			apply: (fs) => contextWrapper(fs, memoryDB, 'remote'),
+			apply: (fs) =>
+				contextWrapper(fs, {
+					db: memoryDB,
+					marker: 'remoteContext10000Marker',
+					thisStore: 'remoteContext10000',
+				}),
 			priority: 10_000,
 		});
 		registerRemoteFsWrapper({
 			apply: (fs) => {
-				if (this.settings.asymmetricStorage) return asymmetricStorageWrapper(fs, memoryDB);
+				if (this.settings.asymmetricStorage)
+					return asymmetricStorageWrapper(fs, memoryDB.getStore('remoteContext10000'));
 			},
 			priority: 11_000,
+		});
+		registerRemoteFsWrapper({
+			apply: (fs) =>
+				contextWrapper(fs, {
+					db: memoryDB,
+					marker: 'remoteContext20000Marker',
+					thatStore: 'localContext20000',
+					thisStore: 'remoteContext20000',
+				}),
+			priority: 20_000,
 		});
 
 		registerRequestMiddleware({ apply: retryMiddleware, priority: 1000 });

@@ -1,23 +1,27 @@
 import testKit from '$/test-kit';
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
-import type { ContextMemoryDB } from '@/fs';
 import type { Stat } from '@/types';
 import { asymmetricStorageWrapper } from '@/fs';
 import { STORAGE_NAME } from '@/modules/Storage';
 
 const { bytes, file, folder, fs } = testKit;
 
-const db: ContextMemoryDB = openMemoryDB(STORAGE_NAME);
+const db = openMemoryDB<
+	{ remoteStatContext: Stat },
+	Record<'lastLocalContextUid' | 'lastRemoteContextUid', string>
+>(STORAGE_NAME);
+
+const store = db.getStore('remoteStatContext');
 
 function seedRemoteContext(...stats: Array<Stat>) {
-	const store = db.getStore('remoteStatContext');
 	store.clear();
 	for (const stat of stats) store.set(stat.key, stat);
 }
 
 beforeEach(() => {
 	db.clearStores();
+	store.clear();
 	db.setMeta('lastLocalContextUid', '');
 	db.setMeta('lastRemoteContextUid', '');
 });
@@ -36,9 +40,9 @@ test('list should infer folder anchors from remoteStatContext and return hierarc
 			],
 		},
 	});
-	const wrapper = asymmetricStorageWrapper(remote.fs, db);
+	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
-	expect(wrapper.list('/')).resolves.toStrictEqual([
+	expect(await wrapper.list('/')).toStrictEqual([
 		folder('/'),
 		file('root.md', { size: 1, uid: 'root-file' }),
 		folder('folder/'),
@@ -63,9 +67,9 @@ test('list should skip malformed or orphan flattened entries without throwing', 
 			],
 		},
 	});
-	const wrapper = asymmetricStorageWrapper(remote.fs, db);
+	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
-	expect(wrapper.list('/')).resolves.toStrictEqual([
+	expect(await wrapper.list('/')).toStrictEqual([
 		folder('/'),
 		folder('folder/'),
 		file('folder/child.md', { size: 4, uid: 'child' }),
@@ -74,7 +78,7 @@ test('list should skip malformed or orphan flattened entries without throwing', 
 
 test('mkdir should write empty folder marker file and reuse same generated anchor later', async () => {
 	const remote = fs();
-	const wrapper = asymmetricStorageWrapper(remote.fs, db);
+	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
 	await wrapper.mkdir('folder/');
 	await wrapper.write('folder/note.md', bytes('1234'));
@@ -91,7 +95,7 @@ test('mkdir should write empty folder marker file and reuse same generated ancho
 test('folder move should preserve anchor and short-circuit identical flattened move', async () => {
 	seedRemoteContext(file('00000abcde~folder'));
 	const remote = fs();
-	const wrapper = asymmetricStorageWrapper(remote.fs, db);
+	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
 	await wrapper.move('folder/', 'renamed/');
 	await wrapper.write('renamed/child.md', bytes('x'));
@@ -99,20 +103,4 @@ test('folder move should preserve anchor and short-circuit identical flattened m
 
 	expect(remote.calls.move).toStrictEqual([['00000abcde~folder', '00000abcde~renamed']]);
 	expect(remote.calls.write).toStrictEqual([['abcde~child.md', bytes('x')]]);
-});
-
-test('unordered child write should proceed by synthesizing missing ancestor anchors', async () => {
-	const remote = fs();
-	const wrapper = asymmetricStorageWrapper(remote.fs, db);
-
-	await wrapper.write('folder/note.md', bytes('1'));
-	await wrapper.mkdir('folder/');
-
-	const [[fileKey, fileValue], [folderMarkerKey, folderMarkerValue]] = remote.calls.write;
-	expect(fileKey[5]).toBe('~');
-	expect(fileValue).toStrictEqual(bytes('1'));
-	expect(folderMarkerValue).toStrictEqual(bytes(''));
-	expect(folderMarkerKey.slice(0, 5)).toBe('00000');
-	expect(folderMarkerKey.slice(5, 10)).toBe(fileKey.slice(0, 5));
-	expect(folderMarkerKey.slice(11)).toBe('folder');
 });

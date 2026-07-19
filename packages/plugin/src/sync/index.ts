@@ -14,6 +14,7 @@ export type * from './decision/interface';
 export { taskMap } from './decision/interface';
 export { BaseTask, getTaskColor, getTaskIcon } from './tasks/interface';
 export { default as postTraversal } from './utils/post-traversal';
+export { default as detectMoves } from './utils/detect-moves';
 export { default as bidirectionalDecider } from './decision/bidirectional';
 export { default as keepRemoteResolver } from './conflict-resolve/keep-remote';
 export { default as keepLocalResolver } from './conflict-resolve/keep-local';

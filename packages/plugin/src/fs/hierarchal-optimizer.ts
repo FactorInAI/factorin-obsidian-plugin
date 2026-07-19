@@ -1,108 +1,101 @@
-import { isSub } from '@repo/shared/path';
-import type { OptimizerInput, InputAtom } from './interface';
+import { dirname, isSub } from '@repo/shared/path';
+import type { DeleteAtom, InputAtom, MoveAtom, OptimizerInput } from './interface';
+
+type Paths = { read?: string; write?: string };
+type Subsumable = DeleteAtom | MoveAtom;
+
+function pathsOf(atom: InputAtom): Paths {
+	if (atom.type === 'delete') return { read: atom.key };
+	if (atom.type === 'move') return { read: atom.oldKey, write: atom.newKey };
+	return { write: atom.key };
+}
+
+function isSubsumable(atom: InputAtom): atom is Subsumable {
+	return atom.type === 'delete' || atom.type === 'move';
+}
 
 export default function hierarchalOptimizer({ atoms, executeAtom }: OptimizerInput) {
-	// Extract relevant paths based on atom type
-	const getPaths = (atom: InputAtom): { read?: string; write?: string } => {
-		switch (atom.type) {
-			case 'write': {
-				return { write: atom.key };
-			}
-			case 'mkdir': {
-				return { write: atom.key };
-			}
-			case 'delete': {
-				return { read: atom.key };
-			}
-			case 'move': {
-				return { read: atom.oldKey, write: atom.newKey };
-			}
-		}
-	};
+	const dependencies = new Map(atoms.map((atom) => [atom, new Set<InputAtom>()]));
+	const umbrellas = new Map<Subsumable, Subsumable>();
 
-	const dependencies = new Map<InputAtom, Set<InputAtom>>();
-	const umbrellas = new Map<InputAtom, InputAtom>();
-	for (const atom of atoms) dependencies.set(atom, new Set());
-	const writePathsMap = new Map<string, InputAtom>();
+	for (const atom of atoms)
+		if (atom.type === 'move') {
+			let umbrella: MoveAtom | undefined;
+			for (const candidate of atoms) {
+				if (
+					candidate.type !== 'move' ||
+					!isSub(candidate.oldKey, atom.oldKey) ||
+					atom.newKey !==
+						`${candidate.newKey}${atom.oldKey.slice(candidate.oldKey.length)}`
+				)
+					continue;
+				if (!umbrella || candidate.oldKey.length < umbrella.oldKey.length)
+					umbrella = candidate;
+			}
+			if (umbrella) umbrellas.set(atom, umbrella);
+		} else if (atom.type === 'delete') {
+			let umbrella: DeleteAtom | undefined;
+			for (const candidate of atoms) {
+				if (
+					candidate.type !== 'delete' ||
+					!isSub(candidate.key, atom.key) ||
+					(umbrella && candidate.key.length <= umbrella.key.length)
+				)
+					continue;
+				umbrella = candidate;
+			}
+			if (umbrella) umbrellas.set(atom, umbrella);
+		}
+
+	const creators = new Map<string, InputAtom>();
 	for (const atom of atoms) {
-		const paths = getPaths(atom);
-		if (paths.write) writePathsMap.set(paths.write, atom);
+		const { write } = pathsOf(atom);
+		if (write) creators.set(write, atom);
 	}
-
-	// 1. Rule: Parent Directory Creation
-	// Any operation that creates a path must wait for the deepest ancestor directory being created in this batch.
-	for (const A of atoms) {
-		const pathsA = getPaths(A);
-		if (pathsA.write) {
-			let currentPath = pathsA.write;
-			while (true) {
-				// Walk up the tree
-				const pathToCheck = currentPath.endsWith('/')
-					? currentPath.slice(0, -1)
-					: currentPath;
-				const slashIdx = pathToCheck.lastIndexOf('/');
-				currentPath = slashIdx === -1 ? '/' : pathToCheck.substring(0, slashIdx + 1);
-				if (currentPath === '/') break; // Reached root
-				const creator = writePathsMap.get(currentPath);
-				if (creator && creator !== A) {
-					dependencies.get(A)!.add(creator);
-					break; // Found the shallowest created ancestor, transitive dependencies handle the rest
-				}
-			}
+	for (const atom of atoms) {
+		const { write } = pathsOf(atom);
+		if (!write) continue;
+		for (let parent = dirname(write); parent !== '/'; parent = dirname(parent)) {
+			const creator = creators.get(parent);
+			if (!creator || creator === atom) continue;
+			dependencies.get(atom)?.add(creator);
+			break;
 		}
 	}
 
-	// 2. Rule: Rename Sequencing & Namespace Clearance
-	for (const A of atoms) {
-		const pathsA = getPaths(A);
-		for (const B of atoms) {
-			if (A === B) continue;
-			const pathsB = getPaths(B);
-			// Rename Sequencing
-			if (B.type === 'move') {
-				// Pre-Rename: Operations on descendants of the source must happen before the move
-				if (pathsA.read && isSub(pathsA.read, B.oldKey)) dependencies.get(B)!.add(A);
-				if (pathsA.write && isSub(pathsA.write, B.oldKey)) dependencies.get(B)!.add(A);
-				// Post-Rename: Operations on descendants of the target must happen after the move
-				if (pathsA.read && isSub(pathsA.read, B.newKey)) dependencies.get(A)!.add(B);
-				if (pathsA.write && isSub(pathsA.write, B.newKey)) dependencies.get(A)!.add(B);
-			}
-			// Namespace Clearance (File vs Folder name collisions)
-			if (A.type === 'delete' && pathsB.write)
-				if (`${pathsA.read}/` === pathsB.write || `${pathsB.write}/` === pathsA.read)
-					dependencies.get(B)!.add(A);
-			if (B.type === 'delete' && pathsA.write)
-				if (`${pathsB.read}/` === pathsA.write || `${pathsA.write}/` === pathsB.read)
-					dependencies.get(A)!.add(B);
-		}
-		// Umbrella Subsumption: Redundant Descendant Deletions
-		if (A.type === 'delete') {
-			let currentUmbrella: InputAtom | undefined;
-			let maxDepth = -1;
-			for (const B of atoms)
-				if (B.type === 'delete' && B !== A)
-					if (isSub(A.key, B.key)) {
-						const depth = B.key.split('/').length;
-						if (depth > maxDepth) {
-							maxDepth = depth;
-							currentUmbrella = B;
-						}
-					}
-			if (currentUmbrella) umbrellas.set(A, currentUmbrella);
+	for (const move of atoms) {
+		if (move.type !== 'move' || umbrellas.has(move)) continue;
+		for (const atom of atoms) {
+			if (atom === move || (isSubsumable(atom) && umbrellas.has(atom))) continue;
+			const { read, write } = pathsOf(atom);
+			if ((read && isSub(move.newKey, read)) || (write && isSub(move.newKey, write)))
+				dependencies.get(atom)?.add(move);
 		}
 	}
 
-	// 3. Orchestration & Wrapping
+	for (const deletion of atoms) {
+		if (deletion.type !== 'delete') continue;
+		for (const atom of atoms) {
+			const { write } = pathsOf(atom);
+			if (write && (`${deletion.key}/` === write || `${write}/` === deletion.key))
+				dependencies.get(atom)?.add(deletion);
+		}
+	}
+
 	for (const atom of atoms) {
 		const originalExecute = atom.execute;
-		const umbrella = umbrellas.get(atom);
-		const deps = dependencies.get(atom) || new Set();
 		atom.execute = (async () => {
-			if (umbrella) {
-				await executeAtom(umbrella);
-				return;
+			if (isSubsumable(atom)) {
+				const umbrella = umbrellas.get(atom);
+				if (umbrella) {
+					await executeAtom(umbrella);
+					atom.resolve();
+					return;
+				}
 			}
-			if (deps.size > 0) await Promise.all([...deps].map((dep) => executeAtom(dep)));
+			await Promise.all(
+				[...dependencies.get(atom)!].map((dependency) => executeAtom(dependency)),
+			);
 			return originalExecute();
 		}) as never;
 	}

@@ -9,6 +9,7 @@ import {
 	AddRecord,
 	RemoveRecord,
 	BaseTask,
+	detectMoves,
 	postTraversal,
 	syncCancelledError,
 	taskMap,
@@ -152,6 +153,16 @@ export default class Sync {
 				terminateReason = { result: 'noop' };
 				return terminateReason;
 			}
+
+			const initialTasks = tasks.length;
+			tasks = detectMoves(tasks, this.ctx.translate, records);
+			const convertedTasks = initialTasks - tasks.length;
+			if (convertedTasks)
+				this.dispatch(
+					'logSync',
+					`Discovered and converted ${convertedTasks} move task(s).`,
+				);
+
 			this.dispatch('logSync', `Planning finished with ${tasks.length} task(s).`);
 
 			const [nonDisplayableTasks, displayableTasks] = partition(
@@ -185,6 +196,8 @@ export default class Sync {
 					...otherTasks,
 				];
 			}
+
+			sortTasks(tasks);
 
 			if (cancelled) throw syncCancelledError;
 			this.dispatch('executionStarted', tasks);
@@ -280,4 +293,19 @@ function partition<T, U extends T>(
 function toTaskInfo({ key, name, prettyName, local, remote }: BaseTask): TaskInfo {
 	const isDir = local?.isDir ?? remote?.isDir ?? false;
 	return { isDir, key, name, prettyName };
+}
+
+function sortTasks(tasks: Array<BaseTask>) {
+	tasks.sort((a, b) => {
+		const aIsDeletion = a.name === 'removeLocal' || a.name === 'removeRemote';
+		const bIsDeletion = b.name === 'removeLocal' || b.name === 'removeRemote';
+		const aIsFolder = a.local?.isDir === true || a.remote?.isDir === true;
+		const bIsFolder = b.local?.isDir === true || b.remote?.isDir === true;
+		const aRegion = aIsDeletion ? 0 : aIsFolder ? 1 : 2;
+		const bRegion = bIsDeletion ? 0 : bIsFolder ? 1 : 2;
+		if (aRegion !== bRegion) return aRegion - bRegion;
+		if (aIsDeletion) return b.key.length - a.key.length;
+		if (aIsFolder) return a.key.length - b.key.length;
+		return 0;
+	});
 }

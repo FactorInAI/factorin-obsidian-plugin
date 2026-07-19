@@ -75,19 +75,10 @@ test('mkdir chain waits for ancestor mkdir', async () => {
 	await pending;
 });
 
-test('move waits for source descendants and gates target descendants', async () => {
+test('move gates operations under destination', async () => {
 	const logs: Array<string> = [];
 	const move = deferred<void>();
 	const atoms: Array<InputAtom> = [
-		{
-			execute: async () => {
-				logs.push('write:folder/src/note.md');
-				return 'src-uid';
-			},
-			key: 'folder/src/note.md',
-			resolve: () => {},
-			type: 'write',
-		},
 		{
 			execute: async () => {
 				logs.push('move:folder/src/->folder/dst/');
@@ -112,17 +103,80 @@ test('move waits for source descendants and gates target descendants', async () 
 	const pending = Promise.all(optimized.map(executeAtom));
 
 	await flush();
-	expect(logs).toStrictEqual(['write:folder/src/note.md', 'move:folder/src/->folder/dst/']);
+	expect(logs).toStrictEqual(['move:folder/src/->folder/dst/']);
 
 	move.resolve();
 	await flush();
-	expect(logs).toStrictEqual([
-		'write:folder/src/note.md',
-		'move:folder/src/->folder/dst/',
-		'write:folder/dst/note.md',
-	]);
+	expect(logs).toStrictEqual(['move:folder/src/->folder/dst/', 'write:folder/dst/note.md']);
 
 	await pending;
+});
+
+test('folder deletion subsumes descendant deletions', async () => {
+	const logs: Array<string> = [];
+	let childResolved = false;
+	const atoms: Array<InputAtom> = [
+		{
+			execute: async () => {
+				logs.push('delete:folder/');
+			},
+			key: 'folder/',
+			resolve: () => {},
+			type: 'delete',
+		},
+		{
+			execute: async () => {
+				throw new Error('descendant deletion should be subsumed');
+			},
+			key: 'folder/note.md',
+			resolve: () => {
+				childResolved = true;
+			},
+			type: 'delete',
+		},
+	];
+	const { executeAtom, optimized } = runOptimizer(atoms);
+
+	await Promise.all(optimized.map(executeAtom));
+
+	expect(logs).toStrictEqual(['delete:folder/']);
+	expect(childResolved).toBe(true);
+});
+
+test('parent move subsumes descendant move without freezing', async () => {
+	const logs: Array<string> = [];
+	let descendantResolved = false;
+	const atoms: Array<InputAtom> = [
+		{
+			execute: async () => {
+				logs.push('move:old/->new/');
+			},
+			newKey: 'new/',
+			oldKey: 'old/',
+			resolve: () => {},
+			type: 'move',
+		},
+		{
+			execute: async () => {
+				throw new Error('descendant move should be subsumed');
+			},
+			newKey: 'new/note.md',
+			oldKey: 'old/note.md',
+			resolve: () => {
+				descendantResolved = true;
+			},
+			type: 'move',
+		},
+	];
+	const { executeAtom, optimized } = runOptimizer(atoms);
+	const pending = Promise.all(optimized.map(executeAtom));
+	const timeout = new Promise<never>((_, reject) =>
+		setTimeout(() => reject(new Error('optimizer timed out')), 100),
+	);
+
+	await Promise.race([pending, timeout]);
+	expect(logs).toStrictEqual(['move:old/->new/']);
+	expect(descendantResolved).toBe(true);
 });
 
 test('delete blocks folder/file collision write', async () => {

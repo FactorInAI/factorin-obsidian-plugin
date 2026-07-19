@@ -2,17 +2,12 @@ import type { DatabaseSync, StoreSync } from 'uni-kv';
 import type { MaybePromise, Progress, Stat, Binary } from '@/types';
 import type { WrappedFs, Fs } from '../interface';
 
-type ContextMemoryDBMeta = {
-	lastLocalContextUid: string;
-	lastRemoteContextUid: string;
+type ContextOptions<S extends string, M extends string> = {
+	db: DatabaseSync<Record<S, Stat>, Record<M, string>>;
+	thisStore: NoInfer<S>;
+	thatStore?: NoInfer<S>;
+	marker: NoInfer<M>;
 };
-
-type ContextMemoryDBSchema = {
-	localStatContext: Stat;
-	remoteStatContext: Stat;
-};
-
-export type ContextMemoryDB = DatabaseSync<ContextMemoryDBSchema, ContextMemoryDBMeta>;
 
 function getCachedReadSize(store: StoreSync<Stat>, key: string) {
 	const stat = store.get(key);
@@ -48,27 +43,20 @@ async function replaceStats(store: StoreSync<Stat>, stats: MaybePromise<Array<St
 	return resolvedStats;
 }
 
-class ContextFs implements WrappedFs {
+class ContextFs<S extends string, M extends string> implements WrappedFs {
 	private readonly thisStore: StoreSync<Stat>;
-	private readonly thatStore: StoreSync<Stat>;
+	private readonly thatStore?: StoreSync<Stat>;
 
 	constructor(
 		public readonly original: Fs,
-		db: ContextMemoryDB,
-		type: 'remote' | 'local',
+		{ db, thatStore, marker, thisStore }: ContextOptions<S, M>,
 	) {
 		const uid = original.getUid();
-		if (type === 'local') {
-			this.thisStore = db.getStore('localStatContext');
-			this.thatStore = db.getStore('remoteStatContext');
-		} else {
-			this.thisStore = db.getStore('remoteStatContext');
-			this.thatStore = db.getStore('localStatContext');
-		}
-		const metaKey = type === 'remote' ? 'lastRemoteContextUid' : 'lastLocalContextUid';
-		if (db.getMeta(metaKey) !== uid) {
+		this.thisStore = db.getStore(thisStore);
+		if (thatStore) this.thatStore = db.getStore(thatStore);
+		if (db.getMeta(marker) !== uid) {
 			this.thisStore.clear();
-			db.setMeta(metaKey, uid);
+			db.setMeta(marker, uid);
 		}
 	}
 
@@ -91,7 +79,7 @@ class ContextFs implements WrappedFs {
 	}
 
 	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
-		size ??= getCachedReadSize(this.thatStore, key);
+		if (this.thatStore) size ??= getCachedReadSize(this.thatStore, key);
 		const uid = await this.original.writeStream(key, value, size);
 		upsertFileStat(this.thisStore, key, uid, 0); // Don't know size
 		return uid;
@@ -112,23 +100,22 @@ class ContextFs implements WrappedFs {
 		moveCachedStat(this.thisStore, oldKey, newKey);
 	}
 
-	async stat(key: string) {
-		return await cacheStat(this.thisStore, this.original.stat(key));
+	stat(key: string) {
+		return cacheStat(this.thisStore, this.original.stat(key));
 	}
 
 	exists(key: string) {
 		return this.original.exists(key);
 	}
 
-	async list(key: string, progress?: (prog: Progress) => void) {
-		return await replaceStats(this.thisStore, this.original.list(key, progress));
+	list(key: string, progress?: (prog: Progress) => void) {
+		return replaceStats(this.thisStore, this.original.list(key, progress));
 	}
 }
 
-export default function remoteContextWrapper(
+export default function remoteContextWrapper<S extends string, M extends string>(
 	original: Fs,
-	db: ContextMemoryDB,
-	type: 'remote' | 'local',
+	options: ContextOptions<S, M>,
 ): WrappedFs {
-	return new ContextFs(original, db, type);
+	return new ContextFs(original, options);
 }

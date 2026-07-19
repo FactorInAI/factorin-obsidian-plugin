@@ -1,6 +1,7 @@
 import type { Events } from '@';
 import type { App } from 'obsidian';
 import { Modal, Setting } from 'obsidian';
+import type { ExistingMemoryDB } from '@/modules/Bootstrap';
 import type { Dispatch, On } from '@/modules/EventBus';
 import type { Translate } from '@/modules/I18n';
 import type { Infras } from '@/modules/Registrar';
@@ -38,6 +39,7 @@ export default class MigrationModal extends Modal {
 			translate: Translate<MigrationModalTranslations>;
 			requestSync: (trigger: string) => Promise<SyncTerminateReason>;
 			initializeSync: () => Infras;
+			memoryDB: ExistingMemoryDB;
 		},
 		private readonly options: {
 			content: string | DocumentFragment;
@@ -121,7 +123,7 @@ export default class MigrationModal extends Modal {
 	};
 
 	private readonly migrate = async () => {
-		const { dispatch, requestSync, initializeSync, translate } = this.ctx;
+		const { dispatch, requestSync, initializeSync, translate, memoryDB } = this.ctx;
 		dispatch('migrationProgress', {
 			completed: 0,
 			current: translate('migrationPhase1Description'),
@@ -139,7 +141,15 @@ export default class MigrationModal extends Modal {
 		});
 		try {
 			const { record, remoteFs } = initializeSync();
-			await Promise.all([record.clear(), remoteFs.delete('/'), this.options.apply()]);
+			await Promise.all([
+				record.clear(),
+				this.options.apply(),
+				...memoryDB
+					.getStore('remoteContext20000')
+					.entries()
+					.sort(([a], [b]) => b.length - a.length)
+					.map(([key]) => remoteFs.delete(key)),
+			]);
 		} catch (error) {
 			const message = toErrorMessage(error);
 			dispatch('migrationFailed', message);

@@ -20,7 +20,7 @@
 		},
 		"check": {
 			"cache": true,
-			"dependsOn": ["^dev"]
+			"dependsOn": ["dev", "^dev"]
 		},
 		"tests": {
 			"dependsOn": ["^dev"],

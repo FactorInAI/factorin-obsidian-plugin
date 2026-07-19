@@ -1,7 +1,7 @@
 import type { StoreSync } from 'uni-kv';
+import { basename, dirname, isFolder, isSub } from '@repo/shared/path';
 import type { Progress, Stat, Binary } from '@/types';
 import type { Fs, WrappedFs } from '../interface';
-import type { ContextMemoryDB } from './context';
 
 const ROOT_KEY = '/';
 const ROOT_ANCHOR = '00000';
@@ -15,49 +15,31 @@ function isRootKey(key: string) {
 	return key === ROOT_KEY;
 }
 
-function isFolderKey(key: string) {
-	return key.endsWith('/');
+function joinFolderKey(parentKey: string, base: string) {
+	return parentKey === ROOT_KEY ? `${base}/` : `${parentKey}${base}/`;
 }
 
-function getBaseName(key: string) {
-	const trimmed = key.endsWith('/') ? key.slice(0, -1) : key;
-	const segments = trimmed.split('/');
-	return segments[segments.length - 1] ?? '';
-}
-
-function getParentFolderKey(key: string) {
-	if (isRootKey(key)) return ROOT_KEY;
-	const trimmed = key.endsWith('/') ? key.slice(0, -1) : key;
-	const lastSlash = trimmed.lastIndexOf('/');
-	if (lastSlash === -1) return ROOT_KEY;
-	return trimmed.slice(0, lastSlash + 1);
-}
-
-function joinFolderKey(parentKey: string, basename: string) {
-	return parentKey === ROOT_KEY ? `${basename}/` : `${parentKey}${basename}/`;
-}
-
-function joinFileKey(parentKey: string, basename: string) {
-	return parentKey === ROOT_KEY ? basename : `${parentKey}${basename}`;
+function joinFileKey(parentKey: string, base: string) {
+	return parentKey === ROOT_KEY ? base : `${parentKey}${base}`;
 }
 
 function isDescendantOrSelf(key: string, parentKey: string) {
-	return parentKey === ROOT_KEY || key === parentKey || key.startsWith(parentKey);
+	return isSub(parentKey, key, true);
 }
 
 function parseFlattenedKey(key: string): ParsedFlatKey | undefined {
 	if (key === ROOT_KEY || key.includes('/')) return undefined;
 	if (key.length > 6 && key[5] === '~') {
-		const basename = key.slice(6);
-		if (!basename) return undefined;
-		return { basename, isDir: false, parentAnchor: key.slice(0, 5) };
+		const base = key.slice(6);
+		if (!base) return undefined;
+		return { basename: base, isDir: false, parentAnchor: key.slice(0, 5) };
 	}
 	if (key.length > 11 && key[10] === '~') {
-		const basename = key.slice(11);
-		if (!basename) return undefined;
+		const base = key.slice(11);
+		if (!base) return undefined;
 		return {
 			anchor: key.slice(5, 10),
-			basename,
+			basename: base,
 			isDir: true,
 			parentAnchor: key.slice(0, 5),
 		};
@@ -66,7 +48,6 @@ function parseFlattenedKey(key: string): ParsedFlatKey | undefined {
 }
 
 class AsymmetricStorageFs implements WrappedFs {
-	private readonly statStore: StoreSync<Stat>;
 	private readonly keyToAnchor = new Map<string, string>([[ROOT_KEY, ROOT_ANCHOR]]);
 	private readonly anchorToKey = new Map<string, string>([[ROOT_ANCHOR, ROOT_KEY]]);
 	private readonly knownAnchors = new Set<string>([ROOT_ANCHOR]);
@@ -74,65 +55,90 @@ class AsymmetricStorageFs implements WrappedFs {
 
 	constructor(
 		public readonly original: Fs,
-		DB: ContextMemoryDB,
-	) {
-		this.statStore = DB.getStore('remoteStatContext');
-	}
+		private readonly statStore: StoreSync<Stat>,
+	) {}
 
 	getUid() {
 		return this.original.getUid();
 	}
 
 	read(key: string, size?: number) {
-		return this.original.read(this.flattenKey(key), size);
+		return this.original.read(this.flattenFileKey(key), size);
 	}
 
 	readStream(key: string, size?: number) {
-		return this.original.readStream(this.flattenKey(key), size);
+		return this.original.readStream(this.flattenFileKey(key), size);
 	}
 
 	write(key: string, value: Binary) {
-		return this.original.write(this.flattenKey(key), value);
+		return this.original.write(this.flattenFileKey(key), value);
 	}
 
 	writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
-		return this.original.writeStream(this.flattenKey(key), value, size);
+		return this.original.writeStream(this.flattenFileKey(key), value, size);
 	}
 
 	async delete(key: string) {
-		await this.original.delete(this.flattenKey(key));
-		if (isFolderKey(key)) this.deleteMapping(key, this.ensureAnchor(key));
+		if (isFolder(key)) {
+			const anchor = this.findAnchor(key);
+			this.deleteMapping(key, anchor);
+			try {
+				return await this.original.delete(this.flattenFolderKey(key, anchor));
+			} catch (error) {
+				this.registerMapping(key, anchor);
+				throw error;
+			}
+		} else return this.original.delete(this.flattenFileKey(key));
 	}
 
 	async move(oldKey: string, newKey: string) {
-		const bothFolder = isFolderKey(oldKey) && isFolderKey(newKey);
-		const moveAnchor = () => {
-			const oldAnchor = this.ensureAnchor(oldKey);
-			this.deleteMapping(oldKey, oldAnchor);
-			this.registerMapping(newKey, oldAnchor);
-		};
-		const flattenedOldKey = this.flattenKey(oldKey);
-		const flattenedNewKey = bothFolder
-			? this.flattenFolderKey(newKey, this.ensureAnchor(oldKey))
-			: this.flattenKey(newKey);
-		if (flattenedOldKey === flattenedNewKey) {
-			if (bothFolder) moveAnchor();
-			return;
+		const bothFolder = isFolder(oldKey) && isFolder(newKey);
+		if (bothFolder) {
+			const oldAnchor = this.findAnchor(oldKey);
+			const moveAnchor = () => {
+				this.anchorToKey.delete(oldAnchor);
+				this.registerMapping(newKey, oldAnchor);
+			};
+			const revertAnchor = () => {
+				this.deleteMapping(newKey, oldAnchor);
+				this.anchorToKey.set(oldAnchor, oldKey);
+			};
+			const flattenedNewKey = this.flattenFolderKey(newKey, oldAnchor);
+			const flattenedOldKey = this.flattenFolderKey(oldKey);
+			moveAnchor();
+			if (flattenedOldKey === flattenedNewKey) {
+				this.keyToAnchor.delete(oldKey);
+				return;
+			}
+			try {
+				await this.original.move(flattenedOldKey, flattenedNewKey);
+			} catch (error) {
+				revertAnchor();
+				throw error;
+			}
+			this.keyToAnchor.delete(oldKey);
+		} else {
+			const flattenedNewKey = this.flattenFileKey(newKey);
+			const flattenedOldKey = this.flattenFileKey(oldKey);
+			if (flattenedOldKey === flattenedNewKey) return;
+			return this.original.move(flattenedOldKey, flattenedNewKey);
 		}
-		await this.original.move(flattenedOldKey, flattenedNewKey);
-		if (bothFolder) moveAnchor();
 	}
 
 	async mkdir(key: string, recursive?: boolean) {
-		if (isRootKey(key)) {
-			await this.original.mkdir(key, recursive);
-			return;
+		if (isRootKey(key)) return this.original.mkdir(key, recursive);
+		const anchor = this.generateAnchor(key);
+		this.registerMapping(key, anchor);
+		try {
+			await this.original.write(this.flattenFolderKey(key, anchor), EMPTY_BINARY);
+		} catch (error) {
+			this.deleteMapping(key, anchor);
+			throw error;
 		}
-		await this.original.write(this.flattenKey(key), EMPTY_BINARY);
 	}
 
 	async stat(key: string) {
-		if (isRootKey(key)) return await this.original.stat(key);
+		if (isRootKey(key)) return this.original.stat(key);
 		const stat = await this.original.stat(this.flattenKey(key));
 		return this.inflateStat(stat) ?? stat;
 	}
@@ -157,45 +163,51 @@ class AsymmetricStorageFs implements WrappedFs {
 
 	private flattenKey(key: string) {
 		if (isRootKey(key)) return ROOT_KEY;
-		return isFolderKey(key) ? this.flattenFolderKey(key) : this.flattenFileKey(key);
+		return isFolder(key) ? this.flattenFolderKey(key) : this.flattenFileKey(key);
 	}
 
 	private flattenFileKey(key: string) {
-		const parentAnchor = this.ensureAnchor(getParentFolderKey(key));
-		return `${parentAnchor}~${getBaseName(key)}`;
+		const parentAnchor = this.findAnchor(dirname(key));
+		return `${parentAnchor}~${basename(key)}`;
 	}
 
-	private flattenFolderKey(key: string, folderAnchor = this.ensureAnchor(key)) {
-		const parentAnchor = this.ensureAnchor(getParentFolderKey(key));
-		return `${parentAnchor}${folderAnchor}~${getBaseName(key)}`;
+	private flattenFolderKey(key: string, folderAnchor = this.findAnchor(key)) {
+		const parentAnchor = this.findAnchor(dirname(key));
+		return `${parentAnchor}${folderAnchor}~${basename(key)}`;
 	}
 
 	private inflateStat(stat: Stat): Stat | undefined {
 		if (stat.key === ROOT_KEY) return { isDir: true, key: ROOT_KEY };
 		this.bootstrapMaps();
 		const parsed = parseFlattenedKey(stat.key);
-		if (!parsed) return undefined;
+		if (!parsed) return;
 		const parentKey = this.anchorToKey.get(parsed.parentAnchor);
-		if (!parentKey) return undefined;
+		if (!parentKey) return;
 		if (parsed.isDir) {
 			const folderKey = joinFolderKey(parentKey, parsed.basename);
-			if (!this.registerMapping(folderKey, parsed.anchor)) return undefined;
+			if (!this.registerMapping(folderKey, parsed.anchor)) return;
 			return { isDir: true, key: folderKey };
 		}
-		if (stat.isDir) return undefined;
+		if (stat.isDir) return;
 		return { ...stat, key: joinFileKey(parentKey, parsed.basename) };
 	}
 
-	private ensureAnchor(folderKey: string): string {
+	private findAnchor(folderKey: string): string {
+		if (isRootKey(folderKey)) return ROOT_ANCHOR;
 		this.bootstrapMaps();
 		const existing = this.keyToAnchor.get(folderKey);
 		if (existing) return existing;
-		if (isRootKey(folderKey)) return ROOT_ANCHOR;
-		const parentAnchor = this.ensureAnchor(getParentFolderKey(folderKey));
-		const anchor = generateAnchor(
-			`${parentAnchor}~${getBaseName(folderKey)}`,
-			this.knownAnchors,
-		);
+		throw new Error('Cannot find existing anchor, this is probably a bug of Sync Engine.');
+	}
+
+	private generateAnchor(folderKey: string): string {
+		this.bootstrapMaps();
+		const parentAnchor = this.keyToAnchor.get(dirname(folderKey));
+		if (!parentAnchor)
+			throw new Error(
+				"Parent anchor doesn't exist when generating child's. This is probably a bug of Sync Engine.",
+			);
+		const anchor = generateAnchor(`${parentAnchor}~${basename(folderKey)}`, this.knownAnchors);
 		this.registerMapping(folderKey, anchor);
 		return anchor;
 	}
@@ -250,7 +262,7 @@ class AsymmetricStorageFs implements WrappedFs {
 
 export default function asymmetricStorageWrapper(
 	original: Fs,
-	options: ContextMemoryDB,
+	options: StoreSync<Stat>,
 ): WrappedFs {
 	return new AsymmetricStorageFs(original, options);
 }
@@ -287,6 +299,6 @@ function generateId(str: string): string {
 function generateAnchor(source: string, existing: Set<string>) {
 	let anchor: string;
 	do anchor = generateId(source);
-	while (existing.has(anchor) || ((source += '☭') && false));
+	while (existing.has(anchor) && (source += '☭'));
 	return anchor;
 }

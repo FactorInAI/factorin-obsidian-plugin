@@ -5,7 +5,7 @@ export default async function moveValue({
 	newKey,
 	oldKey,
 }: {
-	store: StoreAsync<unknown>;
+	store: StoreAsync;
 	newKey: string;
 	oldKey: string;
 }): Promise<void> {

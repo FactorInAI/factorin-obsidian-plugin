@@ -8,10 +8,9 @@ import type { MergeOptions } from '@/utils/merge';
 import smartMergeResolver from '@/resolver';
 
 const { bytes, file, fs, stream } = testKit;
-const memoryDB = openMemoryDB('smart-merge-resolver-test') as unknown as DatabaseAsync<
-	{ record: RecordStat },
-	{}
->;
+const memoryDB = openMemoryDB('smart-merge-resolver-test') as unknown as DatabaseAsync<{
+	record: RecordStat;
+}>;
 
 const mergeOptions: MergeOptions = {
 	conflictAEnd: '</a>',

@@ -48,5 +48,9 @@ export function stripEndSlash(key: string) {
 
 export function isSub(parent: string, sub: string, include = false) {
 	if (sub === parent) return include;
-	return sub.startsWith(parent) && sub.length > parent.length;
+	return parent === '/' || (sub.startsWith(parent) && sub.length > parent.length);
+}
+
+export function isFolder(key: string) {
+	return key.endsWith('/');
 }
