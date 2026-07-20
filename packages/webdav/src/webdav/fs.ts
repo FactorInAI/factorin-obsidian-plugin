@@ -97,6 +97,8 @@ function getRecursiveKeys(key: string) {
 
 function stripEndpoint(endpoint: string, href: string) {
 	if (href.startsWith(endpoint)) href = href.slice(endpoint.length);
+	const pathname = new URL(endpoint).pathname;
+	if (href.startsWith(pathname)) href = href.slice(pathname.length);
 	return href.slice(1);
 }
 

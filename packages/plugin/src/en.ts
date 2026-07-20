@@ -142,6 +142,7 @@ const en: Translations = {
 	maxRequestConcurrencyPlaceholder: 'Enter concurrency limit',
 	migrationDescription:
 		'Migration may take seconds to minutes depending on the vault size. If you have migrated the remote on other devices, you can skip the migration.\n\nStart migration now?',
+	migrationFailed: 'Migration failed',
 	migrationPhase1Description: 'Ensure local state is up-to-date',
 	migrationPhase2Description: 'Clean up remote and records',
 	migrationPhase3Description: 'Populate remote with new structure',

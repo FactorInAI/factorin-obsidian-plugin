@@ -127,6 +127,7 @@ const zh: Translations = {
 	maxRequestConcurrencyPlaceholder: '输入并发限制',
 	migrationDescription:
 		'迁移可能需要几秒钟到几分钟不等，具体取决于库的大小。如果您已在其他设备上迁移了远程端，可以跳过此迁移。\n\n现在开始迁移吗？',
+	migrationFailed: '迁移失败',
 	migrationPhase1Description: '确保本地状态是最新的',
 	migrationPhase2Description: '清理远程端和记录',
 	migrationPhase3Description: '使用新结构填充远程端',

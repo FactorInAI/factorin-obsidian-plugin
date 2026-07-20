@@ -1,6 +1,6 @@
 import type { Events } from '@';
 import type { App } from 'obsidian';
-import { Modal, Setting } from 'obsidian';
+import { Modal, Notice, Setting } from 'obsidian';
 import type { ExistingMemoryDB } from '@/modules/Bootstrap';
 import type { Dispatch, On } from '@/modules/EventBus';
 import type { Translate } from '@/modules/I18n';
@@ -21,10 +21,10 @@ export type MigrationModalTranslations = {
 	migrationPhase2Description: string;
 	migrationPhase3Description: string;
 	toggleWithoutMigration: string;
+	migrationFailed: string;
 	completed: string;
 	hide: string;
 	done: string;
-	failed: string;
 };
 
 export default class MigrationModal extends Modal {
@@ -114,7 +114,7 @@ export default class MigrationModal extends Modal {
 				}
 			}),
 			on('migrationFailed', () => {
-				left.setText(translate('failed'));
+				left.setText(translate('migrationFailed'));
 				renderControls('done');
 			}),
 		);
@@ -152,6 +152,7 @@ export default class MigrationModal extends Modal {
 			]);
 		} catch (error) {
 			const message = toErrorMessage(error);
+			new Notice(`${translate('migrationFailed')}: ${message}`);
 			dispatch('migrationFailed', message);
 			return;
 		}

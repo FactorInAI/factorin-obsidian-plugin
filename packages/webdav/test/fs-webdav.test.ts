@@ -392,14 +392,14 @@ test('mkdir recursively creates parent folders in order', async () => {
 test('list uses infinity when enabled', async () => {
 	setXmlResponse([
 		{
-			href: 'https://dav.example.com/dav/Notes/',
+			href: '/dav/Notes/',
 			propstat: {
 				prop: { resourcetype: { collection: {} } },
 				status: 'HTTP/1.1 200 OK',
 			},
 		},
 		{
-			href: 'https://dav.example.com/dav/Notes/file.md',
+			href: '/dav/Notes/file.md',
 			propstat: {
 				prop: {
 					getcontentlength: '3',
