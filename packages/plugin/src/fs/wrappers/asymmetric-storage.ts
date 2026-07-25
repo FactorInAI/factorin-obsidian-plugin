@@ -95,17 +95,10 @@ class AsymmetricStorageFs implements WrappedFs {
 		const bothFolder = isFolder(oldKey) && isFolder(newKey);
 		if (bothFolder) {
 			const oldAnchor = this.findAnchor(oldKey);
-			const moveAnchor = () => {
-				this.anchorToKey.delete(oldAnchor);
-				this.registerMapping(newKey, oldAnchor);
-			};
-			const revertAnchor = () => {
-				this.deleteMapping(newKey, oldAnchor);
-				this.anchorToKey.set(oldAnchor, oldKey);
-			};
 			const flattenedNewKey = this.flattenFolderKey(newKey, oldAnchor);
 			const flattenedOldKey = this.flattenFolderKey(oldKey);
-			moveAnchor();
+			this.anchorToKey.delete(oldAnchor);
+			this.registerMapping(newKey, oldAnchor);
 			if (flattenedOldKey === flattenedNewKey) {
 				this.keyToAnchor.delete(oldKey);
 				return;
@@ -113,7 +106,8 @@ class AsymmetricStorageFs implements WrappedFs {
 			try {
 				await this.original.move(flattenedOldKey, flattenedNewKey);
 			} catch (error) {
-				revertAnchor();
+				this.deleteMapping(newKey, oldAnchor);
+				this.anchorToKey.set(oldAnchor, oldKey);
 				throw error;
 			}
 			this.keyToAnchor.delete(oldKey);
