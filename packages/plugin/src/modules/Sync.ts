@@ -218,7 +218,7 @@ export default class Sync {
 			);
 
 			terminateReason = failedCount
-				? { error: `Execution of ${failedCount} tasks failed.`, result: 'failed' }
+				? { error: `Execution of ${failedCount} sync task(s) failed.`, result: 'failed' }
 				: { result: 'completed' };
 		} catch (error) {
 			terminateReason = cancelled

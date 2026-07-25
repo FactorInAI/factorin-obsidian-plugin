@@ -267,10 +267,8 @@ export default function asymmetricStorageWrapper(
 	return new AsymmetricStorageFs(original, options);
 }
 
-const SAFE_85 =
-	" !#$%&'()+,-.0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
-const SAFE_83 =
-	"!#$%&'()+,-0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
+const SAFE_81 = " !$'(),-.0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
+const SAFE_79 = "!$'(),-0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
 
 function generateId(str: string): string {
 	let h1 = 0xde_ad_be_ef | 0,
@@ -285,16 +283,16 @@ function generateId(str: string): string {
 	h2 = Math.imul(h2 ^ (h2 >>> 16), 2_246_822_507);
 	h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3_266_489_909);
 	let hash = 4_294_967_296 * (2_097_151 & h2) + (h1 >>> 0);
-	const c4 = hash % 83;
-	hash = Math.trunc(hash / 83);
-	const c3 = hash % 85;
-	hash = Math.trunc(hash / 85);
-	const c2 = hash % 85;
-	hash = Math.trunc(hash / 85);
-	const c1 = hash % 85;
-	hash = (hash / 85) | 0;
-	const c0 = hash % 85;
-	return SAFE_85[c0] + SAFE_85[c1] + SAFE_85[c2] + SAFE_85[c3] + SAFE_83[c4];
+	const c4 = hash % 79;
+	hash = Math.trunc(hash / 79);
+	const c3 = hash % 81;
+	hash = Math.trunc(hash / 81);
+	const c2 = hash % 81;
+	hash = Math.trunc(hash / 81);
+	const c1 = hash % 81;
+	hash = (hash / 81) | 0;
+	const c0 = hash % 81;
+	return SAFE_81[c0] + SAFE_81[c1] + SAFE_81[c2] + SAFE_81[c3] + SAFE_79[c4];
 }
 function generateAnchor(source: string, existing: Set<string>) {
 	let anchor: string;

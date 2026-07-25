@@ -47,7 +47,7 @@ Study the structure of other modules and read documentation in `docs` when worki
 - Sentence case for UI text.
 - All Obsidian API mocks go `packages/shared/src/obsidian-mock.ts`.
 - Use inline Tailwind CSS for common styling, only use semantic CSS for animations and complex compositions. (Documentation website doesn't use TailwindCSS, you need to edit `docs/.vitepress/theme/styles.css`)
-- When any function or class needs to use `Context` as argument, prefer plain object structural typing instead of direct `Context` type.
+- When any function or class needs to use `Context` as argument, prefer structural typing instead of direct `Context`.
 - Excluding main plugin, shared utils and documentation site, all packages are Sync Engine modules, they use the SDK and follow unified module structure.
 - `null` forbidden, use `undefined` consistently.
 - Lint warnings must be cleared.
