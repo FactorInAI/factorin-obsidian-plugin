@@ -14,24 +14,28 @@ class DebugFs implements WrappedFs {
 	}
 
 	read(key: string, stat: FileStat) {
-		this.log(`read: key ${key}, stat ${JSON.stringify(stat)}`);
+		this.log(`read: key ${key}, stat ${JSON.stringify(stat, undefined, '\t')}`);
 		return this.original.read(key, stat);
 	}
 
 	readStream(key: string, stat: FileStat) {
-		this.log(`readStream: key ${key}, stat ${JSON.stringify(stat)}`);
+		this.log(`readStream: key ${key}, stat ${JSON.stringify(stat, undefined, '\t')}`);
 		return this.original.readStream(key, stat);
 	}
 
 	async write(key: string, value: Binary, stat: FileStat) {
 		const result = await this.original.write(key, value, stat);
-		this.log(`write: key ${key}, stat ${JSON.stringify(stat)}, result ${result}`);
+		this.log(
+			`write: key ${key}, stat ${JSON.stringify(stat, undefined, '\t')}, result ${result}`,
+		);
 		return result;
 	}
 
 	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
 		const result = await this.original.writeStream(key, value, stat);
-		this.log(`write: key ${key}, stat ${JSON.stringify(stat)}, result ${result}`);
+		this.log(
+			`write: key ${key}, stat ${JSON.stringify(stat, undefined, '\t')}, result ${result}`,
+		);
 		return result;
 	}
 

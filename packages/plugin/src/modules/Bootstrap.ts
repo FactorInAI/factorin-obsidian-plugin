@@ -23,6 +23,7 @@ import {
 	customHeadersMiddleware,
 	cancellationMiddleware,
 } from '@/fs';
+import debugWrapper from '@/sdk/debug-wrapper';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
 import featuresSettings from '@/settings/features';
@@ -259,6 +260,11 @@ export default class Bootstrap {
 					store: 'remoteContext20000',
 				}),
 			priority: 20_000,
+		});
+
+		registerRemoteFsWrapper({
+			apply: (fs) => debugWrapper(fs, (str) => console.log(str)),
+			priority: 10_500,
 		});
 
 		registerRequestMiddleware({ apply: retryMiddleware, priority: 1000 });
