@@ -3,6 +3,7 @@
 	"printWidth": 100,
 	"tabWidth": 4,
 	"useTabs": true,
+	"endOfLine": "lf",
 	"singleQuote": true,
 	"sortImports": {
 		"newlinesBetween": false,
@@ -26,5 +27,5 @@
 			}
 		}
 	],
-	"ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/public/**"],
+	"ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/public/**"]
 }

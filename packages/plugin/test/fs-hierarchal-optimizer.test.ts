@@ -1,7 +1,7 @@
 import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { InputAtom, OutputAtom } from '@/fs';
-import { hierarchalOptimizer } from '@/fs';
+import { hierarchicalOptimizer } from '@/fs';
 
 const { deferred, flush } = testKit;
 
@@ -17,7 +17,7 @@ function runOptimizer(atoms: Array<InputAtom>) {
 
 	return {
 		executeAtom,
-		optimized: hierarchalOptimizer({ atoms, executeAtom, fs: {} as never }),
+		optimized: hierarchicalOptimizer({ atoms, executeAtom, fs: {} as never }),
 	};
 }
 

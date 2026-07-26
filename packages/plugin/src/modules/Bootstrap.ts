@@ -18,7 +18,7 @@ import {
 	contextWrapper,
 	memoryControlWrapper,
 	retryMiddleware,
-	hierarchalOptimizer,
+	hierarchicalOptimizer,
 	asymmetricStorageWrapper,
 	customHeadersMiddleware,
 	cancellationMiddleware,
@@ -177,8 +177,8 @@ export default class Bootstrap {
 			priority: 10_000,
 		});
 
-		registerLocalOptimizer({ apply: hierarchalOptimizer, priority: 1000 });
-		registerRemoteOptimizer({ apply: hierarchalOptimizer, priority: 1000 });
+		registerLocalOptimizer({ apply: hierarchicalOptimizer, priority: 1000 });
+		registerRemoteOptimizer({ apply: hierarchicalOptimizer, priority: 1000 });
 		registerLocalFsWrapper({
 			apply: (fs) =>
 				memoryControlWrapper(

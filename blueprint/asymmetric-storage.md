@@ -17,7 +17,7 @@ Even classical asymmetric storage in _object storage_ (flat entries, file path a
 - the flat shape is decoupled from the real shape, making structural drift possible.
 - when a folder is renamed, all descendants need cascade renaming.
 
-Due to the reasons above, with respect to the fact that most users don't care about remote shape when syncing (they can disable if they'd like to), **Anchored Asymmetric Storage™** is proposed to eliminate all the frictions. It provides O(1) remote traversal, O(1) remote operation, and full hierarchial semantics.
+Due to the reasons above, with respect to the fact that most users don't care about remote shape when syncing (they can disable if they'd like to), **Anchored Asymmetric Storage™** is proposed to eliminate all the frictions. It provides O(1) remote traversal, O(1) remote operation, and full hierarchical semantics.
 
 ## Mechanism
 

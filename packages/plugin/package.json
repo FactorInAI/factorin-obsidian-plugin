@@ -42,8 +42,8 @@
 	"scripts": {
 		"dev:plugin": "MODE=dev BUILD=plugin tsdown",
 		"build:plugin": "BUILD=plugin tsdown",
-		"dev": "MODE=dev BUILD=sdk tsdown",
-		"build": "BUILD=sdk tsdown",
+		"dev": "MODE=dev tsdown",
+		"build": "tsdown",
 		"fix": "oxlint --silent --fix --type-aware && oxfmt",
 		"check": "tsc && oxlint --type-aware && oxfmt --check",
 		"tests": "bun --preload=./test/mocks test"

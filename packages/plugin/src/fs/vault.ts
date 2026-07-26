@@ -1,6 +1,6 @@
 import type { Vault } from 'obsidian';
 import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
-import { dirname, stripEndSlash } from '@repo/shared/path';
+import { stripEndSlash } from '@repo/shared/path';
 import type { Stat, Binary } from '@/types';
 import type { Fs, RootFs } from './interface';
 
@@ -20,14 +20,6 @@ function toStat(
 ): Stat {
 	if (type === 'folder') return { isDir: true, key: toKey(nativePath, true) };
 	return { isDir: false, key: toKey(nativePath, false), mtime, size, uid: `${mtime}~${size}` };
-}
-
-async function ensureKeyDir(vault: Vault, key: string): Promise<void> {
-	if (key === '/') return;
-	const vaultPath = toVaultPath(key);
-	if (await vault.adapter.exists(vaultPath)) return;
-	await ensureKeyDir(vault, dirname(key));
-	if (!(await vault.adapter.exists(vaultPath))) await vault.adapter.mkdir(vaultPath);
 }
 
 async function removeVaultFileIfExists(vault: Vault, path: string): Promise<void> {
@@ -71,7 +63,6 @@ export default class VaultFs implements RootFs {
 	async writeStream(key: string, value: ReadableStream<Binary>): Promise<string> {
 		const nativePath = toVaultPath(key);
 		const tempPath = `.trash/${crypto.randomUUID()}.part`;
-		await ensureKeyDir(this.vault, dirname(key));
 		const reader = value.getReader();
 		try {
 			while (true) {

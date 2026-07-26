@@ -57,7 +57,7 @@ const pluginConfig = defineConfig({
 
 const sdkConfig = defineConfig({
 	...sharedConfig,
-	clean: true,
+	clean: !dev,
 	dts: true,
 	entry: {
 		dev: 'src/sdk/dev.ts',
