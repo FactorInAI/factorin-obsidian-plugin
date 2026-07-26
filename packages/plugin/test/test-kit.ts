@@ -1,6 +1,6 @@
-import type { RootFs } from '@/fs';
+import type { Fs, RootFs } from '@/fs';
 import type { Request, RequestParam } from '@/modules/Registrar';
-import type { MaybePromise, Progress, Stat, Binary } from '@/types';
+import type { Progress, Stat, Binary, FileStat } from '@/types';
 
 type FsCalls = {
 	delete: Array<string>;
@@ -8,34 +8,21 @@ type FsCalls = {
 	list: Array<string>;
 	mkdir: Array<string>;
 	move: Array<[string, string]>;
-	read: Array<[string, number | undefined]>;
-	readStream: Array<[string, number | undefined]>;
+	read: Array<[string, FileStat]>;
+	readStream: Array<[string, FileStat]>;
 	stat: Array<string>;
-	write: Array<[string, Binary]>;
-	writeStream: Array<string>;
-};
-
-type FsControl = {
-	delete: (key: string) => MaybePromise<void>;
-	exists: (key: string) => MaybePromise<boolean>;
-	list: (key: string, progress?: (progress: Progress) => void) => MaybePromise<Array<Stat>>;
-	mkdir: (key: string, recursive?: boolean) => MaybePromise<void>;
-	move: (oldKey: string, newKey: string) => MaybePromise<void>;
-	read: (key: string, size?: number) => MaybePromise<Binary>;
-	readStream: (key: string, size?: number) => MaybePromise<ReadableStream<Binary>>;
-	stat: (key: string) => MaybePromise<Stat>;
-	write: (key: string, value: Binary) => MaybePromise<string>;
-	writeStream: (key: string, value: ReadableStream<Binary>) => MaybePromise<string>;
+	write: Array<[string, Binary, FileStat]>;
+	writeStream: Array<[string, FileStat]>;
 };
 
 type FsOptions = {
-	control?: Partial<FsControl>;
+	control?: Partial<Fs>;
 	uid?: string;
 };
 
 type FsHarness = {
 	calls: FsCalls;
-	control: FsControl;
+	control: Fs;
 	fs: RootFs;
 };
 
@@ -105,22 +92,23 @@ function createCalls(): FsCalls {
 	};
 }
 
-function createControl(overrides: Partial<FsControl> = {}): FsControl {
+function createControl(overrides: Partial<Fs> = {}): Fs {
 	return {
-		delete: async () => undefined,
-		exists: async () => false,
-		list: async (key: string) => [
+		delete: () => undefined,
+		exists: () => false,
+		getUid: () => 'FsControl',
+		list: (key: string) => [
 			defaultStat(key),
 			folder(`${key}folder/`),
 			file(`${key}folder/note.md`, { mtime: 12, size: 7, uid: 'note-2' }),
 		],
-		mkdir: async () => undefined,
-		move: async () => undefined,
-		read: async () => bytes(''),
-		readStream: async () => stream(),
-		stat: async (key: string) => defaultStat(key),
-		write: async () => 'write-uid',
-		writeStream: async () => 'stream-uid',
+		mkdir: () => undefined,
+		move: () => undefined,
+		read: () => bytes(''),
+		readStream: () => stream(),
+		stat: (key: string) => defaultStat(key),
+		write: () => 'write-uid',
+		writeStream: () => 'stream-uid',
 		...overrides,
 	};
 }
@@ -163,25 +151,25 @@ function fs(options: FsOptions = {}): FsHarness {
 			calls.move.push([oldKey, newKey]);
 			return await control.move(oldKey, newKey);
 		},
-		read: async (key: string, size?: number) => {
-			calls.read.push([key, size]);
-			return await control.read(key, size);
+		read: async (key: string, stat: FileStat) => {
+			calls.read.push([key, stat]);
+			return await control.read(key, stat);
 		},
-		readStream: async (key: string, size?: number) => {
-			calls.readStream.push([key, size]);
-			return await control.readStream(key, size);
+		readStream: async (key: string, stat: FileStat) => {
+			calls.readStream.push([key, stat]);
+			return await control.readStream(key, stat);
 		},
 		stat: async (key: string) => {
 			calls.stat.push(key);
 			return await control.stat(key);
 		},
-		write: async (key: string, value: Binary) => {
-			calls.write.push([key, value]);
-			return await control.write(key, value);
+		write: async (key: string, value: Binary, stat: FileStat) => {
+			calls.write.push([key, value, stat]);
+			return await control.write(key, value, stat);
 		},
-		writeStream: async (key: string, value: ReadableStream<Binary>) => {
-			calls.writeStream.push(key);
-			return await control.writeStream(key, value);
+		writeStream: async (key: string, value: ReadableStream<Binary>, stat: FileStat) => {
+			calls.writeStream.push([key, stat]);
+			return await control.writeStream(key, value, stat);
 		},
 	};
 

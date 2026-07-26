@@ -1,5 +1,5 @@
 // oxlint-disable typescript/method-signature-style
-import type { MaybePromise, Progress, Stat, Binary } from '@/types';
+import type { MaybePromise, Progress, Stat, Binary, FileStat } from '@/types';
 
 /**
  * All keys use unified format:
@@ -9,10 +9,10 @@ import type { MaybePromise, Progress, Stat, Binary } from '@/types';
  */
 export type RootFs = {
 	getUid(): string; // String whose inequality signifies the client is unique
-	read(key: string, size?: number): MaybePromise<Binary>;
-	readStream(key: string, size?: number): MaybePromise<ReadableStream<Binary>>;
-	write(key: string, value: Binary): MaybePromise<string>; // Returns uid
-	writeStream(key: string, value: ReadableStream<Binary>, size?: number): MaybePromise<string>; // Returns uid, should only resolve when the stream is fully consumed
+	read(key: string, stat: FileStat): MaybePromise<Binary>;
+	readStream(key: string, stat: FileStat): MaybePromise<ReadableStream<Binary>>;
+	write(key: string, value: Binary, stat: FileStat): MaybePromise<string>; // Returns uid
+	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): MaybePromise<string>; // Returns uid, should only resolve when the stream is fully consumed
 	delete(key: string): MaybePromise<void>;
 	move(oldKey: string, newKey: string): MaybePromise<void>;
 	mkdir(key: string, recursive?: boolean): MaybePromise<void>;

@@ -10,11 +10,11 @@ export default async function latestSurviveResolver({
 	key,
 }: ConflictResolverPayload) {
 	if (local.mtime > remote.mtime) {
-		const uid = await pipe({ from: localFs, key, size: local.size, to: remoteFs });
+		const uid = await pipe({ from: localFs, key, stat: local, to: remoteFs });
 		if (!uid) return;
 		await record.set(key, { isDir: false, local: local.uid, remote: uid });
 	} else {
-		const uid = await pipe({ from: remoteFs, key, size: remote.size, to: localFs });
+		const uid = await pipe({ from: remoteFs, key, stat: remote, to: localFs });
 		if (!uid) return;
 		await record.set(key, { isDir: false, local: uid, remote: remote.uid });
 	}

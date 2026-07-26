@@ -1,6 +1,6 @@
 import type { StoreSync } from 'uni-kv';
 import { basename, dirname, isFolder, isSub } from '@repo/shared/path';
-import type { Progress, Stat, Binary } from '@/types';
+import type { Progress, Stat, Binary, FileStat } from '@/types';
 import type { Fs, WrappedFs } from '../interface';
 
 const ROOT_KEY = '/';
@@ -62,20 +62,20 @@ class AsymmetricStorageFs implements WrappedFs {
 		return this.original.getUid();
 	}
 
-	read(key: string, size?: number) {
-		return this.original.read(this.flattenFileKey(key), size);
+	read(key: string, stat: FileStat) {
+		return this.original.read(this.flattenFileKey(key), stat);
 	}
 
-	readStream(key: string, size?: number) {
-		return this.original.readStream(this.flattenFileKey(key), size);
+	readStream(key: string, stat: FileStat) {
+		return this.original.readStream(this.flattenFileKey(key), stat);
 	}
 
-	write(key: string, value: Binary) {
-		return this.original.write(this.flattenFileKey(key), value);
+	write(key: string, value: Binary, stat: FileStat) {
+		return this.original.write(this.flattenFileKey(key), value, stat);
 	}
 
-	writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
-		return this.original.writeStream(this.flattenFileKey(key), value, size);
+	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
+		return this.original.writeStream(this.flattenFileKey(key), value, stat);
 	}
 
 	async delete(key: string) {
@@ -124,7 +124,14 @@ class AsymmetricStorageFs implements WrappedFs {
 		const anchor = this.generateAnchor(key);
 		this.registerMapping(key, anchor);
 		try {
-			await this.original.write(this.flattenFolderKey(key, anchor), EMPTY_BINARY);
+			const anchoredKey = this.flattenFolderKey(key, anchor);
+			await this.original.write(anchoredKey, EMPTY_BINARY, {
+				isDir: false,
+				key: anchoredKey,
+				mtime: 0,
+				size: 0,
+				uid: crypto.randomUUID(),
+			});
 		} catch (error) {
 			this.deleteMapping(key, anchor);
 			throw error;

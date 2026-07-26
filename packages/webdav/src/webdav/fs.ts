@@ -1,4 +1,12 @@
-import type { Binary, FolderStat, Progress, Request, RootFs, Stat } from '@hesprs/sync-engine-sdk';
+import type {
+	Binary,
+	FileStat,
+	FolderStat,
+	Progress,
+	Request,
+	RootFs,
+	Stat,
+} from '@hesprs/sync-engine-sdk';
 import { concatBinary } from '@repo/shared/binary';
 import { getStatus } from '@repo/shared/get-status';
 import {
@@ -201,13 +209,7 @@ export default class WebdavFs implements RootFs {
 		return response.bytes();
 	}
 
-	async readStream(key: string, size?: number) {
-		if (typeof size !== 'number') {
-			const stat = await this.stat(key);
-			if (stat.isDir) throw new Error('Cannot stream a folder');
-			size = stat.size;
-		}
-
+	async readStream(key: string, { size }: FileStat) {
 		return createWebDAVReadStream({
 			chunkSize: READ_CHUNK_SIZE,
 			maxConcurrent: READ_MAX_CONCURRENT,
@@ -241,7 +243,7 @@ export default class WebdavFs implements RootFs {
 		return getFileUid(await this.stat(key), key);
 	}
 
-	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+	async writeStream(key: string, value: ReadableStream<Binary>, { size }: FileStat) {
 		if (this.options.chunkedUpload)
 			return await writeNextcloudChunkedUpload(
 				{

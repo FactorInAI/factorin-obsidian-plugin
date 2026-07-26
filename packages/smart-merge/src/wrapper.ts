@@ -1,4 +1,4 @@
-import type { Binary, Fs, StoreAsync } from '@hesprs/sync-engine-sdk';
+import type { Binary, FileStat, Fs, StoreAsync } from '@hesprs/sync-engine-sdk';
 import { uint8ArrayToText } from '@repo/shared/binary';
 import isMergeablePath from './utils/is-mergeable-path';
 
@@ -7,8 +7,8 @@ export default function smartMergeBaseTextWrapper(original: Fs, store: StoreAsyn
 	const move = original.move.bind(original);
 	const remove = original.delete.bind(original);
 
-	original.write = async (key: string, value: Binary) => {
-		const uid = await write(key, value);
+	original.write = async (key: string, value: Binary, stat: FileStat) => {
+		const uid = await write(key, value, stat);
 		if (isMergeablePath(key)) await store.set(key, uint8ArrayToText(value));
 		return uid;
 	};

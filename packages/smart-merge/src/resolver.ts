@@ -1,4 +1,5 @@
-import type { ConflictResolver, DatabaseAsync, Fs } from '@hesprs/sync-engine-sdk';
+import type { ConflictResolver, DatabaseAsync, FileStat, Fs } from '@hesprs/sync-engine-sdk';
+import { pipe } from '@hesprs/sync-engine-sdk';
 import { textToUint8Array, uint8ArrayToText } from '@repo/shared/binary';
 import type { MergeOptions } from './utils/merge';
 import merge from './utils/merge';
@@ -14,8 +15,8 @@ export default function smartMergeResolver(
 	return async ({ local, remote, key, localFs, remoteFs, record }) => {
 		const store = db.getStore(`base-text-${getNamespace(localFs, remoteFs)}`);
 		const [localBuffer, remoteBuffer, baseText] = await Promise.all([
-			localFs.read(key),
-			remoteFs.read(key),
+			localFs.read(key, local),
+			remoteFs.read(key, remote),
 			store.get(key),
 		]);
 
@@ -28,29 +29,33 @@ export default function smartMergeResolver(
 			}
 			const mergedText = merge({ a: localText, b: remoteText, o: baseText }, mergeOptions);
 			const mergedBuffer = textToUint8Array(mergedText);
+			const mergedStat: FileStat = {
+				isDir: false,
+				key,
+				mtime: 0,
+				size: mergedBuffer.byteLength,
+				uid: crypto.randomUUID(),
+			};
 			const [localUid, remoteUid] = await Promise.all([
 				mergedText === localText
 					? Promise.resolve(local.uid)
-					: localFs.write(key, mergedBuffer),
+					: localFs.write(key, mergedBuffer, mergedStat),
 				mergedText === remoteText
 					? Promise.resolve(remote.uid)
-					: remoteFs.write(key, mergedBuffer),
+					: remoteFs.write(key, mergedBuffer, mergedStat),
 			]);
 			await record.set(key, { isDir: false, local: localUid, remote: remoteUid });
 			return;
 		}
 
 		if (local.mtime > remote.mtime) {
-			const uid = await remoteFs.write(key, localBuffer);
+			const uid = await pipe({ from: localFs, key, stat: local, to: remoteFs });
+			if (!uid) return;
 			await record.set(key, { isDir: false, local: local.uid, remote: uid });
-			return;
+		} else {
+			const uid = await pipe({ from: remoteFs, key, stat: remote, to: localFs });
+			if (!uid) return;
+			await record.set(key, { isDir: false, local: uid, remote: remote.uid });
 		}
-
-		let uid: string;
-		if (remote.size >= 2 ** 21) {
-			const contentStream = await remoteFs.readStream(key);
-			uid = await localFs.writeStream(key, contentStream);
-		} else uid = await localFs.write(key, remoteBuffer);
-		await record.set(key, { isDir: false, local: uid, remote: remote.uid });
 	};
 }

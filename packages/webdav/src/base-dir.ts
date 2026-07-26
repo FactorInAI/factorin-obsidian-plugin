@@ -1,4 +1,12 @@
-import type { Binary, MaybePromise, Progress, Stat, Fs, WrappedFs } from '@hesprs/sync-engine-sdk';
+import type {
+	Binary,
+	MaybePromise,
+	Progress,
+	Stat,
+	Fs,
+	WrappedFs,
+	FileStat,
+} from '@hesprs/sync-engine-sdk';
 import { normalizeBaseDir } from '@repo/shared/path';
 
 function joinUnifiedKey(baseDir: string, key: string) {
@@ -28,20 +36,20 @@ class BaseDirRemoteFs implements WrappedFs {
 		return `${this.original.getUid()}~${this.baseDir}`;
 	}
 
-	read(key: string, size?: number) {
-		return this.original.read(joinUnifiedKey(this.baseDir, key), size);
+	read(key: string, stat: FileStat) {
+		return this.original.read(joinUnifiedKey(this.baseDir, key), stat);
 	}
 
-	readStream(key: string, size?: number) {
-		return this.original.readStream(joinUnifiedKey(this.baseDir, key), size);
+	readStream(key: string, stat: FileStat) {
+		return this.original.readStream(joinUnifiedKey(this.baseDir, key), stat);
 	}
 
-	write(key: string, value: Binary) {
-		return this.original.write(joinUnifiedKey(this.baseDir, key), value);
+	write(key: string, value: Binary, stat: FileStat) {
+		return this.original.write(joinUnifiedKey(this.baseDir, key), value, stat);
 	}
 
-	writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
-		return this.original.writeStream(joinUnifiedKey(this.baseDir, key), value, size);
+	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
+		return this.original.writeStream(joinUnifiedKey(this.baseDir, key), value, stat);
 	}
 
 	delete(key: string) {

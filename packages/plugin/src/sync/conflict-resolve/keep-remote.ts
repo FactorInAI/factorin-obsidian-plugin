@@ -8,7 +8,7 @@ export default async function keepRemoteResolver({
 	remoteFs,
 	record,
 }: ConflictResolverPayload) {
-	const uid = await pipe({ from: remoteFs, key, size: remote.size, to: localFs });
+	const uid = await pipe({ from: remoteFs, key, stat: remote, to: localFs });
 	if (!uid) return;
 	await record.set(key, { isDir: false, local: uid, remote: remote.uid });
 }

@@ -7,6 +7,7 @@ export function digOriginal(wrapped: Fs) {
 	return original;
 }
 export { default as MigrationModal } from '@/components/MigrationModal';
+export * from '@/utils/pipe';
 
 export type {
 	Translate,

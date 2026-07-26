@@ -1,4 +1,12 @@
-import type { DatabaseSync, Fs, WrappedFs, Progress, Stat, Binary } from '@hesprs/sync-engine-sdk';
+import type {
+	DatabaseSync,
+	Fs,
+	WrappedFs,
+	Progress,
+	Stat,
+	Binary,
+	FileStat,
+} from '@hesprs/sync-engine-sdk';
 import type { EncryptionStores } from './path';
 import {
 	decryptFileContent,
@@ -61,39 +69,35 @@ class EncryptionFs implements WrappedFs {
 		return this.original.getUid();
 	}
 
-	async read(key: string, size?: number): Promise<Binary> {
+	async read(key: string, stat: FileStat): Promise<Binary> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
-		const encryptedContent = await this.original.read(encryptedKey, size);
+		const encryptedContent = await this.original.read(encryptedKey, stat);
 		return decryptFileContent(rootFileKey, key, encryptedContent, encryptedContent.byteLength);
 	}
 
-	async readStream(key: string, size?: number): Promise<ReadableStream<Binary>> {
+	async readStream(key: string, stat: FileStat): Promise<ReadableStream<Binary>> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
-		if (typeof size !== 'number') {
-			const stat = await this.original.stat(encryptedKey);
-			if (stat.isDir) throw new Error('Cannot stream a folder');
-			size = stat.size;
-		}
-		const source = await this.original.readStream(encryptedKey, size);
-		return createDecryptedReadableStream(source, rootFileKey, key, size);
+		const source = await this.original.readStream(encryptedKey, stat);
+		return createDecryptedReadableStream(source, rootFileKey, key, stat.size);
 	}
 
-	async write(key: string, value: Binary): Promise<string> {
+	async write(key: string, value: Binary, stat: FileStat): Promise<string> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		const encryptedContent = await encryptFileContent(rootFileKey, key, value);
-		return this.original.write(encryptedKey, encryptedContent);
+		return this.original.write(encryptedKey, encryptedContent, stat);
 	}
 
-	async writeStream(key: string, value: ReadableStream<Binary>, size?: number): Promise<string> {
-		if (typeof size !== 'number') throw new Error('writeStream size is required');
+	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): Promise<string> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
-		const encryptedFileSize = getEncryptedFileSize(size);
-		const stream = await createEncryptedReadableStream(rootFileKey, key, value, size);
-		return this.original.writeStream(encryptedKey, stream, encryptedFileSize);
+		const stream = await createEncryptedReadableStream(rootFileKey, key, value, stat.size);
+		return this.original.writeStream(encryptedKey, stream, {
+			...stat,
+			size: getEncryptedFileSize(stat.size),
+		});
 	}
 
 	async delete(key: string) {

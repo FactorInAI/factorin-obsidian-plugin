@@ -1,4 +1,4 @@
-import type { Progress, Binary } from '@/types';
+import type { Progress, Binary, FileStat } from '@/types';
 import type { Fs, WrappedFs } from '../interface';
 
 type HangingOperation = {
@@ -56,73 +56,55 @@ function releaseMemory(state: MemoryControlSharedState, size: number) {
 	resumeHangingOperations(state);
 }
 
-async function readThroughMemory(
-	fs: Fs,
-	state: MemoryControlSharedState,
-	key: string,
-	size?: number,
-) {
-	const readSize = await resolveReadSize(fs, key, size);
-	await reserveMemory(state, readSize);
-	try {
-		return await fs.read(key, readSize);
-	} catch (error) {
-		releaseMemory(state, readSize);
-		throw error;
-	}
-}
-
-async function writeThroughMemory(
-	fs: Fs,
-	state: MemoryControlSharedState,
-	key: string,
-	value: Binary,
-) {
-	try {
-		return await fs.write(key, value);
-	} finally {
-		releaseMemory(state, value.byteLength);
-	}
-}
-
-async function resolveReadSize(fs: Fs, key: string, size?: number) {
-	if (typeof size === 'number') return size;
-	const stat = await fs.stat(key);
-	if (stat.isDir) throw new Error('Cannot read a folder');
-	return stat.size;
-}
-
 class MemoryControlRemoteFs implements WrappedFs {
 	constructor(
 		public readonly original: Fs,
 		private readonly state: MemoryControlSharedState,
 	) {}
 
+	private async readThroughMemory(key: string, stat: FileStat) {
+		await reserveMemory(this.state, stat.size);
+		try {
+			return await this.original.read(key, stat);
+		} catch (error) {
+			releaseMemory(this.state, stat.size);
+			throw error;
+		}
+	}
+
+	private async writeThroughMemory(key: string, value: Binary, stat: FileStat) {
+		try {
+			return await this.original.write(key, value, stat);
+		} finally {
+			releaseMemory(this.state, value.byteLength);
+		}
+	}
+
 	getUid() {
 		return this.original.getUid();
 	}
 
-	read(key: string, size?: number) {
-		return readThroughMemory(this.original, this.state, key, size);
+	read(key: string, stat: FileStat) {
+		return this.readThroughMemory(key, stat);
 	}
 
-	async readStream(key: string, size?: number) {
+	async readStream(key: string, stat: FileStat) {
 		await reserveMemory(this.state, STREAM_RESERVATION_SIZE);
 		try {
-			return this.original.readStream(key, size);
+			return this.original.readStream(key, stat);
 		} catch (error) {
 			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
 			throw error;
 		}
 	}
 
-	write(key: string, value: Binary) {
-		return writeThroughMemory(this.original, this.state, key, value);
+	write(key: string, value: Binary, stat: FileStat) {
+		return this.writeThroughMemory(key, value, stat);
 	}
 
-	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
+	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
 		try {
-			return await this.original.writeStream(key, value, size);
+			return await this.original.writeStream(key, value, stat);
 		} finally {
 			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
 		}

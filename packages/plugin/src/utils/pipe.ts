@@ -1,39 +1,44 @@
 import type { ErrorLike } from '@repo/shared/get-status';
 import { getStatus } from '@repo/shared/get-status';
 import type { Fs } from '@/fs';
-import type { Binary } from '@/types';
+import type { Binary, FileStat } from '@/types';
 
 const STREAM_THRESHOLD = 2.5 * 1024 ** 2; // 2.5 MiB
 
 export async function pipe({
 	from,
 	to,
-	size,
+	stat,
 	key,
 }: {
 	from: Fs;
 	to: Fs;
 	key: string;
-	size: number;
+	stat: FileStat;
 }) {
-	const value = await readWithSize(from, key, size);
+	const value = await readWithSize(from, key, stat);
 	if (!value) return;
-	return writeWithValue(to, key, value);
+	return writeWithValue(to, key, value, stat);
 }
 
-export async function readWithSize(fs: Fs, key: string, size: number) {
+export async function readWithSize(fs: Fs, key: string, stat: FileStat) {
 	try {
-		if (size > STREAM_THRESHOLD) return await fs.readStream(key);
-		return await fs.read(key);
+		if (stat.size > STREAM_THRESHOLD) return await fs.readStream(key, stat);
+		return await fs.read(key, stat);
 	} catch (error) {
 		if (isNonExistent(error)) return;
 		throw error;
 	}
 }
 
-export function writeWithValue(fs: Fs, key: string, value: Binary | ReadableStream<Binary>) {
-	if (value instanceof ReadableStream) return fs.writeStream(key, value);
-	return fs.write(key, value);
+export function writeWithValue(
+	fs: Fs,
+	key: string,
+	value: Binary | ReadableStream<Binary>,
+	stat: FileStat,
+) {
+	if (value instanceof ReadableStream) return fs.writeStream(key, value, stat);
+	return fs.write(key, value, stat);
 }
 
 // Swallow TOCTOU

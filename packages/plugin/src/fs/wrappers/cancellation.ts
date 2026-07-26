@@ -1,5 +1,5 @@
 import type { Request } from '@/modules/Registrar';
-import type { MaybePromise, Progress, Binary } from '@/types';
+import type { MaybePromise, Progress, Binary, FileStat } from '@/types';
 import { syncCancelledError } from '@/sync';
 import type { Fs, WrappedFs } from '../interface';
 
@@ -28,23 +28,25 @@ class CancellationFs implements WrappedFs {
 		return this.original.getUid();
 	}
 
-	read(key: string, size?: number) {
-		return guardCancellation(this.isCancelled, 'pre', () => this.original.read(key, size));
+	read(key: string, stat: FileStat) {
+		return guardCancellation(this.isCancelled, 'pre', () => this.original.read(key, stat));
 	}
 
-	readStream(key: string, size?: number) {
+	readStream(key: string, stat: FileStat) {
 		return guardCancellation(this.isCancelled, 'pre', () =>
-			this.original.readStream(key, size),
+			this.original.readStream(key, stat),
 		);
 	}
 
-	write(key: string, value: Binary) {
-		return guardCancellation(this.isCancelled, 'post', () => this.original.write(key, value));
+	write(key: string, value: Binary, stat: FileStat) {
+		return guardCancellation(this.isCancelled, 'post', () =>
+			this.original.write(key, value, stat),
+		);
 	}
 
-	writeStream(key: string, value: ReadableStream<Binary>, size?: number): MaybePromise<string> {
+	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): MaybePromise<string> {
 		return guardCancellation(this.isCancelled, 'post', () =>
-			this.original.writeStream(key, value, size),
+			this.original.writeStream(key, value, stat),
 		);
 	}
 

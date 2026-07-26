@@ -1,5 +1,5 @@
 import type { WrappedFs, Fs } from '@/fs';
-import type { Progress, Binary } from '@/types';
+import type { Progress, Binary, FileStat } from '@/types';
 
 class DebugFs implements WrappedFs {
 	constructor(
@@ -13,25 +13,25 @@ class DebugFs implements WrappedFs {
 		return uid;
 	}
 
-	read(key: string, size?: number) {
-		this.log(`read: key ${key}, size ${size}`);
-		return this.original.read(key, size);
+	read(key: string, stat: FileStat) {
+		this.log(`read: key ${key}, stat ${JSON.stringify(stat)}`);
+		return this.original.read(key, stat);
 	}
 
-	readStream(key: string, size?: number) {
-		this.log(`readStream: key ${key}, size ${size}`);
-		return this.original.readStream(key, size);
+	readStream(key: string, stat: FileStat) {
+		this.log(`readStream: key ${key}, stat ${JSON.stringify(stat)}`);
+		return this.original.readStream(key, stat);
 	}
 
-	async write(key: string, value: Binary) {
-		const result = await this.original.write(key, value);
-		this.log(`write: key ${key}, result ${result}`);
+	async write(key: string, value: Binary, stat: FileStat) {
+		const result = await this.original.write(key, value, stat);
+		this.log(`write: key ${key}, stat ${JSON.stringify(stat)}, result ${result}`);
 		return result;
 	}
 
-	async writeStream(key: string, value: ReadableStream<Binary>) {
-		const result = await this.original.writeStream(key, value);
-		this.log(`write: key ${key}, result ${result}`);
+	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
+		const result = await this.original.writeStream(key, value, stat);
+		this.log(`write: key ${key}, stat ${JSON.stringify(stat)}, result ${result}`);
 		return result;
 	}
 

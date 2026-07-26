@@ -34,7 +34,7 @@ export default async function writeNextcloudChunkedUpload(
 	options: NextcloudChunkedUploadOptions,
 	key: string,
 	value: ReadableStream<Binary>,
-	size?: number,
+	size: number,
 ): Promise<string> {
 	const uploadId = crypto.randomUUID();
 	const uploadEndpoint = getUploadEndpoint(options.endpoint, options.username);
@@ -77,7 +77,7 @@ export default async function writeNextcloudChunkedUpload(
 			headers: {
 				Authorization: options.auth,
 				Destination: destination,
-				...(size !== undefined ? { 'OC-Total-Length': String(size) } : {}),
+				'OC-Total-Length': String(size),
 			},
 			method: 'PUT',
 			url: buildUrl(uploadEndpoint, `${uploadFolderKey}${chunkNumber}`),

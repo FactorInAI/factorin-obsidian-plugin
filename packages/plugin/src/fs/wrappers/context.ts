@@ -1,19 +1,12 @@
 import type { DatabaseSync, StoreSync } from 'uni-kv';
-import type { MaybePromise, Progress, Stat, Binary } from '@/types';
+import type { MaybePromise, Progress, Stat, Binary, FileStat } from '@/types';
 import type { WrappedFs, Fs } from '../interface';
 
 type ContextOptions<S extends string, M extends string> = {
 	db: DatabaseSync<Record<S, Stat>, Record<M, string>>;
-	thisStore: NoInfer<S>;
-	thatStore?: NoInfer<S>;
+	store: NoInfer<S>;
 	marker: NoInfer<M>;
 };
-
-function getCachedReadSize(store: StoreSync<Stat>, key: string) {
-	const stat = store.get(key);
-	if (stat === undefined || stat.isDir) return undefined;
-	return stat.size;
-}
 
 function upsertFileStat(store: StoreSync<Stat>, key: string, uid: string, size: number) {
 	store.set(key, { isDir: false, key, mtime: 0, size, uid });
@@ -44,18 +37,16 @@ async function replaceStats(store: StoreSync<Stat>, stats: MaybePromise<Array<St
 }
 
 class ContextFs<S extends string, M extends string> implements WrappedFs {
-	private readonly thisStore: StoreSync<Stat>;
-	private readonly thatStore?: StoreSync<Stat>;
+	private readonly store: StoreSync<Stat>;
 
 	constructor(
 		public readonly original: Fs,
-		{ db, thatStore, marker, thisStore }: ContextOptions<S, M>,
+		{ db, marker, store }: ContextOptions<S, M>,
 	) {
 		const uid = original.getUid();
-		this.thisStore = db.getStore(thisStore);
-		if (thatStore) this.thatStore = db.getStore(thatStore);
+		this.store = db.getStore(store);
 		if (db.getMeta(marker) !== uid) {
-			this.thisStore.clear();
+			this.store.clear();
 			db.setMeta(marker, uid);
 		}
 	}
@@ -64,44 +55,43 @@ class ContextFs<S extends string, M extends string> implements WrappedFs {
 		return this.original.getUid();
 	}
 
-	read(key: string, size?: number) {
-		return this.original.read(key, size ?? getCachedReadSize(this.thisStore, key));
+	read(key: string, stat: FileStat) {
+		return this.original.read(key, stat);
 	}
 
-	readStream(key: string, size?: number) {
-		return this.original.readStream(key, size ?? getCachedReadSize(this.thisStore, key));
+	readStream(key: string, stat: FileStat) {
+		return this.original.readStream(key, stat);
 	}
 
-	async write(key: string, value: Binary) {
-		const uid = await this.original.write(key, value);
-		upsertFileStat(this.thisStore, key, uid, value.byteLength);
+	async write(key: string, value: Binary, stat: FileStat) {
+		const uid = await this.original.write(key, value, stat);
+		upsertFileStat(this.store, key, uid, value.byteLength);
 		return uid;
 	}
 
-	async writeStream(key: string, value: ReadableStream<Binary>, size?: number) {
-		if (this.thatStore) size ??= getCachedReadSize(this.thatStore, key);
-		const uid = await this.original.writeStream(key, value, size);
-		upsertFileStat(this.thisStore, key, uid, 0); // Don't know size
+	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
+		const uid = await this.original.writeStream(key, value, stat);
+		upsertFileStat(this.store, key, uid, 0); // Don't know size
 		return uid;
 	}
 
 	async delete(key: string) {
 		await this.original.delete(key);
-		this.thisStore.delete(key);
+		this.store.delete(key);
 	}
 
 	async mkdir(key: string, recursive?: boolean) {
 		await this.original.mkdir(key, recursive);
-		upsertFolderStat(this.thisStore, key);
+		upsertFolderStat(this.store, key);
 	}
 
 	async move(oldKey: string, newKey: string) {
 		await this.original.move(oldKey, newKey);
-		moveCachedStat(this.thisStore, oldKey, newKey);
+		moveCachedStat(this.store, oldKey, newKey);
 	}
 
 	stat(key: string) {
-		return cacheStat(this.thisStore, this.original.stat(key));
+		return cacheStat(this.store, this.original.stat(key));
 	}
 
 	exists(key: string) {
@@ -109,7 +99,7 @@ class ContextFs<S extends string, M extends string> implements WrappedFs {
 	}
 
 	list(key: string, progress?: (prog: Progress) => void) {
-		return replaceStats(this.thisStore, this.original.list(key, progress));
+		return replaceStats(this.store, this.original.list(key, progress));
 	}
 }
 

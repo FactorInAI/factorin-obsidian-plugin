@@ -9,7 +9,7 @@ import type { FeaturesSettingTranslations } from '@/settings/features';
 import type { FilterSettingTranslations } from '@/settings/filter';
 import type { HeadSettingTranslations } from '@/settings/head';
 import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous';
-import type { Progress, Stat, TogglableValue } from '@/types';
+import type { FileStat, Progress, Stat, TogglableValue } from '@/types';
 import en from '@/en';
 import {
 	rateLimiterMiddleware,
@@ -67,8 +67,8 @@ export default class Bootstrap {
 	};
 	private isCancelled?: () => boolean;
 
-	private readonly localPool: Array<string> = [];
-	private readonly remotePool: Array<string> = [];
+	private readonly localPool: Array<FileStat> = [];
+	private readonly remotePool: Array<FileStat> = [];
 
 	declare readonly i18n: {
 		bidirectional: string;
@@ -207,8 +207,7 @@ export default class Bootstrap {
 				contextWrapper(fs, {
 					db: memoryDB,
 					marker: 'localContext20000Marker',
-					thatStore: 'remoteContext20000',
-					thisStore: 'localContext20000',
+					store: 'localContext20000',
 				}),
 			priority: 20_000,
 		});
@@ -241,7 +240,7 @@ export default class Bootstrap {
 				contextWrapper(fs, {
 					db: memoryDB,
 					marker: 'remoteContext10000Marker',
-					thisStore: 'remoteContext10000',
+					store: 'remoteContext10000',
 				}),
 			priority: 10_000,
 		});
@@ -257,8 +256,7 @@ export default class Bootstrap {
 				contextWrapper(fs, {
 					db: memoryDB,
 					marker: 'remoteContext20000Marker',
-					thatStore: 'localContext20000',
-					thisStore: 'remoteContext20000',
+					store: 'remoteContext20000',
 				}),
 			priority: 20_000,
 		});

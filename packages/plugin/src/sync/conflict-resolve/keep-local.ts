@@ -8,7 +8,7 @@ export default async function keepLocalResolver({
 	record,
 	local,
 }: ConflictResolverPayload) {
-	const uid = await pipe({ from: localFs, key, size: local.size, to: remoteFs });
+	const uid = await pipe({ from: localFs, key, stat: local, to: remoteFs });
 	if (!uid) return;
 	await record.set(key, { isDir: false, local: local.uid, remote: uid });
 }
