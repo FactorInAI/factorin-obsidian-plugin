@@ -6,7 +6,7 @@ import { checkConnection } from '@/webdav/check-connection';
 import WebdavFs from '@/webdav/fs';
 import createWebDAVReadStream from '@/webdav/read-stream';
 
-const { bytes, deferred, flush, stream: createStream } = testKit;
+const { bytes, deferred, file, flush, stream: createStream } = testKit;
 const sharedDate = new Date('Mon, 01 Jan 2024 00:00:00 GMT').valueOf();
 
 type RequestParam = Exclude<Parameters<Request>[0], string>;
@@ -176,7 +176,11 @@ test('writeStream buffers chunks into one put', async () => {
 	});
 
 	const source = createStream([bytes('he'), bytes('llo')]);
-	const uid = await webdav.fs.writeStream('Notes/file.md', source);
+	const uid = await webdav.fs.writeStream(
+		'Notes/file.md',
+		source,
+		file('Notes/file.md', { size: 5 }),
+	);
 	expect(uid).toBe('buffered-uid');
 	expect(webdav.calls).toHaveLength(1);
 });
@@ -216,7 +220,11 @@ test('chunked writeStream uses exact Nextcloud urls and headers', async () => {
 	});
 
 	const source = createStream([bytes('abc'), bytes('defg')]);
-	const uid = await webdav.fs.writeStream('Notes/file.md', source, 7);
+	const uid = await webdav.fs.writeStream(
+		'Notes/file.md',
+		source,
+		file('Notes/file.md', { size: 7 }),
+	);
 	expect(uid).toBe('oc-uid');
 	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
 		{ method: 'MKCOL', url: uploadFolderUrl },
@@ -266,7 +274,11 @@ test('chunked writeStream slices 5 MiB chunks and limits concurrency to 3', asyn
 		filledBinary(mib, 3),
 		filledBinary(1, 4),
 	]);
-	const writePromise = webdav.fs.writeStream('Notes/big.bin', source, mib * 3 + 1);
+	const writePromise = webdav.fs.writeStream(
+		'Notes/big.bin',
+		source,
+		file('Notes/big.bin', { size: mib * 3 + 1 }),
+	);
 
 	await flush(12);
 	expect(uploads.map(({ size }) => size)).toStrictEqual([mib, mib, mib]);
@@ -299,7 +311,11 @@ test('empty chunked stream skips put and still mkcol move', async () => {
 	});
 
 	const source = createStream([]);
-	const uid = await webdav.fs.writeStream('Notes/empty.md', source);
+	const uid = await webdav.fs.writeStream(
+		'Notes/empty.md',
+		source,
+		file('Notes/empty.md', { size: 0 }),
+	);
 	expect(uid).toBe('empty-uid');
 	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
 		{ method: 'MKCOL', url: uploadFolderUrl },
@@ -322,7 +338,9 @@ test('chunked upload error deletes temp folder and rethrows original error', asy
 	});
 
 	const source = createStream([bytes('chunk')]);
-	expect(webdav.fs.writeStream('Notes/fail.md', source)).rejects.toBe(uploadError);
+	expect(
+		webdav.fs.writeStream('Notes/fail.md', source, file('Notes/fail.md', { size: 5 })),
+	).rejects.toBe(uploadError);
 	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
 		{ method: 'MKCOL', url: uploadFolderUrl },
 		{ method: 'PUT', url: `${uploadFolderUrl}1` },
@@ -346,7 +364,9 @@ test('chunked finalization error deletes temp folder and rethrows original error
 	});
 
 	const source = createStream([bytes('chunk')]);
-	expect(webdav.fs.writeStream('Notes/finalize.md', source)).rejects.toBe(moveError);
+	expect(
+		webdav.fs.writeStream('Notes/finalize.md', source, file('Notes/finalize.md', { size: 5 })),
+	).rejects.toBe(moveError);
 	expect(webdav.calls.map(({ method, url }) => ({ method, url }))).toStrictEqual([
 		{ method: 'MKCOL', url: uploadFolderUrl },
 		{ method: 'PUT', url: `${uploadFolderUrl}1` },
@@ -561,7 +581,12 @@ test('readStream uses 2 MiB ranges from stat size', async () => {
 		return await wait.promise;
 	});
 
-	const collected = collectStream(await webdav.fs.readStream('Notes/file.bin'));
+	const collected = collectStream(
+		await webdav.fs.readStream(
+			'Notes/file.bin',
+			file('Notes/file.bin', { size: 5 * 1024 * 1024 + 1 }),
+		),
+	);
 	await flush();
 	expect(ranges).toStrictEqual([
 		'bytes=0-2097151',
@@ -617,7 +642,10 @@ test('readStream waits for consumer demand before scheduling', async () => {
 		return await wait.promise;
 	});
 
-	const stream = await webdav.fs.readStream('Notes/file.bin');
+	const stream = await webdav.fs.readStream(
+		'Notes/file.bin',
+		file('Notes/file.bin', { size: 4 }),
+	);
 	await flush();
 	expect(ranges).toStrictEqual([]);
 

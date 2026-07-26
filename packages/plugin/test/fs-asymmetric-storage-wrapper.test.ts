@@ -79,9 +79,10 @@ test('list should skip malformed or orphan flattened entries without throwing', 
 test('mkdir should write empty folder marker file and reuse same generated anchor later', async () => {
 	const remote = fs();
 	const wrapper = asymmetricStorageWrapper(remote.fs, store);
+	const noteStat = file('folder/note.md', { uid: 'note-uid' });
 
 	await wrapper.mkdir('folder/');
-	await wrapper.write('folder/note.md', bytes('1234'));
+	await wrapper.write('folder/note.md', bytes('1234'), noteStat);
 
 	const [[folderMarkerKey, folderMarkerValue], [childKey, childValue]] = remote.calls.write;
 	expect(folderMarkerValue).toStrictEqual(bytes(''));
@@ -96,11 +97,12 @@ test('folder move should preserve anchor and short-circuit identical flattened m
 	seedRemoteContext(file('00000abcde~folder'));
 	const remote = fs();
 	const wrapper = asymmetricStorageWrapper(remote.fs, store);
+	const childStat = file('renamed/child.md', { uid: 'child-uid' });
 
 	await wrapper.move('folder/', 'renamed/');
-	await wrapper.write('renamed/child.md', bytes('x'));
+	await wrapper.write('renamed/child.md', bytes('x'), childStat);
 	await wrapper.move('renamed/', 'renamed/');
 
 	expect(remote.calls.move).toStrictEqual([['00000abcde~folder', '00000abcde~renamed']]);
-	expect(remote.calls.write).toStrictEqual([['abcde~child.md', bytes('x')]]);
+	expect(remote.calls.write).toStrictEqual([['abcde~child.md', bytes('x'), childStat]]);
 });

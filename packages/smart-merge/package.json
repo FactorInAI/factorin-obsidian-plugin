@@ -16,7 +16,7 @@
 		"build": "tsdown",
 		"fix": "oxlint --silent --fix --type-aware && oxfmt",
 		"check": "tsc && oxlint --type-aware && oxfmt --check",
-		"tests": "bun test"
+		"tests": "bun --preload=./test/mocks.ts test"
 	},
 	"dependencies": {
 		"obsidian": "latest"

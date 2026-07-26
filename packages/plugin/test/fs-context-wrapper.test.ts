@@ -18,7 +18,7 @@ function remoteContextWrapper(rootFs: Fs) {
 	return contextWrapper(rootFs, {
 		db,
 		marker: 'lastRemoteContextUid',
-		thisStore: 'remoteStatContext',
+		store: 'remoteStatContext',
 	});
 }
 
@@ -26,7 +26,7 @@ function localContextWrapper(rootFs: Fs) {
 	return contextWrapper(rootFs, {
 		db,
 		marker: 'lastLocalContextUid',
-		thisStore: 'localStatContext',
+		store: 'localStatContext',
 	});
 }
 
@@ -138,59 +138,6 @@ test('list replaces previous context snapshot', async () => {
 	});
 });
 
-test('read uses cached file size when caller omits size', async () => {
-	const remote = fs();
-	const local = fs();
-	const remoteWrapper = remoteContextWrapper(remote.fs);
-	const localWrapper = localContextWrapper(local.fs);
-	remote.control.stat = async () => file('remote.md', { size: 13, uid: 'remote-size' });
-	local.control.stat = async () => file('local.md', { size: 17, uid: 'local-size' });
-
-	await remoteWrapper.stat('remote.md');
-	await localWrapper.stat('local.md');
-	await remoteWrapper.read('remote.md');
-	await localWrapper.read('local.md');
-
-	expect(remote.calls.read).toStrictEqual([['remote.md', 13]]);
-	expect(local.calls.read).toStrictEqual([['local.md', 17]]);
-});
-
-test('remote readStream uses cached file size when caller omits size', async () => {
-	const remote = fs();
-	const remoteWrapper = remoteContextWrapper(remote.fs);
-	remote.control.stat = async () => file('stream.md', { size: 23, uid: 'stream-size' });
-
-	await remoteWrapper.stat('stream.md');
-	await remoteWrapper.readStream('stream.md');
-
-	expect(remote.calls.readStream).toStrictEqual([['stream.md', 23]]);
-});
-
-test('read-through keeps undefined size on cache miss or folder stat', async () => {
-	const remote = fs();
-	const local = fs();
-	const remoteWrapper = remoteContextWrapper(remote.fs);
-	const localWrapper = localContextWrapper(local.fs);
-	remote.control.stat = async () => folder('folder/');
-	local.control.stat = async () => folder('folder/');
-
-	await remoteWrapper.read('missing.md');
-	await localWrapper.read('missing.md');
-	await remoteWrapper.stat('folder/');
-	await localWrapper.stat('folder/');
-	await remoteWrapper.read('folder/');
-	await localWrapper.read('folder/');
-
-	expect(remote.calls.read).toStrictEqual([
-		['missing.md', undefined],
-		['folder/', undefined],
-	]);
-	expect(local.calls.read).toStrictEqual([
-		['missing.md', undefined],
-		['folder/', undefined],
-	]);
-});
-
 test('stat and traversal failures do not mutate context', async () => {
 	const remote = fs();
 	const local = fs();
@@ -227,9 +174,11 @@ test('write upserts synthesized file stat', async () => {
 	const local = fs();
 	const remoteWrapper = remoteContextWrapper(remote.fs);
 	const localWrapper = localContextWrapper(local.fs);
+	const remoteStat = file('remote-write.md', { size: 3, uid: 'remote-write' });
+	const localStat = file('local-write.md', { size: 4, uid: 'local-write' });
 
-	await remoteWrapper.write('remote-write.md', bytes('123'));
-	await localWrapper.write('local-write.md', bytes('1234'));
+	await remoteWrapper.write('remote-write.md', bytes('123'), remoteStat);
+	await localWrapper.write('local-write.md', bytes('1234'), localStat);
 
 	expect(getRemoteStore().get('remote-write.md')).toStrictEqual(
 		file('remote-write.md', { mtime: 0, size: 3, uid: 'write-uid' }),
@@ -242,8 +191,9 @@ test('write upserts synthesized file stat', async () => {
 test('writeStream upserts synthesized file stat', async () => {
 	const local = fs();
 	const localWrapper = localContextWrapper(local.fs);
+	const stat = file('local-stream.md', { size: 0, uid: 'local-stream' });
 
-	await localWrapper.writeStream('local-stream.md', stream(['ab', 'cd']));
+	await localWrapper.writeStream('local-stream.md', stream(['ab', 'cd']), stat);
 
 	expect(getLocalStore().get('local-stream.md')).toStrictEqual(
 		file('local-stream.md', { mtime: 0, size: 0, uid: 'stream-uid' }),

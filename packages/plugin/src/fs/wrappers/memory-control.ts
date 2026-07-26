@@ -76,7 +76,7 @@ class MemoryControlRemoteFs implements WrappedFs {
 		try {
 			return await this.original.write(key, value, stat);
 		} finally {
-			releaseMemory(this.state, value.byteLength);
+			releaseMemory(this.state, stat.size);
 		}
 	}
 

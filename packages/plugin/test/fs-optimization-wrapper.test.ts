@@ -1,10 +1,11 @@
 import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { OptimizerInput, OptimizerOutput } from '@/fs';
+import type { FileStat } from '@/types';
 import { optimizationWrapper } from '@/fs';
 
 type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;
-const { bytes, deferred, flush, fs, stream } = testKit;
+const { bytes, deferred, file, flush, fs, stream } = testKit;
 
 function createBatchRecorder() {
 	const seen: Array<Array<string>> = [];
@@ -38,8 +39,8 @@ test('optimization wrapper forwards queued atoms to batch optimizer', async () =
 test('optimization wrapper forwards pooled write alongside queued ops', async () => {
 	const local = fs();
 	const remote = fs();
-	const localPool: Array<string> = [];
-	const remotePool: Array<string> = [];
+	const localPool: Array<FileStat> = [];
+	const remotePool: Array<FileStat> = [];
 	const { batchOptimizer, seen } = createBatchRecorder();
 	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,
@@ -57,7 +58,8 @@ test('optimization wrapper forwards pooled write alongside queued ops', async ()
 	local.control.delete = async () => await deleteDeferred.promise;
 	local.control.mkdir = async () => await mkdirDeferred.promise;
 
-	await remoteWrapper.read('folder/note.md');
+	const noteStat = file('folder/note.md', { uid: 'note-uid' });
+	await remoteWrapper.read('folder/note.md', noteStat);
 
 	const pendingBatch = Promise.all([
 		localWrapper.delete('folder/'),
@@ -68,20 +70,20 @@ test('optimization wrapper forwards pooled write alongside queued ops', async ()
 	expect(seen).toStrictEqual([['delete', 'mkdir', 'write']]);
 	expect(local.calls.write).toStrictEqual([]);
 
-	const pendingWrite = localWrapper.write('folder/note.md', bytes('body'));
+	const pendingWrite = localWrapper.write('folder/note.md', bytes('body'), noteStat);
 	deleteDeferred.resolve();
 	mkdirDeferred.resolve();
 
 	await Promise.all([pendingBatch, pendingWrite]);
 
-	expect(local.calls.write).toStrictEqual([['folder/note.md', bytes('body')]]);
+	expect(local.calls.write).toStrictEqual([['folder/note.md', bytes('body'), noteStat]]);
 });
 
 test('optimization wrapper forwards pooled writeStream alongside queued ops', async () => {
 	const local = fs();
 	const remote = fs();
-	const localPool: Array<string> = [];
-	const remotePool: Array<string> = [];
+	const localPool: Array<FileStat> = [];
+	const remotePool: Array<FileStat> = [];
 	const { batchOptimizer, seen } = createBatchRecorder();
 	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,
@@ -99,7 +101,8 @@ test('optimization wrapper forwards pooled writeStream alongside queued ops', as
 	local.control.delete = async () => await deleteDeferred.promise;
 	local.control.mkdir = async () => await mkdirDeferred.promise;
 
-	await remoteWrapper.read('folder/stream.md');
+	const streamStat = file('folder/stream.md', { uid: 'stream-uid' });
+	await remoteWrapper.read('folder/stream.md', streamStat);
 
 	const pendingBatch = Promise.all([
 		localWrapper.delete('folder/'),
@@ -110,13 +113,17 @@ test('optimization wrapper forwards pooled writeStream alongside queued ops', as
 	expect(seen).toStrictEqual([['delete', 'mkdir', 'write']]);
 	expect(local.calls.writeStream).toStrictEqual([]);
 
-	const pendingWriteStream = localWrapper.writeStream('folder/stream.md', stream(['body']));
+	const pendingWriteStream = localWrapper.writeStream(
+		'folder/stream.md',
+		stream(['body']),
+		streamStat,
+	);
 	deleteDeferred.resolve();
 	mkdirDeferred.resolve();
 
 	await Promise.all([pendingBatch, pendingWriteStream]);
 
-	expect(local.calls.writeStream).toStrictEqual(['folder/stream.md']);
+	expect(local.calls.writeStream).toStrictEqual([['folder/stream.md', streamStat]]);
 });
 
 test('optimization wrapper bypasses batch optimizer for single call', async () => {

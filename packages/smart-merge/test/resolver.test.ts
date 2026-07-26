@@ -1,4 +1,4 @@
-import type { DatabaseAsync, FileStat, RecordStat, RecordStore } from '@hesprs/sync-engine-sdk';
+import type { DatabaseAsync, RecordStat, RecordStore } from '@hesprs/sync-engine-sdk';
 import { testKit } from '@hesprs/sync-engine-sdk/dev';
 import { uint8ArrayToText } from '@repo/shared/binary';
 import { beforeEach, expect, test } from 'bun:test';
@@ -38,10 +38,10 @@ test('resolver should merge when base text exists', async () => {
 
 	await resolver({
 		key: 'note.md',
-		local: file('note.md', { mtime: 2, uid: 'local-old' }) as FileStat,
+		local: file('note.md', { mtime: 2, uid: 'local-old' }),
 		localFs: local.fs,
 		record,
-		remote: file('note.md', { mtime: 3, uid: 'remote-old' }) as FileStat,
+		remote: file('note.md', { mtime: 3, uid: 'remote-old' }),
 		remoteFs: remote.fs,
 	});
 
@@ -61,10 +61,10 @@ test('resolver should fall back when base text is missing', async () => {
 
 	await resolver({
 		key: 'note.md',
-		local: file('note.md', { mtime: 10, uid: 'local-current' }) as FileStat,
+		local: file('note.md', { mtime: 10, uid: 'local-current' }),
 		localFs: local.fs,
 		record,
-		remote: file('note.md', { mtime: 3, uid: 'remote-old' }) as FileStat,
+		remote: file('note.md', { mtime: 3, uid: 'remote-old' }),
 		remoteFs: remote.fs,
 	});
 
@@ -80,18 +80,19 @@ test('resolver should stream remote fallback for large newer remote files', asyn
 	const local = fs();
 	const remote = fs({ control: { readStream: async () => stream(['remote wins']) } });
 	const resolver = smartMergeResolver(mergeOptions, db, () => 'namespace');
+	const remoteStat = file('large.md', { mtime: 10, size: 2 ** 22, uid: 'remote-current' });
 
 	await resolver({
 		key: 'large.md',
-		local: file('large.md', { mtime: 1, uid: 'local-old' }) as FileStat,
+		local: file('large.md', { mtime: 1, uid: 'local-old' }),
 		localFs: local.fs,
 		record,
-		remote: file('large.md', { mtime: 10, size: 2 ** 21, uid: 'remote-current' }) as FileStat,
+		remote: remoteStat,
 		remoteFs: remote.fs,
 	});
 
-	expect(remote.calls.readStream).toStrictEqual([['large.md', undefined]]);
-	expect(local.calls.writeStream).toStrictEqual(['large.md']);
+	expect(remote.calls.readStream).toStrictEqual([['large.md', remoteStat]]);
+	expect(local.calls.writeStream).toStrictEqual([['large.md', remoteStat]]);
 	expect(await record.get('large.md')).toStrictEqual({
 		isDir: false,
 		local: 'stream-uid',

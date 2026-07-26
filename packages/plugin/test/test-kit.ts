@@ -1,6 +1,6 @@
 import type { Fs, RootFs } from '@/fs';
 import type { Request, RequestParam } from '@/modules/Registrar';
-import type { Progress, Stat, Binary, FileStat } from '@/types';
+import type { Progress, Stat, Binary, FileStat, FolderStat } from '@/types';
 
 type FsCalls = {
 	delete: Array<string>;
@@ -37,12 +37,15 @@ function bytes(value: string): Binary {
 	return textEncoder.encode(value);
 }
 
-function file(key: string, options: { mtime?: number; size?: number; uid?: string } = {}): Stat {
+function file(
+	key: string,
+	options: { mtime?: number; size?: number; uid?: string } = {},
+): FileStat {
 	const { mtime = 1, size = 5, uid = `${key}-uid` } = options;
 	return { isDir: false, key, mtime, size, uid };
 }
 
-function folder(key: string): Stat {
+function folder(key: string): FolderStat {
 	return { isDir: true, key };
 }
 

@@ -4,7 +4,7 @@ import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import smartMergeBaseTextWrapper from '@/wrapper';
 
-const { bytes, fs } = testKit;
+const { bytes, file, fs } = testKit;
 const db = openMemoryDB<{ baseText: string }>('smart-merge-wrapper-test');
 
 function store() {
@@ -19,8 +19,16 @@ test('write should persist mergeable base text', async () => {
 	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 
-	await wrapper.write('folder/note.md', bytes('plain text'));
-	await wrapper.write('folder/long.markdown', bytes('markdown text'));
+	await wrapper.write(
+		'folder/note.md',
+		bytes('plain text'),
+		file('folder/note.md', { size: 10 }),
+	);
+	await wrapper.write(
+		'folder/long.markdown',
+		bytes('markdown text'),
+		file('folder/long.markdown', { size: 13 }),
+	);
 
 	expect(await store().get('folder/note.md')).toBe('plain text');
 	expect(await store().get('folder/long.markdown')).toBe('markdown text');
@@ -51,7 +59,7 @@ test('non mergeable write should not touch store', async () => {
 	const remote = fs();
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 
-	await wrapper.write('image.png', bytes('not markdown'));
+	await wrapper.write('image.png', bytes('not markdown'), file('image.png', { size: 12 }));
 
 	expect(await store().get('image.png')).toBeUndefined();
 });
@@ -66,6 +74,8 @@ test('failed mutation should not update base text', async () => {
 	});
 	const wrapper = smartMergeBaseTextWrapper(remote.fs, store());
 
-	expect(wrapper.write('failed.md', bytes('body'))).rejects.toThrow('write failed');
+	expect(
+		wrapper.write('failed.md', bytes('body'), file('failed.md', { size: 4 })),
+	).rejects.toThrow('write failed');
 	expect(await store().get('failed.md')).toBeUndefined();
 });

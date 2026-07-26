@@ -5,7 +5,7 @@ import type { RootFs } from '@/fs';
 import type { MaybePromise } from '@/types';
 import { VaultFs } from '@/fs';
 
-const { stream, bytes } = testKit;
+const { stream, bytes, file } = testKit;
 const textDecoder = new TextDecoder();
 
 type VaultFixtureStat = {
@@ -175,7 +175,7 @@ test('write should return refreshed file uid from stat', async () => {
 	});
 	const data = bytes('hello');
 
-	expect(await vault.fs.write('note.md', data)).toBe('456~11');
+	expect(await vault.fs.write('note.md', data, file('note.md'))).toBe('456~11');
 	expect(vault.calls.writeBinary).toStrictEqual([['note.md', 'hello']]);
 	expect(vault.calls.stat).toStrictEqual(['note.md']);
 });
@@ -187,7 +187,7 @@ test('writeStream should append to temp file then rename into place', async () =
 		},
 	});
 
-	const uid = await vault.fs.writeStream('note.md', stream(['ab', 'cdef']));
+	const uid = await vault.fs.writeStream('note.md', stream(['ab', 'cdef']), file('note.md'));
 
 	expect(uid).toBe('999~6');
 	expect(vault.calls.writeBinary).toStrictEqual([]);
