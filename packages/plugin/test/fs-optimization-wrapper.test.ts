@@ -1,7 +1,6 @@
 import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
 import type { OptimizerInput, OptimizerOutput } from '@/fs';
-import type { FileStat } from '@/types';
 import { optimizationWrapper } from '@/fs';
 
 type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;
@@ -39,8 +38,8 @@ test('optimization wrapper forwards queued atoms to batch optimizer', async () =
 test('optimization wrapper forwards pooled write alongside queued ops', async () => {
 	const local = fs();
 	const remote = fs();
-	const localPool: Array<FileStat> = [];
-	const remotePool: Array<FileStat> = [];
+	const localPool: Array<string> = [];
+	const remotePool: Array<string> = [];
 	const { batchOptimizer, seen } = createBatchRecorder();
 	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,
@@ -82,8 +81,8 @@ test('optimization wrapper forwards pooled write alongside queued ops', async ()
 test('optimization wrapper forwards pooled writeStream alongside queued ops', async () => {
 	const local = fs();
 	const remote = fs();
-	const localPool: Array<FileStat> = [];
-	const remotePool: Array<FileStat> = [];
+	const localPool: Array<string> = [];
+	const remotePool: Array<string> = [];
 	const { batchOptimizer, seen } = createBatchRecorder();
 	const localWrapper = optimizationWrapper(local.fs, {
 		batchOptimizer,

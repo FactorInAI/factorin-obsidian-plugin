@@ -32,11 +32,18 @@ export default function featuresSettings(
 		startScheduledSync: () => void;
 		stopScheduledSync: () => void;
 		settings: Settings;
+		recordStoreExists: () => Promise<boolean>;
 	},
 ) {
-	const { translate, saveSettings, startScheduledSync, stopScheduledSync, settings } = ctx;
+	const {
+		translate,
+		saveSettings,
+		startScheduledSync,
+		stopScheduledSync,
+		settings,
+		recordStoreExists,
+	} = ctx;
 	const invalidValue = translate('invalidValue');
-	let selfTrigger = false;
 	new Setting(el).setName(translate('features')).setHeading();
 
 	generateSettingEntry({
@@ -91,6 +98,7 @@ export default function featuresSettings(
 			}),
 		);
 
+	let selfTrigger = false;
 	new Setting(el)
 		.setName(translate('asymmetricStorage'))
 		.setDesc(translate('asymmetricStorageDescription'))
@@ -101,19 +109,25 @@ export default function featuresSettings(
 					return;
 				}
 				const original = settings.asymmetricStorage;
-				new MigrationModal(ctx as Context, {
-					apply: () => {
-						settings.asymmetricStorage = value;
-						void saveSettings();
-					},
-					content: translate('asymmetricStorageMigration', value ? 'enable' : 'disable'),
-					onCancel: () => {
-						settings.asymmetricStorage = original;
-						void saveSettings();
-						selfTrigger = true;
-						toggle.setValue(original);
-					},
-				}).open();
+				void recordStoreExists().then((exist) => {
+					if (exist)
+						new MigrationModal(ctx as Context, {
+							apply: () => {
+								settings.asymmetricStorage = value;
+								void saveSettings();
+							},
+							content: translate(
+								'asymmetricStorageMigration',
+								value ? 'enable' : 'disable',
+							),
+							onCancel: () => {
+								settings.asymmetricStorage = original;
+								void saveSettings();
+								selfTrigger = true;
+								toggle.setValue(original);
+							},
+						}).open();
+				});
 			}),
 		);
 }

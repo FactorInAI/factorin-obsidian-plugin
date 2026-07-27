@@ -10,6 +10,7 @@ export type SourceEditorTranslations = {
 	remove: string;
 	save: string;
 	sourcesDescription: string;
+	httpInsecureWarning: string;
 };
 
 export default class SourceEditorModal extends Modal {
@@ -81,7 +82,11 @@ export default class SourceEditorModal extends Modal {
 					.onClick(() => {
 						const validSources = sources.flatMap((source) => {
 							const trimmedSource = source.trim();
-							if (!trimmedSource || !isValidModuleSource(trimmedSource)) return [];
+							if (
+								!trimmedSource ||
+								!isValidModuleSource(trimmedSource, t('httpInsecureWarning'))
+							)
+								return [];
 							return trimmedSource;
 						});
 						this.onSave(validSources);
@@ -101,10 +106,11 @@ export default class SourceEditorModal extends Modal {
 	}
 }
 
-function isValidModuleSource(source: string): boolean {
+function isValidModuleSource(source: string, warning: string): boolean {
 	try {
-		const url = new URL(source);
-		return url.protocol === 'http:' || url.protocol === 'https:';
+		const { protocol } = new URL(source);
+		if (protocol === 'http:') new Notice(warning);
+		return protocol === 'http:' || protocol === 'https:';
 	} catch {
 		return false;
 	}

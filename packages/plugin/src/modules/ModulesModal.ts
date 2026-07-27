@@ -5,7 +5,7 @@ import type { ModuleManagementTranslations } from '@/components/module-managemen
 import type { SourceEditorTranslations } from '@/components/SourceEditorModal';
 import { mountModuleManagementList } from '@/components/module-management';
 import ModuleSourceEditorModal from '@/components/SourceEditorModal';
-import type { ModuleMeta } from './Extensibility';
+import type { AugmentedModuleMeta } from './Extensibility';
 import type { Translate } from './I18n';
 
 type ModulesModalTranslations = ModuleManagementTranslations &
@@ -28,13 +28,12 @@ export default class ModulesModal extends Modal {
 			app: App;
 			translate: Translate<ModulesModalTranslations>;
 			saveSettings: () => Promise<void>;
-			settings: { moduleSources: Array<string>; modules: Record<string, boolean> };
-			fetchSources: (cached?: boolean) => Promise<Array<ModuleMeta>>;
-			discoveredModules: Map<string, string>;
+			fetchSources: (manual?: boolean) => Promise<Array<AugmentedModuleMeta>>;
+			discoveredModules: Map<string, AugmentedModuleMeta>;
 			loadedModules: Map<string, unknown>;
-			downloadModule: (name: string, version: string, url: string) => Promise<void>;
+			downloadModule: (meta: AugmentedModuleMeta) => Promise<void>;
 			deleteModule: (name: string) => Promise<void>;
-			loadModule: (name: string, start?: boolean) => Promise<void>;
+			loadModule: (meta: AugmentedModuleMeta, start?: boolean) => Promise<void>;
 			unloadModule: (name: string) => void;
 		},
 	) {
@@ -43,6 +42,7 @@ export default class ModulesModal extends Modal {
 	}
 
 	declare readonly i18n: ModulesModalTranslations;
+	declare readonly settings: { moduleSources: Array<string> };
 
 	root = {
 		closeModuleManagement: this.close.bind(this),
@@ -59,7 +59,6 @@ export default class ModulesModal extends Modal {
 			'max-h-[--modal-max-height]',
 			'shadow-none!',
 		]);
-		this.contentEl.empty();
 		const controlsEl = this.contentEl.createDiv('flex items-center gap-2 pb-4');
 		const searchEl = controlsEl.createDiv('min-w-0 flex-1');
 		const listEl = this.contentEl.createDiv('min-h-0 overflow-y-auto');
@@ -125,7 +124,7 @@ export default class ModulesModal extends Modal {
 		this.sourceEditorModal?.close();
 		this.sourceEditorModal = new ModuleSourceEditorModal(
 			(sources) => {
-				this.ctx.settings.moduleSources = sources;
+				this.settings.moduleSources = sources;
 				void this.ctx.saveSettings();
 				cb();
 			},
@@ -133,7 +132,7 @@ export default class ModulesModal extends Modal {
 				app: this.ctx.app,
 				translate: this.t,
 			},
-			this.ctx.settings.moduleSources,
+			this.settings.moduleSources,
 		).setCloseCallback(() => (this.sourceEditorModal = undefined));
 		this.sourceEditorModal.open();
 	};

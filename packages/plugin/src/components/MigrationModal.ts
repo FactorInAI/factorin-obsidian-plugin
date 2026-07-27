@@ -58,6 +58,7 @@ export default class MigrationModal extends Modal {
 		const { translate } = this.ctx;
 
 		contentEl.empty();
+		contentEl.addClass('markdown-rendered');
 		this.setTitle(translate('remoteMigration'));
 
 		if (typeof content === 'string')

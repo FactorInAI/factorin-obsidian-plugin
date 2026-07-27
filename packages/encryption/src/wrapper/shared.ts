@@ -1,6 +1,5 @@
 import type { Binary } from '@hesprs/sync-engine-sdk';
 import { concatBinary, textToUint8Array, toUint8Array } from '@repo/shared/binary';
-import { sha256Digest } from '@repo/shared/crypto';
 
 const EMPTY_SALT: Binary = new Uint8Array(0);
 
@@ -105,4 +104,8 @@ export function encodeUInt96(value: number): Binary {
 		remainder = Math.floor(remainder / 256);
 	}
 	return result;
+}
+
+export async function sha256Digest(data: BufferSource): Promise<ArrayBuffer> {
+	return crypto.subtle.digest('SHA-256', data);
 }

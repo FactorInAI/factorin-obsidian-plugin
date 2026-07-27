@@ -47,6 +47,6 @@ function isNonExistent(error: unknown) {
 		getStatus(error) === 404 ||
 		(((error as ErrorLike).message as string) ?? String(error))
 			.toLocaleUpperCase()
-			.contains('ENOENT')
+			.includes('ENOENT')
 	);
 }

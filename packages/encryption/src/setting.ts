@@ -17,10 +17,11 @@ export default function encryptionSetting(
 		translate: Translate<EncryptionTranslations>;
 		app: App;
 		saveSettings: () => Promise<void>;
+		recordStoreExists: () => Promise<boolean>;
 	},
 	settings: EncryptionSettings,
 ) {
-	const { translate, app, saveSettings } = ctx;
+	const { translate, app, saveSettings, recordStoreExists } = ctx;
 	let selfTrigger = false;
 
 	new Setting(el)
@@ -39,21 +40,24 @@ export default function encryptionSetting(
 					return;
 				}
 				const original = settings.enabled;
-				new MigrationModal(ctx as Context, {
-					apply: () => {
-						settings.enabled = value;
-						void saveSettings();
-					},
-					content: translate(
-						value ? 'encryptionEnableMigration' : 'encryptionDisableMigration',
-					),
-					onCancel: () => {
-						settings.enabled = original;
-						void saveSettings();
-						selfTrigger = true;
-						toggle.setValue(original);
-					},
-				}).open();
+				void recordStoreExists().then((exists) => {
+					if (exists)
+						new MigrationModal(ctx as Context, {
+							apply: () => {
+								settings.enabled = value;
+								void saveSettings();
+							},
+							content: translate(
+								value ? 'encryptionEnableMigration' : 'encryptionDisableMigration',
+							),
+							onCancel: () => {
+								settings.enabled = original;
+								void saveSettings();
+								selfTrigger = true;
+								toggle.setValue(original);
+							},
+						}).open();
+				});
 			}),
 		);
 }

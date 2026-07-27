@@ -12,8 +12,8 @@ import type {
 } from '../interface';
 
 type OptimizationOptions = {
-	thisPool: Array<FileStat>;
-	thatPool: Array<FileStat>;
+	thisPool: Array<string>;
+	thatPool: Array<string>;
 	batchOptimizer: BatchOptimizer;
 };
 
@@ -53,12 +53,12 @@ class OptimizationFs implements WrappedFs {
 	}
 
 	read(key: string, stat: FileStat) {
-		this.options.thisPool.push(stat);
+		this.options.thisPool.push(stat.key);
 		return this.original.read(key, stat);
 	}
 
 	readStream(key: string, stat: FileStat) {
-		this.options.thisPool.push(stat);
+		this.options.thisPool.push(stat.key);
 		return this.original.readStream(key, stat);
 	}
 
@@ -123,11 +123,11 @@ class OptimizationFs implements WrappedFs {
 	private async flush() {
 		if (this.queue.length === 1) await (this.queue.pop() as InputAtom).execute();
 		else {
-			const writeAtoms = this.options.thatPool.splice(0).map(({ uid, key }): WriteAtom => {
+			const writeAtoms = this.options.thatPool.splice(0).map((key): WriteAtom => {
 				let result: string | undefined;
 				const anticipateWrite = new Promise<() => MaybePromise<string>>((resolve) => {
-					this.pendingWrites.set(uid, (write: () => MaybePromise<string>) => {
-						this.pendingWrites.delete(uid);
+					this.pendingWrites.set(key, (write: () => MaybePromise<string>) => {
+						this.pendingWrites.delete(key);
 						const {
 							execute,
 							defer,
@@ -141,7 +141,7 @@ class OptimizationFs implements WrappedFs {
 				return {
 					execute: () => anticipateWrite.then((write) => write()),
 					key,
-					resolve: (id: string) => (result = id),
+					resolve: (uid: string) => (result = uid),
 					type: 'write',
 				};
 			});

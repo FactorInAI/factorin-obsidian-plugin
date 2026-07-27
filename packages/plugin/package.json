@@ -61,6 +61,7 @@
 		"synthkernel": "./synthkernel.tgz",
 		"uni-kv": "../../uni-kv.tgz",
 		"unocss": "66.7.5",
-		"unplugin-solid": "^2.0.0"
+		"unplugin-solid": "^2.0.0",
+		"verkit": "^0.3.0"
 	}
 }

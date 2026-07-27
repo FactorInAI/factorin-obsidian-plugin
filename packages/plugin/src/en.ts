@@ -67,6 +67,7 @@ const en: Translations = {
 	completed: 'Completed',
 	completedNoop: 'Already synced',
 	configurations: 'Configurations',
+	configure: 'Configure',
 	confirm: 'Confirm',
 	confirmDeleteDescription:
 		'Please confirm files that will be deleted, unselected tasks will be re-uploaded.',
@@ -86,6 +87,7 @@ const en: Translations = {
 	customHeaders: 'Custom headers',
 	customHeadersDescription:
 		'Add custom headers to be included with each request, they can either be stored in plaintext or in Obsidian keychain.',
+	delete: 'delete',
 	deleteModule: 'Delete module',
 	development: 'Development',
 	diffMatchPatch: 'Merge',
@@ -118,6 +120,7 @@ const en: Translations = {
 	headerKeyPlaceholder: 'Header key',
 	headerValuePlaceholder: 'Header value',
 	hide: 'Hide',
+	httpInsecureWarning: 'Please avoid using insecure HTTP protocol.',
 	inclusionRules: 'Inclusion rules',
 	inclusionRulesDescription:
 		'Files / folders matching exclusion rules but also matching these glob patterns will still be synced.',
@@ -206,6 +209,13 @@ const en: Translations = {
 	syncStrategyDescription:
 		'Select the synchronization strategy to resolve file changes. More strategies can be found in modules.',
 	toggleWithoutMigration: 'Toggle without migration',
+	unknownModule: 'Unknown module',
+	unknownModuleDescription: (frag, { fileName, size, path, mtime, ctime }) => {
+		// TODO
+		const container = frag.createDiv(
+			'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2',
+		);
+	},
 	updateAvailable: 'Update available',
 	updateModule: 'Update module',
 	upload: 'Upload',

@@ -16,7 +16,7 @@ const OS = {
 	Windows: Platform.isWin,
 };
 const MAX_SYNC_LOGS = 100;
-const VERSION = Bun.env.VERSION ?? '2.1.0';
+export const VERSION = Bun.env.VERSION ?? '3.0.0';
 
 export type Dispatch<O extends object> = <K extends keyof O>(
 	...[key, payload]: undefined extends O[K] ? [K] : [K, O[K]]

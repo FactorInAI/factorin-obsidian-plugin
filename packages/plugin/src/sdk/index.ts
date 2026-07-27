@@ -64,7 +64,7 @@ export type {
 	RequestParam,
 } from '@/modules/Registrar';
 export type { RecordStore } from '@/modules/Storage';
-export type { ModuleMeta } from '@/modules/Extensibility';
+export type { ModuleMeta, AugmentedModuleMeta } from '@/modules/Extensibility';
 export type { SyncTerminateReason } from '@/modules/Sync';
 export type { ExistingMemoryDB } from '@/modules/Bootstrap';
 export type * from '@/fs/interface';

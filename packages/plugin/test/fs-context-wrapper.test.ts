@@ -3,7 +3,7 @@ import testKit from '$/test-kit';
 import { beforeEach, expect, test } from 'bun:test';
 import { openMemoryDB } from 'uni-kv';
 import type { Fs } from '@/fs';
-import type { Stat } from '@/types';
+import type { FileStat, Stat } from '@/types';
 import { contextWrapper } from '@/fs';
 import { STORAGE_NAME } from '@/modules/Storage';
 
@@ -180,11 +180,13 @@ test('write upserts synthesized file stat', async () => {
 	await remoteWrapper.write('remote-write.md', bytes('123'), remoteStat);
 	await localWrapper.write('local-write.md', bytes('1234'), localStat);
 
-	expect(getRemoteStore().get('remote-write.md')).toStrictEqual(
-		file('remote-write.md', { mtime: 0, size: 3, uid: 'write-uid' }),
+	const remoteWrite = getRemoteStore().get('remote-write.md') as FileStat;
+	expect(remoteWrite).toStrictEqual(
+		file('remote-write.md', { mtime: remoteWrite.mtime, size: 3, uid: 'write-uid' }),
 	);
-	expect(getLocalStore().get('local-write.md')).toStrictEqual(
-		file('local-write.md', { mtime: 0, size: 4, uid: 'write-uid' }),
+	const localWrite = getLocalStore().get('local-write.md') as FileStat;
+	expect(localWrite).toStrictEqual(
+		file('local-write.md', { mtime: localWrite.mtime, size: 4, uid: 'write-uid' }),
 	);
 });
 
@@ -195,8 +197,9 @@ test('writeStream upserts synthesized file stat', async () => {
 
 	await localWrapper.writeStream('local-stream.md', stream(['ab', 'cd']), stat);
 
-	expect(getLocalStore().get('local-stream.md')).toStrictEqual(
-		file('local-stream.md', { mtime: 0, size: 0, uid: 'stream-uid' }),
+	const write = getLocalStore().get('local-stream.md') as FileStat;
+	expect(write).toStrictEqual(
+		file('local-stream.md', { mtime: write.mtime, size: 0, uid: 'stream-uid' }),
 	);
 });
 

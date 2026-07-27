@@ -2,7 +2,7 @@ import type { Events } from '@';
 import type { App, Plugin, RequestUrlParam } from 'obsidian';
 import type { StoreAsync } from 'uni-kv';
 import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
-import { hash } from '@repo/shared/crypto';
+import hash from '@repo/shared/crypto';
 import { PluginSettingTab, requestUrl } from 'obsidian';
 import type { BatchOptimizer, Fs, RootFs } from '@/fs';
 import type { ConflictResolver, Decider } from '@/sync';

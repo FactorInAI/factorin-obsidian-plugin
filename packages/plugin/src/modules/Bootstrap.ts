@@ -2,6 +2,7 @@ import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
 import type { DatabaseSync } from 'uni-kv';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
+import type { UnknownModuleTranslations } from '@/components/UnknownModuleModal';
 import type { BatchOptimizer, MemoryControlSharedState } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
 import type { DevelopmentSettingTranslations } from '@/settings/development';
@@ -9,7 +10,7 @@ import type { FeaturesSettingTranslations } from '@/settings/features';
 import type { FilterSettingTranslations } from '@/settings/filter';
 import type { HeadSettingTranslations } from '@/settings/head';
 import type { MiscellaneousSettingTranslations } from '@/settings/miscellaneous';
-import type { FileStat, Progress, Stat, TogglableValue } from '@/types';
+import type { Progress, Stat, TogglableValue } from '@/types';
 import en from '@/en';
 import {
 	rateLimiterMiddleware,
@@ -23,7 +24,6 @@ import {
 	customHeadersMiddleware,
 	cancellationMiddleware,
 } from '@/fs';
-import debugWrapper from '@/sdk/debug-wrapper';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
 import featuresSettings from '@/settings/features';
@@ -68,8 +68,8 @@ export default class Bootstrap {
 	};
 	private isCancelled?: () => boolean;
 
-	private readonly localPool: Array<FileStat> = [];
-	private readonly remotePool: Array<FileStat> = [];
+	private readonly localPool: Array<string> = [];
+	private readonly remotePool: Array<string> = [];
 
 	declare readonly i18n: {
 		bidirectional: string;
@@ -84,7 +84,8 @@ export default class Bootstrap {
 		FilterSettingTranslations &
 		HeadSettingTranslations &
 		MiscellaneousSettingTranslations &
-		HeadersEditorTranslations;
+		HeadersEditorTranslations &
+		UnknownModuleTranslations;
 	declare readonly settings: {
 		maxMemoryConsumption: TogglableValue;
 		maxRequestConcurrency: TogglableValue;
@@ -260,11 +261,6 @@ export default class Bootstrap {
 					store: 'remoteContext20000',
 				}),
 			priority: 20_000,
-		});
-
-		registerRemoteFsWrapper({
-			apply: (fs) => debugWrapper(fs, (str) => console.log(str)),
-			priority: 10_500,
 		});
 
 		registerRequestMiddleware({ apply: retryMiddleware, priority: 1000 });

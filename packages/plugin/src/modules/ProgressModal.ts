@@ -164,7 +164,8 @@ export default class ProgressModal extends Modal {
 					.onClick(() => {
 						cleanup();
 						confirmCallback();
-					}),
+					})
+					.buttonEl.focus(),
 			);
 	};
 	private readonly renderDone = () => {
@@ -176,7 +177,8 @@ export default class ProgressModal extends Modal {
 			button
 				.setButtonText(this.t('done'))
 				.setCta()
-				.onClick(() => this.close()),
+				.onClick(() => this.close())
+				.buttonEl.focus(),
 		);
 	};
 
@@ -192,7 +194,6 @@ export default class ProgressModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 		this.setTitle(this.t('syncProgress'));
-		contentEl.empty();
 
 		const progress = computed<{
 			completed?: number;
@@ -285,6 +286,7 @@ export default class ProgressModal extends Modal {
 		this.controls = undefined;
 		this.modalCleanupCallbacks();
 		this.modalCleanupCallbacks.clear();
+		this.contentEl.empty();
 	}
 
 	dispose() {
