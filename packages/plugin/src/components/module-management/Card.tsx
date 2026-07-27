@@ -1,37 +1,28 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import { Show, createEffect } from 'solid-js';
-import type { ModuleMeta } from '@/modules/Extensibility';
-import compareVersions from '@/utils/compare-versions';
+import { compare } from 'verkit';
+import type { AugmentedModuleMeta } from '@/modules/Extensibility';
 import type { ModuleManagementContext, PendingAction } from './index';
 
 export default function Card(props: {
 	ctx: Pick<
 		ModuleManagementContext,
-		| 'deleteModule'
-		| 'downloadModule'
-		| 'loadModule'
-		| 'saveSettings'
-		| 'settings'
-		| 'translate'
-		| 'unloadModule'
+		'deleteModule' | 'disableModule' | 'downloadModule' | 'enableModule' | 'translate'
 	>;
-	installedVersion?: string;
+	installedMeta?: AugmentedModuleMeta;
 	isLoaded: boolean;
-	module: ModuleMeta;
+	module: AugmentedModuleMeta;
 	pendingAction?: PendingAction;
 	runAction: (action: PendingAction, op: () => Promise<void>) => void;
 }) {
-	const isInstalled = () => props.installedVersion !== undefined;
+	const isInstalled = () => props.installedMeta !== undefined;
 	const hasUpdate = () =>
-		props.installedVersion !== undefined &&
-		compareVersions(props.module.version, props.installedVersion) === 1;
+		props.installedMeta !== undefined &&
+		compare(props.module.version, props.installedMeta.version) === 1;
 	const busy = () => props.pendingAction !== undefined;
 	const versionLabel = () => {
-		const currentVersion = props.installedVersion;
-		if (
-			currentVersion !== undefined &&
-			compareVersions(props.module.version, currentVersion) === 1
-		)
+		const currentVersion = props.installedMeta?.version;
+		if (currentVersion !== undefined && compare(props.module.version, currentVersion) === 1)
 			return `v${currentVersion} -> v${props.module.version}`;
 		return `v${currentVersion ?? props.module.version}`;
 	};
@@ -39,7 +30,8 @@ export default function Card(props: {
 	return (
 		<div class="flex min-h-40 flex-col gap-3 rounded-md border border-[--background-modifier-border] px-4 py-3 bg-[--background-primary-alt]">
 			<div class="flex items-start justify-between gap-3">
-				<div class="min-w-0 text-base font-semibold text-[--text-normal] break-words">
+				<div class="flex min-w-0 items-center gap-2 text-base font-semibold text-[--text-normal] break-words">
+					<span class="flex-shrink-0" ref={(el) => setIcon(el, props.module.icon)} />
 					{props.module.name}
 				</div>
 				<div class="flex-shrink-0 text-xs text-[--text-muted]">{versionLabel()}</div>
@@ -81,11 +73,7 @@ export default function Card(props: {
 						}
 						onClick={() => {
 							props.runAction('download', async () => {
-								await props.ctx.downloadModule(
-									props.module.name,
-									props.module.version,
-									props.module.main,
-								);
+								await props.ctx.downloadModule(props.module);
 							});
 						}}
 					/>
@@ -98,46 +86,66 @@ export default function Card(props: {
 						tooltip={props.ctx.translate('deleteModule')}
 						onClick={() => {
 							props.runAction('delete', async () => {
-								await props.ctx.deleteModule(props.module.name);
-								void props.ctx.saveSettings();
+								await props.ctx.deleteModule(props.module.id);
 							});
 						}}
 					/>
-					<Show
-						when={props.isLoaded}
-						fallback={
-							<ActionButton
-								disabled={busy()}
-								icon="play"
-								pending={props.pendingAction === 'enable'}
-								tooltip={props.ctx.translate('enableModule')}
-								onClick={() => {
-									props.runAction('enable', async () => {
-										props.ctx.settings.modules[props.module.name] = true;
-										void props.ctx.saveSettings();
-										await props.ctx.loadModule(props.module.name, true);
-									});
-								}}
-							/>
-						}
-					>
-						<ActionButton
-							disabled={busy()}
-							icon="power-off"
-							pending={props.pendingAction === 'disable'}
-							tooltip={props.ctx.translate('disableModule')}
-							onClick={() => {
-								props.runAction('disable', async () => {
-									props.ctx.settings.modules[props.module.name] = false;
-									void props.ctx.saveSettings();
-									props.ctx.unloadModule(props.module.name);
-								});
-							}}
-						/>
-					</Show>
+					<EnableToggle
+						disabled={busy()}
+						enabled={props.isLoaded}
+						translate={props.ctx.translate}
+						onEnable={() => {
+							props.runAction('enable', async () => {
+								await props.ctx.enableModule(props.module.id, true);
+							});
+						}}
+						onDisable={() => {
+							props.runAction('disable', async () => {
+								await props.ctx.disableModule(props.module.id, true);
+							});
+						}}
+					/>
 				</Show>
 			</div>
 		</div>
+	);
+}
+
+function EnableToggle(props: {
+	disabled: boolean;
+	enabled: boolean;
+	translate: ModuleManagementContext['translate'];
+	onEnable: () => void;
+	onDisable: () => void;
+}) {
+	let toggleEl: HTMLDivElement;
+	let toggle: ToggleComponent;
+
+	createEffect(() => {
+		if (toggle) {
+			if (toggle.getValue() !== props.enabled) toggle.setValue(props.enabled);
+			toggle.setDisabled(props.disabled);
+		}
+		if (toggleEl)
+			setTooltip(
+				toggleEl,
+				props.enabled ? props.translate('disableModule') : props.translate('enableModule'),
+			);
+	});
+
+	return (
+		<div
+			ref={(el) => {
+				toggleEl = el;
+				toggle = new ToggleComponent(el)
+					.setValue(props.enabled)
+					.setDisabled(props.disabled)
+					.onChange((value) => {
+						if (value) props.onEnable();
+						else props.onDisable();
+					});
+			}}
+		/>
 	);
 }
 
@@ -148,8 +156,7 @@ function ActionButton(props: {
 	pending: boolean;
 	tooltip: string;
 }) {
-	// oxlint-disable-next-line no-unassigned-vars
-	let button!: HTMLButtonElement;
+	let button: HTMLButtonElement;
 
 	createEffect(() => {
 		setIcon(button, props.pending ? 'loader-circle' : props.icon);
@@ -164,7 +171,7 @@ function ActionButton(props: {
 			class="clickable-icon rounded-md p-1"
 			disabled={props.disabled}
 			onClick={() => props.onClick()}
-			ref={button}
+			ref={(ref) => (button = ref)}
 			style={{ opacity: props.disabled ? '0.45' : '1' }}
 			type="button"
 		/>

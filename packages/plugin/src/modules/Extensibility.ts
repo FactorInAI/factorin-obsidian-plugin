@@ -257,7 +257,7 @@ export default class Extensibility {
 		const fetchSingleSource = async (url: string): Promise<Array<unknown>> => {
 			try {
 				const content = await requestUrl(url).json;
-				if (Array.isArray(content)) throw new Error('Wrong source schema!');
+				if (!Array.isArray(content)) throw new Error('Wrong source schema!');
 				this.sourceCache.set(url, content);
 				return content;
 			} catch (error) {
@@ -316,6 +316,22 @@ export default class Extensibility {
 		isIdle(true);
 	};
 
+	private readonly enableModule = async (id: string, load = false) => {
+		const meta = await this.moduleStore.get(id);
+		if (!meta || meta.enabled) return;
+		await Promise.all([
+			this.moduleStore.set(id, Object.assign(meta, { enabled: true })),
+			load ? this.loadModule(meta, true) : Promise.resolve(),
+		]);
+	};
+
+	private readonly disableModule = async (id: string, unload = false) => {
+		const meta = await this.moduleStore.get(id);
+		if (!meta || !meta.enabled) return;
+		if (unload) this.unloadModule(id);
+		await this.moduleStore.set(id, Object.assign(meta, { enabled: false }));
+	};
+
 	private readonly getModulePath = (id: string) => `${this.moduleDir}/${id}${MODULE_EXTENSION}`;
 
 	private readonly parseModulePath = (path: string) =>
@@ -329,8 +345,10 @@ export default class Extensibility {
 
 	readonly root = {
 		deleteModule: this.deleteModule,
+		disableModule: this.disableModule,
 		discoveredModules: this.discoveredModules,
 		downloadModule: this.downloadModule,
+		enableModule: this.enableModule,
 		fetchSources: this.fetchSources,
 		loadAllModules: this.loadAllModules,
 		loadModule: this.loadModule,

@@ -1,15 +1,17 @@
 import type { SearchResult } from 'obsidian';
 import { prepareFuzzySearch } from 'obsidian';
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
-import type { ModuleMeta } from '@/modules/Extensibility';
+import type { AugmentedModuleMeta } from '@/modules/Extensibility';
 import type { ModuleManagementContext, PendingAction } from './index';
 import Card from './Card';
 
 export default function App(props: { ctx: ModuleManagementContext; isUnmounted: () => boolean }) {
 	const t = props.ctx.translate;
-	const [sourceModules, setSourceModules] = createSignal<Array<ModuleMeta>>([]);
-	const [installedVersions, setInstalledVersions] = createSignal<Record<string, string>>({});
-	const [loadedNames, setLoadedNames] = createSignal<Set<string>>(new Set());
+	const [sourceModules, setSourceModules] = createSignal<Array<AugmentedModuleMeta>>([]);
+	const [installedModules, setInstalledModules] = createSignal<
+		Record<string, AugmentedModuleMeta>
+	>({});
+	const [loadedIds, setLoadedIds] = createSignal<Set<string>>(new Set());
 	const [query, setQuerySignal] = createSignal('');
 	const [showInstalledOnly, setShowInstalledOnlySignal] = createSignal(false);
 	const [hasLoaded, setHasLoaded] = createSignal(false);
@@ -20,8 +22,8 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 
 	const syncSnapshots = () => {
 		if (props.isUnmounted()) return;
-		setInstalledVersions(Object.fromEntries(props.ctx.discoveredModules));
-		setLoadedNames(new Set(props.ctx.loadedModules.keys()));
+		setInstalledModules(Object.fromEntries(props.ctx.discoveredModules));
+		setLoadedIds(new Set(props.ctx.loadedModules.keys()));
 	};
 
 	const refreshSources = async () => {
@@ -38,16 +40,15 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 		}
 	};
 
-	const mergedModules = createMemo<Array<ModuleMeta>>(() =>
-		mergeModules(sourceModules(), installedVersions()),
+	const mergedModules = createMemo<Array<AugmentedModuleMeta>>(() =>
+		mergeModules(sourceModules(), installedModules()),
 	);
 
-	const visibleModules = createMemo<Array<ModuleMeta>>(() => {
-		const installedByName = installedVersions();
+	const visibleModules = createMemo<Array<AugmentedModuleMeta>>(() => {
 		const normalizedQuery = query().trim();
 		const filtered = mergedModules().filter((module) => {
 			if (!showInstalledOnly()) return true;
-			return installedByName[module.name] !== undefined;
+			return module.enabled;
 		});
 
 		if (!normalizedQuery) return filtered.sort(sortModulesAlphabetically);
@@ -56,16 +57,16 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 		return filtered
 			.map((module) => ({ module, score: getModuleScore(match, module) }))
 			.filter(
-				(entry): entry is { module: ModuleMeta; score: number } =>
+				(entry): entry is { module: AugmentedModuleMeta; score: number } =>
 					entry.score !== undefined,
 			)
 			.sort((a, b) => b.score - a.score || sortModulesAlphabetically(a.module, b.module))
 			.map(({ module }) => module);
 	});
 
-	const runAction = async (name: string, action: PendingAction, op: () => Promise<void>) => {
+	const runAction = async (id: string, action: PendingAction, op: () => Promise<void>) => {
 		if (props.isUnmounted()) return;
-		setPendingByName((current) => ({ ...current, [name]: action }));
+		setPendingByName((current) => ({ ...current, [id]: action }));
 		try {
 			await op();
 			syncSnapshots();
@@ -73,7 +74,7 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 			if (!props.isUnmounted())
 				setPendingByName((current) => ({
 					...current,
-					[name]: undefined,
+					[id]: undefined,
 				}));
 		}
 	};
@@ -123,12 +124,12 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 						{(module) => (
 							<Card
 								ctx={props.ctx}
-								installedVersion={installedVersions()[module.name]}
-								isLoaded={loadedNames().has(module.name)}
+								installedMeta={installedModules()[module.id]}
+								isLoaded={loadedIds().has(module.id)}
 								module={module}
-								pendingAction={pendingByName()[module.name]}
+								pendingAction={pendingByName()[module.id]}
 								runAction={(action, op) => {
-									void runAction(module.name, action, op);
+									void runAction(module.id, action, op);
 								}}
 							/>
 						)}
@@ -152,7 +153,7 @@ function getEmptyStateText(ctx: {
 	return ctx.translate('noModulesAvailable');
 }
 
-function getModuleScore(match: (text: string) => SearchResult | null, module: ModuleMeta) {
+function getModuleScore(match: (text: string) => SearchResult | null, module: AugmentedModuleMeta) {
 	const nameScore = match(module.name)?.score ?? undefined;
 	const descriptionScore = module.description
 		? (match(module.description)?.score ?? undefined)
@@ -162,18 +163,15 @@ function getModuleScore(match: (text: string) => SearchResult | null, module: Mo
 }
 
 function mergeModules(
-	sourceModules: Array<ModuleMeta>,
-	installedVersions: Record<string, string>,
-): Array<ModuleMeta> {
-	const modules: Record<string, ModuleMeta> = {};
-	for (const module of sourceModules) modules[module.name] = module;
-	for (const [name, version] of Object.entries(installedVersions)) {
-		if (modules[name]) continue;
-		modules[name] = { description: '', main: '', name, version };
-	}
-	return Object.values(modules);
+	sourceModules: Array<AugmentedModuleMeta>,
+	installedModules: Record<string, AugmentedModuleMeta>,
+): Array<AugmentedModuleMeta> {
+	const merged = new Map<string, AugmentedModuleMeta>();
+	for (const module of Object.values(installedModules)) merged.set(module.id, module);
+	for (const module of sourceModules) merged.set(module.id, module);
+	return [...merged.values()];
 }
 
-function sortModulesAlphabetically(a: ModuleMeta, b: ModuleMeta) {
+function sortModulesAlphabetically(a: AugmentedModuleMeta, b: AugmentedModuleMeta) {
 	return a.name.localeCompare(b.name);
 }

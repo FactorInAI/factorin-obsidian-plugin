@@ -1,8 +1,20 @@
 // oxlint-disable import/no-nodejs-modules
 import { mkdir } from 'fs/promises';
+import modules from '../modules.json' with { type: 'json' };
+import sha256 from '../packages/plugin/src/utils/sha-256';
+
+export type ModuleMeta = {
+	id: string;
+	name: string;
+	version: string;
+	description: string;
+	main: string; // Download link
+	icon?: string;
+	minPluginVersion?: string;
+	integrity: string;
+};
 
 const ROOT = `${import.meta.dir}/..`;
-const SOURCE_MODULES_PATH = `${ROOT}/modules.json`;
 const PUBLIC_DIR = `${ROOT}/docs/public`;
 const PUBLIC_MODULES_DIR = `${PUBLIC_DIR}/modules`;
 const PUBLIC_MODULES_PATH = `${PUBLIC_DIR}/modules.json`;
@@ -19,27 +31,30 @@ async function listMatches(pattern: string): Promise<Array<string>> {
 
 async function main(): Promise<void> {
 	await mkdir(PUBLIC_MODULES_DIR, { recursive: true });
-	await Bun.write(PUBLIC_MODULES_PATH, Bun.file(SOURCE_MODULES_PATH));
 
-	const modules: Array<{ name: string }> = JSON.parse(await Bun.file(SOURCE_MODULES_PATH).text());
-	const missing: Array<string> = [];
+	const deployed = await Promise.all(
+		modules.map(async (module): Promise<ModuleMeta | undefined> => {
+			const basename = `${module.id}.js`;
+			const [source] = await listMatches(`**/dist/${basename}`);
 
-	for (const module of modules) {
-		const basename = `${module.name}.js`;
-		const [source] = await listMatches(`**/dist/${basename}`);
+			if (!source) {
+				console.warn(`Missing dist file for ${basename}, skipping`);
+				return;
+			}
 
-		if (!source) {
-			missing.push(basename);
-			console.warn(`Missing dist file for ${basename}`);
-			continue;
-		}
+			const content = await Bun.file(source).text();
+			const [integrity] = await Promise.all([
+				sha256(content),
+				Bun.write(`${PUBLIC_MODULES_DIR}/${basename}`, content),
+			]);
+			console.log(`Deployed ${basename} (integrity: ${integrity})`);
+			return Object.assign(module, { integrity });
+		}),
+	);
 
-		await Bun.write(`${PUBLIC_MODULES_DIR}/${basename}`, Bun.file(source));
-		console.log(`Copied ${source} -> docs/public/modules/${basename}`);
-	}
-
-	if (missing.length > 0)
-		console.warn(`Skipped ${missing.length} missing file(s): ${missing.join(', ')}`);
+	const result = deployed.filter((entry): entry is ModuleMeta => entry !== undefined);
+	await Bun.write(PUBLIC_MODULES_PATH, JSON.stringify(result));
+	console.log(`Wrote modules.json with ${result.length} module(s)`);
 }
 
 try {

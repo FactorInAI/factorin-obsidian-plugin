@@ -1,6 +1,6 @@
 import type { Hook } from 'synthkernel';
 import { render } from 'solid-js/web';
-import type { ModuleMeta } from '@/modules/Extensibility';
+import type { AugmentedModuleMeta } from '@/modules/Extensibility';
 import type { Translate } from '@/modules/I18n';
 import App from './App';
 
@@ -30,15 +30,15 @@ type ModuleManagementHooks = {
 };
 
 export type ModuleManagementContext = {
-	fetchSources: (cached?: boolean) => Promise<Array<ModuleMeta>>;
-	discoveredModules: Map<string, string>;
+	fetchSources: (manual?: boolean) => Promise<Array<AugmentedModuleMeta>>;
+	discoveredModules: Map<string, AugmentedModuleMeta>;
 	loadedModules: Map<string, unknown>;
-	settings: { modules: Record<string, boolean> };
-	saveSettings: () => Promise<void>;
-	downloadModule: (name: string, version: string, url: string) => Promise<void>;
-	deleteModule: (name: string) => Promise<void>;
-	loadModule: (name: string, start?: boolean) => Promise<void>;
-	unloadModule: (name: string) => void;
+	downloadModule: (meta: AugmentedModuleMeta) => Promise<void>;
+	deleteModule: (id: string) => Promise<void>;
+	loadModule: (meta: AugmentedModuleMeta, start?: boolean) => Promise<void>;
+	unloadModule: (id: string) => void;
+	enableModule: (id: string, load?: boolean) => Promise<void>;
+	disableModule: (id: string, unload?: boolean) => Promise<void>;
 	translate: Translate<ModuleManagementTranslations>;
 } & ModuleManagementHooks;
 

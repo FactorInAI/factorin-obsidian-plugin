@@ -6,7 +6,7 @@ const dev = process.env.MODE === 'dev';
 export default defineConfig({
 	clean: !dev,
 	dts: false,
-	entry: { Encryption: 'src/index.ts' },
+	entry: { encryption: 'src/index.ts' },
 	inputOptions: {
 		resolve: {
 			alias: {

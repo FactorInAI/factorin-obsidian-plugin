@@ -32,9 +32,11 @@ export default class ModulesModal extends Modal {
 			discoveredModules: Map<string, AugmentedModuleMeta>;
 			loadedModules: Map<string, unknown>;
 			downloadModule: (meta: AugmentedModuleMeta) => Promise<void>;
-			deleteModule: (name: string) => Promise<void>;
+			deleteModule: (id: string) => Promise<void>;
 			loadModule: (meta: AugmentedModuleMeta, start?: boolean) => Promise<void>;
-			unloadModule: (name: string) => void;
+			unloadModule: (id: string) => void;
+			enableModule: (id: string, load?: boolean) => Promise<void>;
+			disableModule: (id: string, unload?: boolean) => Promise<void>;
 		},
 	) {
 		super(ctx.app);

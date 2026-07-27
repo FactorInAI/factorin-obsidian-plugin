@@ -55,6 +55,7 @@ const zh: Translations = {
 	completed: '已完成',
 	completedNoop: '已是最新状态',
 	configurations: '配置',
+	configure: '配置',
 	confirm: '确认',
 	confirmDeleteDescription: '请确认将被删除的文件，未勾选的任务将会被重新上传。',
 	confirmDeleteInAutoSync: '自动同步时确认删除',
@@ -72,6 +73,7 @@ const zh: Translations = {
 	customHeaders: '自定义请求头',
 	customHeadersDescription:
 		'添加要随每次请求一起发送的自定义请求头，它们可以明文存储，也可以存储在 Obsidian keychain 中。',
+	delete: '删除',
 	deleteModule: '删除模块',
 	development: '开发',
 	diffMatchPatch: '合并',
@@ -104,6 +106,7 @@ const zh: Translations = {
 	headerKeyPlaceholder: '请求头键',
 	headerValuePlaceholder: '请求头值',
 	hide: '隐藏',
+	httpInsecureWarning: '请避免使用不安全的 HTTP 协议。',
 	inclusionRules: '包含规则',
 	inclusionRulesDescription: '匹配排除规则但同时也匹配这些 Glob 模式的文件 / 文件夹仍会被同步。',
 	installed: '已安装',
@@ -188,6 +191,13 @@ const zh: Translations = {
 	syncStrategy: '同步策略',
 	syncStrategyDescription: '选择用于解决文件更改的同步策略。更多策略可以在模块中找到。',
 	toggleWithoutMigration: '直接切换（不进行迁移）',
+	unknownModule: '未知模块',
+	unknownModuleDescription: (frag, { fileName, size, path, mtime, ctime }) => {
+		// TODO
+		const container = frag.createDiv(
+			'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2',
+		);
+	},
 	updateAvailable: '有可用更新',
 	updateModule: '更新模块',
 	upload: '上传',
