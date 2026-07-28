@@ -131,26 +131,29 @@ export default class ProgressModal extends Modal {
 	private readonly renderHideStop = () => {
 		if (!this.opening) return;
 		this.controls?.remove();
-		const setting = new Setting(this.contentEl);
-		this.controls = setting.settingEl;
-		setting
+		this.controls = new Setting(this.contentEl)
 			.addButton((button) => {
 				button
 					.setButtonText(this.t('stopSync'))
 					.setWarning()
-					.onClick(() => this.dispatch('syncCanceled'));
+					.onClick(() => {
+						this.dispatch('syncCanceled');
+						return new Promise<void>((resolve) => {
+							const unsub = this.ctx.on('syncTerminated', () => {
+								resolve();
+								unsub();
+							});
+						});
+					});
 			})
 			.addButton((button) =>
 				button.setButtonText(this.t('hide')).onClick(() => this.close()),
-			);
+			).settingEl;
 	};
 	private readonly renderConfirmCancel = (confirmCallback: () => void) => {
 		if (!this.opening) return;
 		this.controls?.remove();
-		const setting = new Setting(this.contentEl);
-		this.controls = setting.settingEl;
-		const cleanup = this.modalCleanupCallbacks.subscribe(() => this.dispatch('syncCanceled'));
-		setting
+		this.controls = new Setting(this.contentEl)
 			.addButton((button) => {
 				button
 					.setButtonText(this.t('cancel'))
@@ -166,20 +169,19 @@ export default class ProgressModal extends Modal {
 						confirmCallback();
 					})
 					.buttonEl.focus(),
-			);
+			).settingEl;
+		const cleanup = this.modalCleanupCallbacks.subscribe(() => this.dispatch('syncCanceled'));
 	};
 	private readonly renderDone = () => {
 		if (!this.opening) return;
 		this.controls?.remove();
-		const setting = new Setting(this.contentEl);
-		this.controls = setting.settingEl;
-		setting.addButton((button) =>
+		this.controls = new Setting(this.contentEl).addButton((button) =>
 			button
 				.setButtonText(this.t('done'))
 				.setCta()
 				.onClick(() => this.close())
 				.buttonEl.focus(),
-		);
+		).settingEl;
 	};
 
 	private readonly showDetails = () => {

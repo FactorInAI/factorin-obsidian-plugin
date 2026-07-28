@@ -2,18 +2,26 @@ import { setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import { Show, createEffect } from 'solid-js';
 import { compare } from 'verkit';
 import type { AugmentedModuleMeta } from '@/modules/Extensibility';
+import type { MaybePromise } from '@/types';
 import type { ModuleManagementContext, PendingAction } from './index';
+import ModuleEditorModal from '../ModuleEditorModal';
 
 export default function Card(props: {
 	ctx: Pick<
 		ModuleManagementContext,
-		'deleteModule' | 'disableModule' | 'downloadModule' | 'enableModule' | 'translate'
+		| 'deleteModule'
+		| 'disableModule'
+		| 'downloadModule'
+		| 'enableModule'
+		| 'translate'
+		| 'updateModuleMeta'
+		| 'app'
 	>;
 	installedMeta?: AugmentedModuleMeta;
 	isLoaded: boolean;
 	module: AugmentedModuleMeta;
 	pendingAction?: PendingAction;
-	runAction: (action: PendingAction, op: () => Promise<void>) => void;
+	runAction: (action: PendingAction, op: () => MaybePromise<void>) => void;
 }) {
 	const isInstalled = () => props.installedMeta !== undefined;
 	const hasUpdate = () =>
@@ -30,8 +38,11 @@ export default function Card(props: {
 	return (
 		<div class="flex min-h-40 flex-col gap-3 rounded-md border border-[--background-modifier-border] px-4 py-3 bg-[--background-primary-alt]">
 			<div class="flex items-start justify-between gap-3">
-				<div class="flex min-w-0 items-center gap-2 text-base font-semibold text-[--text-normal] break-words">
-					<span class="flex-shrink-0" ref={(el) => setIcon(el, props.module.icon)} />
+				<div class="flex min-w-0 text-base font-semibold text-[--text-normal] break-words">
+					<span
+						class="flex items-center mr-2"
+						ref={(el) => setIcon(el, props.module.icon)}
+					/>
 					{props.module.name}
 				</div>
 				<div class="flex-shrink-0 text-xs text-[--text-muted]">{versionLabel()}</div>
@@ -72,22 +83,37 @@ export default function Card(props: {
 								: props.ctx.translate('downloadModule')
 						}
 						onClick={() => {
-							props.runAction('download', async () => {
-								await props.ctx.downloadModule(props.module);
-							});
+							props.runAction('download', () =>
+								props.ctx.downloadModule(props.module),
+							);
 						}}
 					/>
 				</Show>
 				<Show when={isInstalled()}>
 					<ActionButton
 						disabled={busy()}
+						icon="pencil"
+						pending={props.pendingAction === 'editInfo'}
+						tooltip={props.ctx.translate('editModuleInformation')}
+						onClick={() => {
+							new ModuleEditorModal(props.ctx, {
+								initial: props.module,
+								onSave: (newMeta) =>
+									props.runAction('editInfo', () =>
+										props.ctx.updateModuleMeta(newMeta),
+									),
+							}).open();
+						}}
+					/>
+					<ActionButton
+						disabled={busy()}
 						icon="trash-2"
 						pending={props.pendingAction === 'delete'}
 						tooltip={props.ctx.translate('deleteModule')}
 						onClick={() => {
-							props.runAction('delete', async () => {
-								await props.ctx.deleteModule(props.module.id);
-							});
+							props.runAction('delete', () =>
+								props.ctx.deleteModule(props.module.id),
+							);
 						}}
 					/>
 					<EnableToggle
@@ -95,14 +121,14 @@ export default function Card(props: {
 						enabled={props.isLoaded}
 						translate={props.ctx.translate}
 						onEnable={() => {
-							props.runAction('enable', async () => {
-								await props.ctx.enableModule(props.module.id, true);
-							});
+							props.runAction('enable', () =>
+								props.ctx.enableModule(props.module.id),
+							);
 						}}
 						onDisable={() => {
-							props.runAction('disable', async () => {
-								await props.ctx.disableModule(props.module.id, true);
-							});
+							props.runAction('disable', () =>
+								props.ctx.disableModule(props.module.id),
+							);
 						}}
 					/>
 				</Show>
@@ -135,6 +161,7 @@ function EnableToggle(props: {
 
 	return (
 		<div
+			class="flex items-center"
 			ref={(el) => {
 				toggleEl = el;
 				toggle = new ToggleComponent(el)

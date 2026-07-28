@@ -87,8 +87,10 @@ const en: Translations = {
 	customHeaders: 'Custom headers',
 	customHeadersDescription:
 		'Add custom headers to be included with each request, they can either be stored in plaintext or in Obsidian keychain.',
-	delete: 'delete',
+	delete: 'Delete',
 	deleteModule: 'Delete module',
+	description: 'Description',
+	descriptionPlaceholder: 'This module is ...',
 	development: 'Development',
 	diffMatchPatch: 'Merge',
 	disableModule: 'Disable module',
@@ -98,7 +100,9 @@ const en: Translations = {
 	downloadModule: 'Download module',
 	edit: 'Edit',
 	editHeaders: 'Edit headers',
+	editModuleInformation: 'Edit module information',
 	editSources: 'Edit sources',
+	enable: 'Enable',
 	enableModule: 'Enable module',
 	enabled: 'Enabled',
 	exclusionRules: 'Exclusion rules',
@@ -121,11 +125,31 @@ const en: Translations = {
 	headerValuePlaceholder: 'Header value',
 	hide: 'Hide',
 	httpInsecureWarning: 'Please avoid using insecure HTTP protocol.',
+	icon: 'Icon',
+	iconDescription: (frag) => {
+		frag.appendText(
+			'Set the icon for this module to be displayed in the module management panel, full icons can be found in ',
+		);
+		frag.createEl('a', {
+			attr: { href: 'https://lucide.dev/icons/' },
+			text: 'Lucide Icons catalog',
+		});
+		frag.appendText('.');
+	},
+	iconPlaceholder: 'Enter Lucide Icons code (e.g. puzzle)',
 	inclusionRules: 'Inclusion rules',
 	inclusionRulesDescription:
 		'Files / folders matching exclusion rules but also matching these glob patterns will still be synced.',
 	installed: 'Installed',
-	invalidEntriesOmitted: 'Invalid entries were omitted.',
+	integrityVerification: 'Integrity verification',
+	integrityVerificationDescription: (frag) => {
+		frag.appendText(
+			"Set whether to pin the module's binary file to a specific hash, and verify the hash each time it is loaded. ",
+		);
+		frag.createEl('strong', {
+			text: 'It is strongly discouraged to turn off integrity verification, since it will expose you to a large attack surface.',
+		});
+	},
 	invalidValue: 'Invalid value, reverted to original.',
 	keepLocal: 'Keep local',
 	keepRemote: 'Keep remote',
@@ -163,6 +187,8 @@ const en: Translations = {
 	moduleSourcePlaceholder: 'https://example.com/modules.json',
 	moveLocal: 'Move local',
 	moveRemote: 'Move remote',
+	name: 'Name',
+	namePlaceholder: 'Enter module display name',
 	noInstalledModulesFound: 'No installed modules found.',
 	noMatchingModulesFound: 'No matching modules found.',
 	noModulesAvailable: 'No modules available.',
@@ -171,6 +197,7 @@ const en: Translations = {
 	noticeStatusOnMobile: 'Notice sync status on mobile',
 	noticeStatusOnMobileDescription:
 		'Display a notice on mobile devices when synchronization is in progress. Replaces the status bar on desktop.',
+	omittedInvalidEntry: 'Omitted {{count}} invalid entry(s).',
 	openPanel: 'Open panel',
 	realtimeSync: 'Realtime sync',
 	realtimeSyncDescription:
@@ -211,13 +238,47 @@ const en: Translations = {
 	toggleWithoutMigration: 'Toggle without migration',
 	unknownModule: 'Unknown module',
 	unknownModuleDescription: (frag, { fileName, size, path, mtime, ctime }) => {
-		// TODO
-		const container = frag.createDiv(
-			'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2',
+		const p1 = frag.createEl('p');
+		p1.appendText('Sync Engine detected an installed module named ');
+		p1.createEl('code', { text: fileName });
+		p1.appendText(
+			' in its module directory. This module is neither installed in Sync Engine module panel, nor registered anywhere to be exempt from provenance validation. ',
+		);
+		p1.createEl('strong', { text: 'Please review following information before proceeding:' });
+		const ul = frag
+			.createDiv(
+				'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] px-2',
+			)
+			.createEl('ul');
+		const li1 = ul.createEl('li');
+		li1.appendText('File name: ');
+		li1.createEl('code', { text: fileName });
+		const li2 = ul.createEl('li');
+		li2.appendText('File path: ');
+		li2.createEl('code', { text: path });
+		const li3 = ul.createEl('li');
+		li3.appendText('Size: ');
+		li3.createEl('code', { text: size });
+		const li4 = ul.createEl('li');
+		li4.appendText('Created at: ');
+		li4.createEl('code', { text: ctime });
+		const li5 = ul.createEl('li');
+		li5.appendText('Modified at: ');
+		li5.createEl('code', { text: mtime });
+		const p2 = frag.createEl('p');
+		p2.createEl('strong', {
+			text: 'Please avoid loading modules with unknown sources, as this could be a malicious attack.',
+		});
+		p2.appendText(
+			' If you do not know where does it come from, directly deleting it is the best option. If you control the module and it is intentional, you can choose "Configure" and enable it.',
 		);
 	},
 	updateAvailable: 'Update available',
 	updateModule: 'Update module',
+	updateSource: 'Update source',
+	updateSourceDescription:
+		'Set the module source from which this module receives updates. Leave empty to disable update.',
+	updateSourcePlaceholder: 'https://example.com/modules.json',
 	upload: 'Upload',
 	vaultRecordsCleared: 'Vault records cleared',
 	walkingRemote: 'Discovering remote files',

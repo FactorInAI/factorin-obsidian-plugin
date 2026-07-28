@@ -217,9 +217,14 @@ export default class Sync {
 				}),
 			);
 
-			terminateReason = failedCount
-				? { error: `Execution of ${failedCount} sync task(s) failed.`, result: 'failed' }
-				: { result: 'completed' };
+			terminateReason = cancelled
+				? { result: 'cancelled' }
+				: failedCount
+					? {
+							error: `Execution of ${failedCount} sync task(s) failed.`,
+							result: 'failed',
+						}
+					: { result: 'completed' };
 		} catch (error) {
 			terminateReason = cancelled
 				? { result: 'cancelled' }

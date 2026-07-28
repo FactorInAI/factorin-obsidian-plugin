@@ -2,10 +2,15 @@ import type { SearchResult } from 'obsidian';
 import { prepareFuzzySearch } from 'obsidian';
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import type { AugmentedModuleMeta } from '@/modules/Extensibility';
-import type { ModuleManagementContext, PendingAction } from './index';
+import type { MaybePromise } from '@/types';
+import type { ModuleManagementContext, ModuleManagementHooks, PendingAction } from './index';
 import Card from './Card';
 
-export default function App(props: { ctx: ModuleManagementContext; isUnmounted: () => boolean }) {
+export default function App(props: {
+	ctx: ModuleManagementContext;
+	hooks: ModuleManagementHooks;
+	isUnmounted: () => boolean;
+}) {
 	const t = props.ctx.translate;
 	const [sourceModules, setSourceModules] = createSignal<Array<AugmentedModuleMeta>>([]);
 	const [installedModules, setInstalledModules] = createSignal<
@@ -64,7 +69,7 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 			.map(({ module }) => module);
 	});
 
-	const runAction = async (id: string, action: PendingAction, op: () => Promise<void>) => {
+	const runAction = async (id: string, action: PendingAction, op: () => MaybePromise<void>) => {
 		if (props.isUnmounted()) return;
 		setPendingByName((current) => ({ ...current, [id]: action }));
 		try {
@@ -79,11 +84,13 @@ export default function App(props: { ctx: ModuleManagementContext; isUnmounted: 
 		}
 	};
 
-	const unsubscribeQuery = props.ctx.onQuery.subscribe((nextQuery) => setQuerySignal(nextQuery));
-	const unsubscribeShowInstalledOnly = props.ctx.onShowInstalledOnlyChange.subscribe((enabled) =>
-		setShowInstalledOnlySignal(enabled),
+	const unsubscribeQuery = props.hooks.onQuery.subscribe((nextQuery) =>
+		setQuerySignal(nextQuery),
 	);
-	const unsubscribeSourcesChange = props.ctx.onSourcesChange.subscribe(() => {
+	const unsubscribeShowInstalledOnly = props.hooks.onShowInstalledOnlyChange.subscribe(
+		(enabled) => setShowInstalledOnlySignal(enabled),
+	);
+	const unsubscribeSourcesChange = props.hooks.onSourcesChange.subscribe(() => {
 		void refreshSources();
 	});
 
@@ -167,8 +174,8 @@ function mergeModules(
 	installedModules: Record<string, AugmentedModuleMeta>,
 ): Array<AugmentedModuleMeta> {
 	const merged = new Map<string, AugmentedModuleMeta>();
-	for (const module of Object.values(installedModules)) merged.set(module.id, module);
 	for (const module of sourceModules) merged.set(module.id, module);
+	for (const module of Object.values(installedModules)) merged.set(module.id, module);
 	return [...merged.values()];
 }
 

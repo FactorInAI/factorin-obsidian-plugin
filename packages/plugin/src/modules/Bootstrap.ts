@@ -2,6 +2,7 @@ import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
 import type { DatabaseSync } from 'uni-kv';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
+import type { ModuleEditorTranslations } from '@/components/ModuleEditorModal';
 import type { UnknownModuleTranslations } from '@/components/UnknownModuleModal';
 import type { BatchOptimizer, MemoryControlSharedState } from '@/fs';
 import type { ControlsSettingTranslations } from '@/settings/controls';
@@ -85,7 +86,8 @@ export default class Bootstrap {
 		HeadSettingTranslations &
 		MiscellaneousSettingTranslations &
 		HeadersEditorTranslations &
-		UnknownModuleTranslations;
+		UnknownModuleTranslations &
+		ModuleEditorTranslations;
 	declare readonly settings: {
 		maxMemoryConsumption: TogglableValue;
 		maxRequestConcurrency: TogglableValue;
@@ -157,7 +159,7 @@ export default class Bootstrap {
 					const entries = memoryDB
 						.getStore('remoteContext20000')
 						.entries()
-						.map(([, stat]): Stat => stat);
+						.map(([, stat]) => stat);
 					if (entries.length) return entries;
 				}
 			},

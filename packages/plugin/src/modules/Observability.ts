@@ -153,6 +153,8 @@ export default class Observability {
 					this.syncStage('failed');
 					new Notice(`${this.t('failed')}: ${reason.error}`);
 				}
+				this.walkProgress({ completed: 0, total: 1 });
+				this.executionProgress({ completed: 0, total: 0 });
 			}),
 			this.progressText.subscribe((text) => {
 				status.setText(text);

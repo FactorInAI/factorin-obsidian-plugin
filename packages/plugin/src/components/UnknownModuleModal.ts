@@ -2,9 +2,11 @@ import { basename } from '@repo/shared/path';
 import { App, Modal, Setting } from 'obsidian';
 import type { Fragment, Translate } from '@/modules/I18n';
 import type { AugmentedModuleMeta, MaybePromise } from '@/sdk';
+import formatDateTime from '@/utils/format-date';
+import { formatFileSize } from '@/utils/unit-converter';
 import ModuleEditorModal from './ModuleEditorModal';
 
-type FileInfo = { path: string; size: number; mtime: number; ctime: number; fileName: string };
+type FileInfo = { path: string; size: string; mtime: string; ctime: string; fileName: string };
 
 export type UnknownModuleTranslations = {
 	unknownModule: string;
@@ -33,8 +35,9 @@ export default class UnknownModuleModal extends Modal {
 		this.setTitle(translate('unknownModule'));
 		this.contentEl.addClass('markdown-rendered');
 
+		const content = this.contentEl.createDiv();
 		if (this.cachedInfo)
-			this.contentEl.appendChild(translate('unknownModuleDescription', this.cachedInfo));
+			content.appendChild(translate('unknownModuleDescription', this.cachedInfo));
 		else
 			void app.vault.adapter.stat(path).then((stat) => {
 				if (!stat) {
@@ -42,12 +45,39 @@ export default class UnknownModuleModal extends Modal {
 					return;
 				}
 				const { ctime, mtime, size } = stat;
-				const fileInfo: FileInfo = { ctime, fileName: basename(path), mtime, path, size };
+				const fileInfo: FileInfo = {
+					ctime: formatDateTime(ctime),
+					fileName: basename(path),
+					mtime: formatDateTime(mtime),
+					path,
+					size: formatFileSize(size),
+				};
 				this.cachedInfo = fileInfo;
-				this.contentEl.appendChild(translate('unknownModuleDescription', fileInfo));
+				content.appendChild(translate('unknownModuleDescription', fileInfo));
 			});
 
 		new Setting(this.contentEl)
+			.addButton((button) =>
+				button.setButtonText(translate('configure')).onClick(() => {
+					new ModuleEditorModal(this.ctx, {
+						getFile: () => app.vault.adapter.read(path),
+						initial: {
+							description: '',
+							enabled: false,
+							icon: 'puzzle',
+							id,
+							integrity: '<placeholder>',
+							main: '',
+							name: 'Unknown Module',
+							source: '',
+							version: '0.0.1',
+						},
+						onCancel: () => this.open(),
+						onSave,
+					}).open();
+					this.close();
+				}),
+			)
 			.addButton((button) =>
 				button
 					.setButtonText(translate('delete'))
@@ -55,30 +85,6 @@ export default class UnknownModuleModal extends Modal {
 					.setCta()
 					.onClick(async () => {
 						await app.vault.adapter.remove(path);
-						this.close();
-					}),
-			)
-			.addButton((button) =>
-				button
-					.setButtonText(translate('configure'))
-					.setIcon('wrench')
-					.onClick(() => {
-						new ModuleEditorModal(app, {
-							getFile: () => app.vault.adapter.read(path),
-							initial: {
-								description: '',
-								enabled: false,
-								icon: 'puzzle',
-								id,
-								integrity: '<placeholder>',
-								main: '',
-								name: 'Unknown Module',
-								source: '',
-								version: '0.0.1',
-							},
-							onCancel: () => this.open(),
-							onSave,
-						}).open();
 						this.close();
 					}),
 			);

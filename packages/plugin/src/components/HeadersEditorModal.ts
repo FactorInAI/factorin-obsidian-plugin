@@ -12,7 +12,7 @@ export type HeadersEditorTranslations = {
 	editHeaders: string;
 	headerKeyPlaceholder: string;
 	headerValuePlaceholder: string;
-	invalidEntriesOmitted: string;
+	omittedInvalidEntry: string;
 };
 
 export default class HeadersEditorModal extends Modal {
@@ -103,22 +103,27 @@ export default class HeadersEditorModal extends Modal {
 
 		new Setting(contentEl)
 			.addButton((button) => {
+				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
+			})
+			.addButton((button) => {
 				button
 					.setButtonText(t('save'))
 					.setCta()
 					.onClick(() => {
-						const validHeaders = headers.flatMap((header) => {
-							if (!header.key.trim()) return [];
-							return header;
+						const validHeaders: CustomHeaders = [];
+						headers.forEach((header) => {
+							if (!header.key.trim()) return;
+							validHeaders.push(header);
 						});
 						this.onSave(validHeaders);
 						if (validHeaders.length !== headers.length)
-							new Notice(t('invalidEntriesOmitted'));
+							new Notice(
+								t('omittedInvalidEntry', {
+									count: headers.length - validHeaders.length,
+								}),
+							);
 						this.close();
 					});
-			})
-			.addButton((button) => {
-				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
 			});
 	}
 

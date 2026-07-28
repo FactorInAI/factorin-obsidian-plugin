@@ -75,6 +75,8 @@ const zh: Translations = {
 		'添加要随每次请求一起发送的自定义请求头，它们可以明文存储，也可以存储在 Obsidian keychain 中。',
 	delete: '删除',
 	deleteModule: '删除模块',
+	description: '描述',
+	descriptionPlaceholder: '此模块是…',
 	development: '开发',
 	diffMatchPatch: '合并',
 	disableModule: '禁用模块',
@@ -84,7 +86,9 @@ const zh: Translations = {
 	downloadModule: '下载模块',
 	edit: '编辑',
 	editHeaders: '编辑请求头',
+	editModuleInformation: '编辑模块信息',
 	editSources: '编辑源',
+	enable: '启用',
 	enableModule: '启用模块',
 	enabled: '已启用',
 	exclusionRules: '排除规则',
@@ -107,10 +111,26 @@ const zh: Translations = {
 	headerValuePlaceholder: '请求头值',
 	hide: '隐藏',
 	httpInsecureWarning: '请避免使用不安全的 HTTP 协议。',
+	icon: '图标',
+	iconDescription: (frag) => {
+		frag.appendText('设置此模块在模块管理面板中显示的图标，完整图标可在 ');
+		frag.createEl('a', {
+			attr: { href: 'https://lucide.dev/icons/' },
+			text: 'Lucide 图标目录',
+		});
+		frag.appendText(' 中找到。');
+	},
+	iconPlaceholder: '输入 Lucide 图标代码（例如 puzzle）',
 	inclusionRules: '包含规则',
 	inclusionRulesDescription: '匹配排除规则但同时也匹配这些 Glob 模式的文件 / 文件夹仍会被同步。',
 	installed: '已安装',
-	invalidEntriesOmitted: '已忽略无效条目。',
+	integrityVerification: '完整性验证',
+	integrityVerificationDescription: (frag) => {
+		frag.appendText('设置是否将模块的二进制文件固定到特定哈希值，并在每次加载时验证该哈希值。');
+		frag.createEl('strong', {
+			text: '强烈不建议关闭完整性验证，因为这会使您暴露于巨大的攻击面。',
+		});
+	},
 	invalidValue: '无效值，已恢复为原始值。',
 	keepLocal: '保留本地',
 	keepRemote: '保留远程',
@@ -148,6 +168,8 @@ const zh: Translations = {
 	moduleSourcePlaceholder: 'https://example.com/modules.json',
 	moveLocal: '移动本地',
 	moveRemote: '移动远程',
+	name: '名称',
+	namePlaceholder: '输入模块显示名称',
 	noInstalledModulesFound: '未找到已安装的模块。',
 	noMatchingModulesFound: '未找到匹配的模块。',
 	noModulesAvailable: '没有可用模块。',
@@ -156,6 +178,7 @@ const zh: Translations = {
 	noticeStatusOnMobile: '移动端同步状态提示',
 	noticeStatusOnMobileDescription:
 		'同步进行时在移动设备上显示通知提示。在桌面端则会替换状态栏显示。',
+	omittedInvalidEntry: '已忽略 {{count}} 条无效条目。',
 	openPanel: '打开面板',
 	realtimeSync: '实时同步',
 	realtimeSyncDescription:
@@ -193,16 +216,49 @@ const zh: Translations = {
 	toggleWithoutMigration: '直接切换（不进行迁移）',
 	unknownModule: '未知模块',
 	unknownModuleDescription: (frag, { fileName, size, path, mtime, ctime }) => {
-		// TODO
-		const container = frag.createDiv(
-			'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] p-2',
+		const p1 = frag.createEl('p');
+		p1.appendText('Sync Engine 在其模块目录中检测到一个名为 ');
+		p1.createEl('code', { text: fileName });
+		p1.appendText(
+			' 的已安装模块。该模块既未安装在 Sync Engine 模块面板中，也未在任何地方注册以豁免出处验证。',
+		);
+		p1.createEl('strong', { text: '在继续操作之前，请核对以下信息：' });
+		const ul = frag
+			.createDiv(
+				'rounded-lg border border-[--background-modifier-border] bg-[--background-secondary] px-2',
+			)
+			.createEl('ul');
+		const li1 = ul.createEl('li');
+		li1.appendText('文件名：');
+		li1.createEl('code', { text: fileName });
+		const li2 = ul.createEl('li');
+		li2.appendText('文件路径：');
+		li2.createEl('code', { text: path });
+		const li3 = ul.createEl('li');
+		li3.appendText('大小：');
+		li3.createEl('code', { text: size });
+		const li4 = ul.createEl('li');
+		li4.appendText('创建时间：');
+		li4.createEl('code', { text: ctime });
+		const li5 = ul.createEl('li');
+		li5.appendText('修改时间：');
+		li5.createEl('code', { text: mtime });
+		const p2 = frag.createEl('p');
+		p2.createEl('strong', {
+			text: '请避免加载来源不明的模块，因为这可能是一种恶意攻击。',
+		});
+		p2.appendText(
+			'如果您不知道它来自何处，直接删除是最佳选择。如果您了解该模块且此操作符合预期，您可以选择"配置"并启用它。',
 		);
 	},
 	updateAvailable: '有可用更新',
 	updateModule: '更新模块',
+	updateSource: '更新源',
+	updateSourceDescription: '设置此模块接收更新的模块源。留空以禁用更新。',
+	updateSourcePlaceholder: 'https://example.com/modules.json',
 	upload: '上传',
 	vaultRecordsCleared: '库记录已清除',
-	walkingRemote: '正在正在探测远程文件',
+	walkingRemote: '正在探测远程文件',
 };
 
 export default zh;

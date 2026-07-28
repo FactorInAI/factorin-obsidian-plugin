@@ -1,3 +1,4 @@
+import { normalizeUrl } from '@repo/shared/path';
 import { App, Modal, Notice, setIcon, Setting, setTooltip } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
 
@@ -5,7 +6,7 @@ export type SourceEditorTranslations = {
 	add: string;
 	cancel: string;
 	editSources: string;
-	invalidEntriesOmitted: string;
+	omittedInvalidEntry: string;
 	moduleSourcePlaceholder: string;
 	remove: string;
 	save: string;
@@ -76,27 +77,31 @@ export default class SourceEditorModal extends Modal {
 
 		new Setting(contentEl)
 			.addButton((button) => {
+				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
+			})
+			.addButton((button) => {
 				button
 					.setButtonText(t('save'))
 					.setCta()
 					.onClick(() => {
-						const validSources = sources.flatMap((source) => {
-							const trimmedSource = source.trim();
-							if (
-								!trimmedSource ||
-								!isValidModuleSource(trimmedSource, t('httpInsecureWarning'))
-							)
-								return [];
-							return trimmedSource;
+						const validSources: Array<string> = [];
+						sources.forEach((source) => {
+							const normalizedSource = processSource(
+								source,
+								t('httpInsecureWarning'),
+							);
+							if (!normalizedSource) return;
+							validSources.push(normalizedSource);
 						});
 						this.onSave(validSources);
 						if (validSources.length !== sources.length)
-							new Notice(t('invalidEntriesOmitted'));
+							new Notice(
+								t('omittedInvalidEntry', {
+									count: sources.length - validSources.length,
+								}),
+							);
 						this.close();
 					});
-			})
-			.addButton((button) => {
-				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
 			});
 	}
 
@@ -106,11 +111,12 @@ export default class SourceEditorModal extends Modal {
 	}
 }
 
-function isValidModuleSource(source: string, warning: string): boolean {
+function processSource(source: string, warning: string): string | false {
 	try {
 		const { protocol } = new URL(source);
 		if (protocol === 'http:') new Notice(warning);
-		return protocol === 'http:' || protocol === 'https:';
+		if (protocol !== 'http:' && protocol !== 'https:') return false;
+		return normalizeUrl(source);
 	} catch {
 		return false;
 	}

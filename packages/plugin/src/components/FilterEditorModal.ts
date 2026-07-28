@@ -101,6 +101,9 @@ export default class FilterEditorModal extends Modal {
 
 		new Setting(contentEl)
 			.addButton((button) => {
+				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
+			})
+			.addButton((button) => {
 				button
 					.setButtonText(t('save'))
 					.setCta()
@@ -108,9 +111,6 @@ export default class FilterEditorModal extends Modal {
 						this.onSave(filters);
 						this.close();
 					});
-			})
-			.addButton((button) => {
-				button.setButtonText(t('cancel')).onClick(this.close.bind(this));
 			});
 	}
 

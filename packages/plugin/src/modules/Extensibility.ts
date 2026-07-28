@@ -80,7 +80,7 @@ export default class Extensibility {
 	) {
 		this.moduleDir = `${ctx.app.vault.configDir}/plugins/sync-engine/modules`;
 		(window as General).syncEngineApiBridge = obsidian;
-		this.moduleStore = ctx.indexedDB.getStore(`module-${hash(ctx.app.vault.getName())}`);
+		this.moduleStore = ctx.indexedDB.getStore(`modules-${hash(ctx.app.vault.getName())}`);
 	}
 
 	readonly start = () => {
@@ -141,7 +141,7 @@ export default class Extensibility {
 			if (path.endsWith(MODULE_EXTENSION)) foundModules.add(this.parseModulePath(path));
 			else factory.delete(path);
 		});
-		for (const id of new Set(...foundModules, ...recordedModules.keys())) {
+		for (const id of new Set([...foundModules, ...recordedModules.keys()])) {
 			const meta = recordedModules.get(id);
 			if (!foundModules.has(id)) factory.store({ key: id, type: 'delete' });
 			else if (!meta)
@@ -165,18 +165,20 @@ export default class Extensibility {
 	};
 
 	private readonly loadModule = async (
-		{ id, integrity, name }: AugmentedModuleMeta,
+		meta: AugmentedModuleMeta,
 		start = false,
 		module?: string,
 	) => {
+		const { id, integrity, name, enabled } = meta;
 		if (this.loadedModules.get(id)) return;
 		const { dispatch, translate, app, __addModule__, __getModule__, allModules, saveSettings } =
 			this.ctx;
+		const { adapter } = app.vault;
 		try {
 			const ctor = await loadModule({
+				adapter,
 				integrity,
-				module,
-				path: app.vault.adapter.getResourcePath(this.getModulePath(id)),
+				...(module ? { module } : { path: this.getModulePath(id) }),
 			});
 			__addModule__(ctor);
 			const instance: ModuleInstance = __getModule__(ctor);
@@ -192,6 +194,14 @@ export default class Extensibility {
 			this.loadedModules.set(id, ctor);
 			dispatch('moduleLoaded', id);
 		} catch (error) {
+			if (enabled) {
+				const discoveredMeta = this.discoveredModules.get(id);
+				if (discoveredMeta)
+					void this.moduleStore.set(
+						id,
+						Object.assign(discoveredMeta, { enabled: false }),
+					);
+			}
 			const message = toErrorMessage(error);
 			dispatch('errorGeneral', `Module \`${id}\` failed to load: ${message}`);
 			new Notice(`${translate('failedToLoadModule', { name })}: ${message}`);
@@ -240,13 +250,13 @@ export default class Extensibility {
 		if (setBusy) isIdle(true);
 	};
 
-	private readonly deleteModule = async (name: string) => {
-		const version = this.discoveredModules.get(name);
+	private readonly deleteModule = async (id: string) => {
+		const version = this.discoveredModules.get(id);
 		if (!version) return;
-		this.unloadModule(name);
-		await this.ctx.app.vault.adapter.remove(this.getModulePath(name));
-		this.discoveredModules.delete(name);
-		delete this.settings.modules[name];
+		this.unloadModule(id);
+		await this.ctx.app.vault.adapter.remove(this.getModulePath(id));
+		this.discoveredModules.delete(id);
+		void this.moduleStore.delete(id);
 		void this.ctx.saveSettings();
 	};
 
@@ -316,20 +326,28 @@ export default class Extensibility {
 		isIdle(true);
 	};
 
-	private readonly enableModule = async (id: string, load = false) => {
-		const meta = await this.moduleStore.get(id);
-		if (!meta || meta.enabled) return;
-		await Promise.all([
-			this.moduleStore.set(id, Object.assign(meta, { enabled: true })),
-			load ? this.loadModule(meta, true) : Promise.resolve(),
-		]);
+	private readonly updateModuleMeta = async (meta: AugmentedModuleMeta) => {
+		const existing = this.discoveredModules.get(meta.id);
+		if (!existing) return;
+		this.discoveredModules.set(meta.id, meta);
+		await this.moduleStore.set(meta.id, meta);
+		if (existing.enabled === meta.enabled) return;
+		if (meta.enabled) await this.loadModule(meta, true);
+		else this.unloadModule(meta.id);
 	};
 
-	private readonly disableModule = async (id: string, unload = false) => {
-		const meta = await this.moduleStore.get(id);
+	private readonly enableModule = async (id: string) => {
+		const meta = this.discoveredModules.get(id);
+		if (!meta || meta.enabled) return;
+		await this.moduleStore.set(id, Object.assign(meta, { enabled: true }));
+		await this.loadModule(meta, true);
+	};
+
+	private readonly disableModule = (id: string) => {
+		const meta = this.discoveredModules.get(id);
 		if (!meta || !meta.enabled) return;
-		if (unload) this.unloadModule(id);
-		await this.moduleStore.set(id, Object.assign(meta, { enabled: false }));
+		this.unloadModule(id);
+		void this.moduleStore.set(id, Object.assign(meta, { enabled: false }));
 	};
 
 	private readonly getModulePath = (id: string) => `${this.moduleDir}/${id}${MODULE_EXTENSION}`;
@@ -354,6 +372,7 @@ export default class Extensibility {
 		loadModule: this.loadModule,
 		loadedModules: this.loadedModules,
 		unloadModule: this.unloadModule,
+		updateModuleMeta: this.updateModuleMeta,
 		updateModules: this.updateModules,
 	};
 }
@@ -372,7 +391,7 @@ function isValidMeta(meta: unknown): meta is ModuleMeta {
 		return requiredFields.every((field) => typeof (item as never)[field] === 'string');
 	};
 	if (!isMetaShape(meta)) return false;
-	return !/[<>:"/\\|?*]/.test(meta.id) && meta.integrity !== '';
+	return !/[<>:"/\\|?*]/.test(meta.id) && meta.integrity.length === 64;
 }
 
 // TODO: remove after August 12
@@ -435,7 +454,9 @@ async function migrateModules({
 					version,
 				},
 			});
-			settings.modules[id] = legacySettings[id];
+			settings.modules[id] = legacySettings[name];
+			delete legacySettings[name];
+			delete settings.modules[name];
 			operations.push(
 				() => adapter.remove(path),
 				() => adapter.write(getModulePath(id), file),

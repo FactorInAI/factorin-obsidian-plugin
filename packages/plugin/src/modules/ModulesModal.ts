@@ -35,8 +35,9 @@ export default class ModulesModal extends Modal {
 			deleteModule: (id: string) => Promise<void>;
 			loadModule: (meta: AugmentedModuleMeta, start?: boolean) => Promise<void>;
 			unloadModule: (id: string) => void;
-			enableModule: (id: string, load?: boolean) => Promise<void>;
-			disableModule: (id: string, unload?: boolean) => Promise<void>;
+			enableModule: (id: string) => Promise<void>;
+			disableModule: (id: string) => void;
+			updateModuleMeta: (meta: AugmentedModuleMeta) => Promise<void>;
 		},
 	) {
 		super(ctx.app);
@@ -102,8 +103,7 @@ export default class ModulesModal extends Modal {
 		});
 
 		this.modalCleanup.push(
-			mountModuleManagementList(listEl, {
-				...this.ctx,
+			mountModuleManagementList(listEl, this.ctx, {
 				onQuery,
 				onShowInstalledOnlyChange,
 				onSourcesChange,
