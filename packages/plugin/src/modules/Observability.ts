@@ -104,7 +104,7 @@ export default class Observability {
 				window.clearInterval(updateInterval);
 				this.sinceLastSyncText('');
 				if (this.settings.noticeStatusOnMobile && Platform.isMobile)
-					mobileSyncNotice = new Notice(this.progressText());
+					mobileSyncNotice = new Notice(this.progressText(), 0);
 			}),
 			ctx.on('requestConfirmDelete', () => this.syncStage('awaitingConfirmation')),
 			ctx.on('requestConfirmTasks', () => this.syncStage('awaitingConfirmation')),
