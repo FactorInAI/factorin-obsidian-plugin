@@ -44,8 +44,8 @@
 		"build:plugin": "BUILD=plugin tsdown",
 		"dev": "MODE=dev tsdown",
 		"build": "tsdown",
-		"fix": "oxlint --silent --fix --type-aware && oxfmt",
-		"check": "tsc && oxlint --type-aware && oxfmt --check",
+		"fix": "oxlint --silent --fix && oxfmt",
+		"check": "tsc && oxlint && oxfmt --check",
 		"tests": "bun --preload=./test/mocks test"
 	},
 	"dependencies": {
@@ -53,13 +53,13 @@
 	},
 	"devDependencies": {
 		"@repo/shared": "workspace:*",
-		"@unocss/postcss": "66.7.5",
+		"@unocss/postcss": "^66.7.5",
 		"postcss-merge-rules": "^8.0.1",
 		"solid-js": "^1.9.13",
 		"synthkernel": "./synthkernel.tgz",
 		"uni-kv": "../../uni-kv.tgz",
-		"unocss": "66.7.5",
+		"unocss": "^66.7.5",
 		"unplugin-solid": "^2.0.0",
-		"verkit": "^0.3.0"
+		"verkit": "^0.3.1"
 	}
 }

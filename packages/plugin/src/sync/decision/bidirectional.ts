@@ -287,13 +287,13 @@ export default function bidirectionalDecider(input: DeciderInput): Array<BaseTas
 				);
 			},
 			REMOTE_FILE_PULL: () => {
-				if (!remote.isDir) return;
+				if (remote.isDir) return;
 				logger(
 					`Decider: replace local directory \`${key}\` with remote file, reason: remote changed, local exists.`,
 				);
 				tasks.push(
 					taskFactory('removeLocal', { key, local }),
-					taskFactory('createLocalDir', { key, remote }),
+					taskFactory('download', { key, remote }),
 				);
 			},
 		};

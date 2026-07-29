@@ -7,10 +7,10 @@ hero:
   actions:
     - theme: brand
       text: What's Sync Engine
-      link: /whats-sync-engine
+      link: /usage/whats-sync-engine
     - theme: alt
       text: Develop a Module
-      link: /develop-a-module
+      link: /development/develop-a-module
     - theme: alt
       text: View on GitHub →
       link: https://github.com/hesprs/sync-engine

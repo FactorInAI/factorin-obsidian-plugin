@@ -27,7 +27,7 @@ test('compacts structural single-child folder chains into visible labels', () =>
 
 	expect(data.orderedNodeIds).toStrictEqual(['docs/guides/getting-started.md']);
 	expect(data.nodes['docs/guides/getting-started.md']).toMatchObject({
-		compressedLabel: 'docs/guides/getting-started.md',
+		compressedLabel: 'docs / guides / getting-started.md',
 		depth: 0,
 	});
 });

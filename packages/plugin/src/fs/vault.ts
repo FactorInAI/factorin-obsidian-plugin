@@ -8,6 +8,7 @@ import type { Fs, ListReporter, RootFs } from './interface';
 // Wait for the completion of file enumeration: https://forum-zh.obsidian.md/t/topic/58894
 let canUseCache = false;
 window.setTimeout(() => (canUseCache = true), 5000);
+const TEMP_FOLDER = '.trash';
 
 function toKey(vaultPath: string, isDir: boolean): string {
 	if (vaultPath === '/') return '/';
@@ -67,16 +68,18 @@ export default class VaultFs implements RootFs {
 
 	async writeStream(key: string, value: ReadableStream<Binary>): Promise<string> {
 		const nativePath = toVaultPath(key);
-		const tempPath = `.trash/${crypto.randomUUID()}.part`;
+		const tempPath = `${TEMP_FOLDER}/${crypto.randomUUID()}.part`;
 		const reader = value.getReader();
+		const { adapter } = this.vault;
+		if (!(await adapter.exists(TEMP_FOLDER))) await adapter.mkdir(TEMP_FOLDER);
 		try {
 			while (true) {
 				const result = await reader.read();
 				if (result.done) break;
-				await this.vault.adapter.appendBinary(tempPath, toArrayBuffer(result.value));
+				await adapter.appendBinary(tempPath, toArrayBuffer(result.value));
 			}
 			await removeVaultFileIfExists(this.vault, nativePath);
-			await this.vault.adapter.rename(tempPath, nativePath);
+			await adapter.rename(tempPath, nativePath);
 			return getFileUid(this, key);
 		} catch (error) {
 			await reader.cancel().catch(() => {});

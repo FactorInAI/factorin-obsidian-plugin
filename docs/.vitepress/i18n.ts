@@ -9,7 +9,6 @@ const en = {
 	devOps: 'DevOps',
 	developAModule: 'Develop a Module',
 	development: 'Development',
-	documentation: 'Documentation',
 	fileSystem: 'File System',
 	folder: '',
 	home: 'Home',
@@ -20,6 +19,7 @@ const en = {
 	nativeName: 'English',
 	runtimeApi: 'Runtime API',
 	sideDescription: 'Next-generation syncing plugin for Obsidian.',
+	usage: 'Usage',
 	whatsSyncEngine: "What's Sync Engine",
 };
 

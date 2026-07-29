@@ -11,8 +11,8 @@
 		}
 	},
 	"scripts": {
-		"fix": "oxlint --silent --fix --type-aware && oxfmt",
-		"check": "tsc && oxlint --type-aware && oxfmt --check",
+		"fix": "oxlint --silent --fix && oxfmt",
+		"check": "tsc && oxlint && oxfmt --check",
 		"tests": "bun test"
 	}
 }

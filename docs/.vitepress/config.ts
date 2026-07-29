@@ -32,32 +32,43 @@ const localeConfig = configGenerator<ThemeConfig>((t) => ({
 		nav: [
 			{ link: `${t('folder')}/`, text: t('home') },
 			{
-				activeMatch: '/.+',
-				link: `${t('folder')}/whats-sync-engine`,
-				text: t('documentation'),
-			},
-		],
-		sidebar: [
-			{
-				items: [
-					{ link: `${t('folder')}/whats-sync-engine`, text: t('whatsSyncEngine') },
-					{ link: `${t('folder')}/modules`, text: t('modules') },
-					{ link: `${t('folder')}/benchmark`, text: t('benchmark') },
-					{ link: `${t('folder')}/asymmetric-storage`, text: t('asymmetricStorage') },
-				],
-				text: t('introduction'),
+				activeMatch: `${t('folder')}/usage/.+`,
+				link: `${t('folder')}/usage/whats-sync-engine`,
+				text: t('usage'),
 			},
 			{
-				items: [
-					{ link: `${t('folder')}/develop-a-module`, text: t('developAModule') },
-					{ link: `${t('folder')}/file-system`, text: t('fileSystem') },
-					{ link: `${t('folder')}/runtime-api`, text: t('runtimeApi') },
-					{ link: `${t('folder')}/devops`, text: t('devOps') },
-					{ link: `${t('folder')}/contributing`, text: t('contributing') },
-				],
+				activeMatch: `${t('folder')}/development/.+`,
+				link: `${t('folder')}/development/develop-a-module`,
 				text: t('development'),
 			},
 		],
+		sidebar: {
+			[`${t('folder')}/usage/`]: {
+				items: [
+					{ link: `${t('folder')}/usage/whats-sync-engine`, text: t('whatsSyncEngine') },
+					{ link: `${t('folder')}/usage/modules`, text: t('modules') },
+					{ link: `${t('folder')}/usage/benchmark`, text: t('benchmark') },
+					{
+						link: `${t('folder')}/usage/asymmetric-storage`,
+						text: t('asymmetricStorage'),
+					},
+				],
+				text: t('introduction'),
+			},
+			[`${t('folder')}/development/`]: {
+				items: [
+					{
+						link: `${t('folder')}/development/develop-a-module`,
+						text: t('developAModule'),
+					},
+					{ link: `${t('folder')}/development/file-system`, text: t('fileSystem') },
+					{ link: `${t('folder')}/development/runtime-api`, text: t('runtimeApi') },
+					{ link: `${t('folder')}/development/devops`, text: t('devOps') },
+					{ link: `${t('folder')}/development/contributing`, text: t('contributing') },
+				],
+				text: t('development'),
+			},
+		},
 	},
 	title: 'Sync Engine',
 }));

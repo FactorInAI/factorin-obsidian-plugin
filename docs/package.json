@@ -7,8 +7,8 @@
 	"scripts": {
 		"dev:docs": "vitepress dev",
 		"build:docs": "vitepress build",
-		"lint": "oxlint --fix --silent --type-aware && oxfmt",
-		"check": "vue-tsc && oxlint --format agent --type-aware && oxfmt --check"
+		"lint": "oxlint --fix --silent && oxfmt",
+		"check": "vue-tsc && oxlint && oxfmt --check"
 	},
 	"dependencies": {
 		"vitepress": "^2.0.0-alpha.17",

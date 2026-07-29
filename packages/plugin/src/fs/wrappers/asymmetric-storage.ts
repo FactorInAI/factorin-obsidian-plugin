@@ -152,22 +152,24 @@ class AsymmetricStorageFs implements WrappedFs {
 		const stats = await this.original.list(this.flattenKey(key), () => 'include');
 		const seen = new Set<string>();
 		const result: Array<Stat> = [];
-		stats.forEach(async (stat, index) => {
-			const inflated = this.inflateStat(stat);
-			if (
-				!inflated ||
-				!isDescendantOrSelf(inflated.key, key) ||
-				seen.has(inflated.key) ||
-				(await reporter({
-					completed: index + 1,
-					current: inflated.key,
-					total: stats.length,
-				})) === 'exclude'
-			)
-				return;
-			seen.add(inflated.key);
-			result.push(inflated);
-		});
+		await Promise.all(
+			stats.map(async (stat, index) => {
+				const inflated = this.inflateStat(stat);
+				if (
+					!inflated ||
+					!isDescendantOrSelf(inflated.key, key) ||
+					seen.has(inflated.key) ||
+					(await reporter({
+						completed: index + 1,
+						current: inflated.key,
+						total: stats.length,
+					})) === 'exclude'
+				)
+					return;
+				seen.add(inflated.key);
+				result.push(inflated);
+			}),
+		);
 		return result;
 	}
 
