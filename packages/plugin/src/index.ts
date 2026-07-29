@@ -4,7 +4,7 @@ import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
 import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
 import type { AddRibbonIcon } from './modules/Observability';
-import type { GlobMatchOptions } from './types';
+import type { GlobMatchRule } from './types';
 import Bootstrap from './modules/Bootstrap';
 import EventBus from './modules/EventBus';
 import Extensibility from './modules/Extensibility';
@@ -18,12 +18,7 @@ import Storage from './modules/Storage';
 import Sync from './modules/Sync';
 
 function createGlobMatchOptions(expr: string) {
-	return {
-		expr,
-		options: {
-			caseSensitive: false,
-		},
-	} satisfies GlobMatchOptions;
+	return { caseSensitive: false, expr };
 }
 
 const internalModules = [
@@ -106,6 +101,9 @@ export default class SyncEngine extends Plugin {
 			startupSync: { enabled: false, value: 5000 },
 		};
 		Object.assign(settings, await this.loadData());
+
+		migrateGlobMatchRules(settings);
+
 		// https://github.com/microsoft/TypeScript/issues/62995
 		const preMerge = {
 			addCommand: this.addCommand.bind(this),
@@ -140,4 +138,17 @@ export default class SyncEngine extends Plugin {
 	}
 
 	readonly saveSettings = async () => await this.saveData(this.settings);
+}
+
+// TODO: remove after August 20
+function migrateGlobMatchRules(settings: Settings) {
+	const { inclusionRules, exclusionRules } = settings;
+	const migrateRules = (rules: Array<GlobMatchRule>) =>
+		rules.forEach((rule) => {
+			if (!('options' in rule)) return;
+			rule.caseSensitive = (rule.options as { caseSensitive: boolean }).caseSensitive;
+			delete rule.options;
+		});
+	migrateRules(inclusionRules);
+	migrateRules(exclusionRules);
 }

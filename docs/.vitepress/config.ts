@@ -31,7 +31,11 @@ const localeConfig = configGenerator<ThemeConfig>((t) => ({
 		},
 		nav: [
 			{ link: `${t('folder')}/`, text: t('home') },
-			{ activeMatch: '/.+', link: '/get-started', text: 'Documentation' },
+			{
+				activeMatch: '/.+',
+				link: `${t('folder')}/whats-sync-engine`,
+				text: t('documentation'),
+			},
 		],
 		sidebar: [
 			{

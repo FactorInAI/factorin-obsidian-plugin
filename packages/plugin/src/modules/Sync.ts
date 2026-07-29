@@ -1,7 +1,7 @@
 import type { Events, Translations } from '@';
-import type { Fs } from '@/fs';
+import type { Fs, ListReporter } from '@/fs';
 import type { ConflictResolver, Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
-import type { GlobMatchOptions, Progress, Stat, StatsMap, TogglableValue } from '@/types';
+import type { GlobMatchRule, Progress, Stat, StatsMap, TogglableValue } from '@/types';
 import {
 	RemoveLocal,
 	CreateRemoteDir,
@@ -14,6 +14,7 @@ import {
 	syncCancelledError,
 	taskMap,
 } from '@/sync';
+import { prepareGlobMatch } from '@/utils/glob-match';
 import toErrorMessage from '@/utils/to-error-message';
 import type { Dispatch, On } from './EventBus';
 import type { Translate } from './I18n';
@@ -61,16 +62,14 @@ export default class Sync {
 	};
 	declare readonly settings: {
 		maxFileSize: TogglableValue;
-		exclusionRules: Array<GlobMatchOptions>;
-		inclusionRules: Array<GlobMatchOptions>;
+		exclusionRules: Array<GlobMatchRule>;
+		inclusionRules: Array<GlobMatchRule>;
 		confirmDeleteInAutoSync: boolean;
 		confirmTasksInSync: boolean;
 	};
 
 	private readonly postProcess = (stats: Array<Stat>) =>
 		postTraversal({
-			exclusionRules: this.settings.exclusionRules,
-			inclusionRules: this.settings.inclusionRules,
 			maxSize: this.settings.maxFileSize.enabled
 				? this.settings.maxFileSize.value
 				: undefined,
@@ -123,9 +122,19 @@ export default class Sync {
 
 			const infras = this.ctx.initializeSync();
 			const { record, localFs } = infras;
+
+			const match = prepareGlobMatch(
+				this.settings.inclusionRules,
+				this.settings.exclusionRules,
+			);
+			const reporter: ListReporter = (progress) => {
+				this.dispatch('remoteWalkProgress', progress);
+				return match(progress.current);
+			};
+
 			const [localList, remoteList] = await Promise.all([
-				localFs.list('/'),
-				this.ctx.listRemote({ ...infras, trigger }),
+				localFs.list('/', ({ current }) => match(current)),
+				this.ctx.listRemote({ ...infras, reporter, trigger }),
 			]);
 			if (cancelled) throw syncCancelledError;
 			const records = new Map(await record.entries());

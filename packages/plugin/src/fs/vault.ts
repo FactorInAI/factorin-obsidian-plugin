@@ -1,8 +1,13 @@
-import type { Vault } from 'obsidian';
+import type { ListedFiles, Vault } from 'obsidian';
 import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
 import { stripEndSlash } from '@repo/shared/path';
+import { TFolder } from 'obsidian';
 import type { Stat, Binary } from '@/types';
-import type { Fs, RootFs } from './interface';
+import type { Fs, ListReporter, RootFs } from './interface';
+
+// Wait for the completion of file enumeration: https://forum-zh.obsidian.md/t/topic/58894
+let canUseCache = false;
+window.setTimeout(() => (canUseCache = true), 5000);
 
 function toKey(vaultPath: string, isDir: boolean): string {
 	if (vaultPath === '/') return '/';
@@ -114,22 +119,70 @@ export default class VaultFs implements RootFs {
 		return toStat(nativePath, stat);
 	}
 
-	async list(key: string): Promise<Array<Stat>> {
+	async list(key: string, reporter: ListReporter): Promise<Array<Stat>> {
 		const result: Array<Stat> = [];
+		let completed = 1;
+		let total = 1;
 		const visit = async (dir: string) => {
-			const path = dir === '/' ? '/' : dir.slice(0, -1);
-			const { files, folders } = await this.vault.adapter.list(path);
-			await Promise.all(
-				[...files, ...folders].map(async (p) => {
-					const stat = await this.vault.adapter.stat(p);
-					if (!stat) throw new Error(`Stat of ${p} not found!`);
-					const s = toStat(p, stat);
-					result.push(s);
-					if (s.isDir) await visit(s.key);
+			const { files, folders } = await this.listCached(toVaultPath(dir));
+			completed++;
+			total += files.length + folders.length;
+			await Promise.all([
+				...files.map(async (p) => {
+					if ((await reporter({ completed, current: p, total })) === 'exclude') {
+						completed++;
+						return;
+					}
+					result.push(await this.statCached(p));
+					completed++;
 				}),
-			);
+				...folders.map(async (p) => {
+					const folderKey = toKey(p, true);
+					const report = await reporter({ completed, current: folderKey, total });
+					if (report === 'exclude') {
+						completed++;
+						return;
+					}
+					result.push({ isDir: true, key: folderKey });
+					if (report === 'include') {
+						completed++;
+						return;
+					}
+					await visit(p);
+				}),
+			]);
 		};
 		await visit(toVaultPath(key));
 		return result;
+	}
+
+	private listCached(dir: string): ListedFiles | Promise<ListedFiles> {
+		const path = toVaultPath(dir);
+		if (canUseCache && dir !== '/') {
+			const folder = this.vault.getAbstractFileByPath(dir);
+			if (folder instanceof TFolder) {
+				const children: ListedFiles = { files: [], folders: [] };
+				folder.children.forEach((child) =>
+					child instanceof TFolder
+						? children.folders.push(child.path)
+						: children.files.push(child.path),
+				);
+				return children;
+			}
+		}
+		return this.vault.adapter.list(path);
+	}
+
+	private async statCached(key: string): Promise<Stat> {
+		if (canUseCache) {
+			const file = this.vault.getFileByPath(key);
+			if (file) {
+				const { mtime, size } = file.stat;
+				return { isDir: false, key, mtime, size, uid: `${mtime}~${size}` };
+			}
+		}
+		const rawFile = await this.vault.adapter.stat(key);
+		if (!rawFile) throw new Error(`Stat of "${key}" not found!`);
+		return toStat(key, rawFile);
 	}
 }

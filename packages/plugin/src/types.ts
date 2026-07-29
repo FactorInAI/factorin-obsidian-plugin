@@ -1,5 +1,3 @@
-import type { UserOptions } from './utils/glob-match-reusable';
-
 export type { General } from '$/e2e-utils';
 
 export type MaybePromise<T> = Promise<T> | T;
@@ -22,9 +20,9 @@ export type RecordStat = { isDir: false; local: string; remote: string } | { isD
 export type StatsMap = Map<string, Stat>;
 export type RecordStatsMap = Map<string, RecordStat>;
 
-export type GlobMatchOptions = {
+export type GlobMatchRule = {
 	expr: string;
-	options: UserOptions;
+	caseSensitive: boolean;
 };
 
 export type Progress<T = string> = {

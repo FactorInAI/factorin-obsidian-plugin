@@ -1,5 +1,5 @@
-import type { WrappedFs, Fs } from '@/fs';
-import type { Progress, Binary, FileStat } from '@/types';
+import type { WrappedFs, Fs, ListReporter } from '@/fs';
+import type { Binary, FileStat } from '@/types';
 
 class DebugFs implements WrappedFs {
 	constructor(
@@ -66,8 +66,8 @@ class DebugFs implements WrappedFs {
 		return result;
 	}
 
-	async list(key: string, progress?: (prog: Progress) => void) {
-		const result = await this.original.list(key, progress);
+	async list(key: string, reporter: ListReporter) {
+		const result = await this.original.list(key, reporter);
 		this.log(`list: key ${key}, result\n${JSON.stringify(result, undefined, '\t')}`);
 		return result;
 	}

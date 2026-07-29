@@ -1,7 +1,7 @@
 import type { StoreSync } from 'uni-kv';
 import { basename, dirname, isFolder, isSub } from '@repo/shared/path';
-import type { Progress, Stat, Binary, FileStat } from '@/types';
-import type { Fs, WrappedFs } from '../interface';
+import type { Stat, Binary, FileStat } from '@/types';
+import type { Fs, ListReporter, WrappedFs } from '../interface';
 
 const ROOT_KEY = '/';
 const ROOT_ANCHOR = '00000';
@@ -148,17 +148,26 @@ class AsymmetricStorageFs implements WrappedFs {
 		return this.original.exists(this.flattenKey(key));
 	}
 
-	async list(key: string, progress?: (prog: Progress) => void) {
-		const stats = await this.original.list(this.flattenKey(key), progress);
+	async list(key: string, reporter: ListReporter) {
+		const stats = await this.original.list(this.flattenKey(key), () => 'include');
 		const seen = new Set<string>();
 		const result: Array<Stat> = [];
-		for (const stat of stats) {
+		stats.forEach(async (stat, index) => {
 			const inflated = this.inflateStat(stat);
-			if (!inflated || !isDescendantOrSelf(inflated.key, key) || seen.has(inflated.key))
-				continue;
+			if (
+				!inflated ||
+				!isDescendantOrSelf(inflated.key, key) ||
+				seen.has(inflated.key) ||
+				(await reporter({
+					completed: index + 1,
+					current: inflated.key,
+					total: stats.length,
+				})) === 'exclude'
+			)
+				return;
 			seen.add(inflated.key);
 			result.push(inflated);
-		}
+		});
 		return result;
 	}
 

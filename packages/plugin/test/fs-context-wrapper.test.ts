@@ -125,8 +125,8 @@ test('list replaces previous context snapshot', async () => {
 	remote.control.list = async () => remoteStats;
 	local.control.list = async () => localStats;
 
-	await remoteWrapper.list('/');
-	await localWrapper.list('/');
+	await remoteWrapper.list('/', () => 'include');
+	await localWrapper.list('/', () => 'include');
 
 	expect(getStoreSnapshot(getRemoteStore())).toStrictEqual({
 		'remote/': remoteStats[0],
@@ -161,9 +161,9 @@ test('stat and traversal failures do not mutate context', async () => {
 	};
 
 	expect(remoteWrapper.stat('remote.md')).rejects.toThrow('remote stat failed');
-	expect(remoteWrapper.list('/')).rejects.toThrow('remote list failed');
+	expect(remoteWrapper.list('/', () => 'include')).rejects.toThrow('remote list failed');
 	expect(localWrapper.stat('local.md')).rejects.toThrow('local stat failed');
-	expect(localWrapper.list('/')).rejects.toThrow('local list failed');
+	expect(localWrapper.list('/', () => 'include')).rejects.toThrow('local list failed');
 
 	expect(getStoreSnapshot(getRemoteStore())).toStrictEqual({ 'seed-remote.md': remoteSeed });
 	expect(getStoreSnapshot(getLocalStore())).toStrictEqual({ 'seed-local.md': localSeed });

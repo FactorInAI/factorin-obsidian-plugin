@@ -1,6 +1,6 @@
 import { App, Modal, setIcon, Setting, setTooltip } from 'obsidian';
 import type { Translate } from '@/modules/I18n';
-import type { GlobMatchOptions } from '@/types';
+import type { GlobMatchRule } from '@/types';
 
 type FilterType = 'include' | 'exclude';
 
@@ -17,17 +17,17 @@ export type FilterEditorTranslations = {
 };
 
 export default class FilterEditorModal extends Modal {
-	private readonly filters: Array<GlobMatchOptions>;
+	private readonly filters: Array<GlobMatchRule>;
 	private readonly t: Translate<FilterEditorTranslations>;
 
 	constructor(
-		private readonly onSave: (filters: Array<GlobMatchOptions>) => void,
+		private readonly onSave: (filters: Array<GlobMatchRule>) => void,
 		private readonly filterType: FilterType,
 		ctx: {
 			app: App;
 			translate: Translate<FilterEditorTranslations>;
 		},
-		filters: Array<GlobMatchOptions> = [],
+		filters: Array<GlobMatchRule> = [],
 	) {
 		super(ctx.app);
 		this.filters = structuredClone(filters);
@@ -71,12 +71,12 @@ export default class FilterEditorModal extends Modal {
 						'bg-[--interactive-accent]!',
 						'color-[--text-on-accent]!',
 					];
-					if (filter.options.caseSensitive) forceCaseBtn.addClasses(activeClasses);
+					if (filter.caseSensitive) forceCaseBtn.addClasses(activeClasses);
 					else forceCaseBtn.removeClasses(activeClasses);
 				}
 				updateButtonStatus();
 				forceCaseBtn.onClickEvent(() => {
-					filter.options.caseSensitive = !filter.options.caseSensitive;
+					filter.caseSensitive = !filter.caseSensitive;
 					updateButtonStatus();
 				});
 				const trash = itemContainer.createEl(
@@ -95,7 +95,7 @@ export default class FilterEditorModal extends Modal {
 		setIcon(add, 'plus');
 		setTooltip(add, t('add'));
 		add.onClickEvent(() => {
-			filters.push({ expr: '', options: { caseSensitive: false } });
+			filters.push({ caseSensitive: false, expr: '' });
 			updateList();
 		});
 

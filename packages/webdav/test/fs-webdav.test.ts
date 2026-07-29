@@ -435,6 +435,7 @@ test('list uses infinity when enabled', async () => {
 	let storedProgress: Progress = { completed: 0, total: 0 };
 	const list = await webdav.fs.list('Notes/', (progress) => {
 		storedProgress = progress;
+		return 'include';
 	});
 
 	expect(webdav.calls[0]).toMatchObject({
@@ -450,7 +451,11 @@ test('list uses infinity when enabled', async () => {
 			uid: `${sharedDate}~3`,
 		},
 	]);
-	expect(storedProgress).toStrictEqual({ completed: 1, total: 1 });
+	expect(storedProgress).toStrictEqual({
+		completed: 1,
+		current: 'Notes/file.md',
+		total: 1,
+	});
 });
 
 test('list bfs updates progress when infinity is disabled', async () => {
@@ -507,6 +512,7 @@ test('list bfs updates progress when infinity is disabled', async () => {
 	let storedProgress: Progress = { completed: 0, total: 0 };
 	const list = await webdav.fs.list('Notes/', (progress) => {
 		storedProgress = progress;
+		return 'advance';
 	});
 
 	expect(list).toStrictEqual([
@@ -519,7 +525,57 @@ test('list bfs updates progress when infinity is disabled', async () => {
 			uid: `${sharedDate}~7`,
 		},
 	]);
-	expect(storedProgress).toStrictEqual({ completed: 2, current: 'Notes/Folder A/', total: 2 });
+	expect(storedProgress).toStrictEqual({
+		completed: 3,
+		current: 'Notes/Folder A/file.md',
+		total: 3,
+	});
+});
+
+test('list reporter can exclude entries and stop descent', async () => {
+	const rootItems = [
+		{
+			href: 'https://dav.example.com/dav/Notes/',
+			propstat: {
+				prop: { resourcetype: { collection: {} } },
+				status: 'HTTP/1.1 200 OK',
+			},
+		},
+		{
+			href: 'https://dav.example.com/dav/Notes/Folder%20A/',
+			propstat: {
+				prop: { resourcetype: { collection: {} } },
+				status: 'HTTP/1.1 200 OK',
+			},
+		},
+		{
+			href: 'https://dav.example.com/dav/Notes/skip.md',
+			propstat: {
+				prop: {
+					getcontentlength: '4',
+					getlastmodified: 'Mon, 01 Jan 2024 00:00:00 GMT',
+					resourcetype: {},
+				},
+				status: 'HTTP/1.1 200 OK',
+			},
+		},
+	];
+
+	const webdav = createWebdavFs({ endpoint: 'https://dav.example.com/dav' });
+	webdav.setRequest(async (params) => {
+		if (params.url === 'https://dav.example.com/dav/Notes/') {
+			setXmlResponse(rootItems);
+			return response;
+		}
+		throw new Error(`Unexpected recursive request: ${params.url}`);
+	});
+
+	const list = await webdav.fs.list('Notes/', ({ current }) =>
+		current === 'Notes/Folder A/' ? 'include' : 'exclude',
+	);
+
+	expect(list).toStrictEqual([{ isDir: true, key: 'Notes/Folder A/' }]);
+	expect(webdav.calls).toHaveLength(1);
 });
 
 test('readStream reorders out-of-order ranged responses', async () => {

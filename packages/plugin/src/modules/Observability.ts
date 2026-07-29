@@ -1,7 +1,7 @@
 import type { Events, Translations } from '@';
 import type { App, Command, IconName } from 'obsidian';
 import type { Ref } from 'synthkernel';
-import { Notice, Platform } from 'obsidian';
+import { Notice, Platform, setIcon } from 'obsidian';
 import { computed, ref } from 'synthkernel';
 import type { Progress } from '@/types';
 import roundPercent from '@/utils/round-percent';
@@ -73,6 +73,7 @@ export default class Observability {
 		showProgress: string;
 		exportLogsToFile: string;
 		exportLogsFailed: string;
+		idle: string;
 	};
 
 	constructor(
@@ -90,41 +91,58 @@ export default class Observability {
 			app: App;
 		},
 	) {
+		this.t = ctx.translate;
+	}
+
+	readonly start = () => {
+		const {
+			ctx,
+			t,
+			setupCommands,
+			syncStage,
+			cleanupCallbacks,
+			sinceLastSyncText,
+			settings,
+			progressText,
+			walkProgress,
+			executionProgress,
+		} = this;
+		const { requestSync, dispatch, isIdle, addRibbonIcon, on, addStatusBarItem } = ctx;
 		let totalSyncTasks = 0;
 		let completedTasks = 0;
 		let updateInterval: number | undefined;
 		let noticeTimeout: number | undefined;
 		let mobileSyncNotice: Notice | undefined;
-		const status = ctx.addStatusBarItem();
-		this.t = ctx.translate;
+		const statusEl = addStatusBarItem();
+		setIcon(statusEl, 'refresh-cw');
+		const status = statusEl.createSpan({ cls: 'ml-1', text: t('idle') });
+		setupCommands();
 
-		this.cleanupCallbacks.push(
-			ctx.on('syncStarted', () => {
-				this.syncStage('walkingRemote');
+		cleanupCallbacks.push(
+			on('syncStarted', () => {
+				syncStage('walkingRemote');
 				window.clearInterval(updateInterval);
-				this.sinceLastSyncText('');
-				if (this.settings.noticeStatusOnMobile && Platform.isMobile)
-					mobileSyncNotice = new Notice(this.progressText(), 0);
+				sinceLastSyncText('');
+				if (settings.noticeStatusOnMobile && Platform.isMobile)
+					mobileSyncNotice = new Notice(progressText(), 0);
 			}),
-			ctx.on('requestConfirmDelete', () => this.syncStage('awaitingConfirmation')),
-			ctx.on('requestConfirmTasks', () => this.syncStage('awaitingConfirmation')),
-			ctx.on('executionStarted', (tasks) => {
+			on('requestConfirmDelete', () => syncStage('awaitingConfirmation')),
+			on('requestConfirmTasks', () => syncStage('awaitingConfirmation')),
+			on('executionStarted', (tasks) => {
 				totalSyncTasks = tasks.length;
 				completedTasks = 0;
-				this.syncStage('executing');
+				syncStage('executing');
 			}),
-			ctx.on('remoteWalkProgress', (progress) => {
-				this.walkProgress(progress);
-			}),
-			ctx.on('taskCompleted', (current) => {
+			on('remoteWalkProgress', (progress) => walkProgress(progress)),
+			on('taskCompleted', (current) => {
 				completedTasks += 1;
-				this.executionProgress({
+				executionProgress({
 					completed: completedTasks,
 					current,
 					total: totalSyncTasks,
 				});
 			}),
-			ctx.on('syncTerminated', (reason) => {
+			on('syncTerminated', (reason) => {
 				const { result } = reason;
 				if (mobileSyncNotice)
 					if (result === 'failed') {
@@ -140,23 +158,23 @@ export default class Observability {
 					(updateInterval = window.setInterval(() => {
 						const sinceNow = Date.now() - this.lastSyncTime;
 						const time = formatTime(sinceNow).replace(' ', '');
-						this.sinceLastSyncText(` ${time} ago`);
+						sinceLastSyncText(` ${time} ago`);
 					}, 60_000));
-				if (result === 'cancelled') this.syncStage('cancelled');
+				if (result === 'cancelled') syncStage('cancelled');
 				else if (result === 'completed') {
-					this.syncStage('completed');
+					syncStage('completed');
 					setUpdateInterval();
 				} else if (result === 'noop') {
-					this.syncStage('completedNoop');
+					syncStage('completedNoop');
 					setUpdateInterval();
 				} else if (result === 'failed') {
-					this.syncStage('failed');
-					new Notice(`${this.t('failed')}: ${reason.error}`);
+					syncStage('failed');
+					new Notice(`${t('failed')}: ${reason.error}`);
 				}
-				this.walkProgress({ completed: 0, total: 1 });
-				this.executionProgress({ completed: 0, total: 0 });
+				walkProgress({ completed: 0, total: 1 });
+				executionProgress({ completed: 0, total: 0 });
 			}),
-			this.progressText.subscribe((text) => {
+			progressText.subscribe((text) => {
 				status.setText(text);
 				mobileSyncNotice?.setMessage(text);
 			}),
@@ -166,18 +184,11 @@ export default class Observability {
 				mobileSyncNotice = undefined;
 			},
 		);
-	}
-
-	readonly start = () => {
-		this.setupCommands();
-		const { requestSync, dispatch, isIdle, addRibbonIcon } = this.ctx;
-		const startIcon = addRibbonIcon('refresh-cw', this.t('startSync'), () => {
+		const startIcon = addRibbonIcon('refresh-cw', t('startSync'), () => {
 			if (isIdle()) void requestSync('manual');
 		});
-		const stopIcon = addRibbonIcon('square', this.t('stopSync'), () =>
-			dispatch('syncCanceled'),
-		);
-		this.cleanupCallbacks.push(
+		const stopIcon = addRibbonIcon('square', t('stopSync'), () => dispatch('syncCanceled'));
+		cleanupCallbacks.push(
 			isIdle.subscribe(
 				(idle) => {
 					const svgIcon = startIcon.firstElementChild;

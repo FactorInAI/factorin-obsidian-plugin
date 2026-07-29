@@ -9,6 +9,7 @@ const en = {
 	devOps: 'DevOps',
 	developAModule: 'Develop a Module',
 	development: 'Development',
+	documentation: 'Documentation',
 	fileSystem: 'File System',
 	folder: '',
 	home: 'Home',

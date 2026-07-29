@@ -1,5 +1,5 @@
-import type { Progress, Binary, FileStat } from '@/types';
-import type { Fs, WrappedFs } from '../interface';
+import type { Binary, FileStat } from '@/types';
+import type { Fs, ListReporter, WrappedFs } from '../interface';
 
 type HangingOperation = {
 	size: number;
@@ -130,8 +130,8 @@ class MemoryControlRemoteFs implements WrappedFs {
 		return this.original.exists(key);
 	}
 
-	list(key: string, progress?: (prog: Progress) => void) {
-		return this.original.list(key, progress);
+	list(key: string, reporter: ListReporter) {
+		return this.original.list(key, reporter);
 	}
 }
 

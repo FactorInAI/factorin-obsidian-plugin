@@ -2,7 +2,7 @@ import type {
 	Binary,
 	FileStat,
 	FolderStat,
-	Progress,
+	ListReporter,
 	Request,
 	RootFs,
 	Stat,
@@ -112,18 +112,19 @@ function stripEndpoint(endpoint: string, href: string) {
 	return href.slice(1);
 }
 
-function toStat(endpoint: string, item: WebDAVResponseItem): Stat | undefined {
-	const propstats = item.propstat ? asArray(item.propstat) : [];
-	const validPropstat = propstats.find(
-		(propstat) => isSuccessStatus(propstat.status) && propstat.prop,
-	);
+function toKey(href: string, endpoint: string, isDir: boolean) {
+	const stripped = stripEndpoint(endpoint, href);
+	if (!stripped) return '/';
+	return normalizeKey(normalizeChar(stripped), isDir);
+}
+
+function toStat(endpoint: string, { propstat, href }: WebDAVResponseItem): Stat | undefined {
+	const propstats = propstat ? asArray(propstat) : [];
+	const validPropstat = propstats.find(({ status, prop }) => isSuccessStatus(status) && prop);
 	if (!validPropstat?.prop) return;
 
-	const remotePath = stripEndpoint(endpoint, item.href);
 	const isDir = isCollectionResource(validPropstat.prop.resourcetype);
-	if (remotePath === '') return { isDir: true, key: '/' };
-
-	const key = normalizeKey(normalizeChar(remotePath), isDir);
+	const key = toKey(href, endpoint, isDir);
 	if (isDir) return { isDir: true, key };
 
 	const mtime = new Date(getDavText(validPropstat.prop.getlastmodified) ?? '').valueOf();
@@ -334,29 +335,51 @@ export default class WebdavFs implements RootFs {
 		return toDescendantStats(key, this.endpoint, items);
 	}
 
-	async list(key: string, progress?: (progress: Progress) => void) {
+	async list(key: string, reporter: ListReporter) {
 		if (this.options.depthInfinity) {
 			const items = await propfind(this.request, this.auth, this.endpoint, {
 				depth: 'infinity',
 				key,
 			});
-			const result = toDescendantStats(key, this.endpoint, items);
-			progress?.({ completed: 1, total: 1 });
+			const stats = toDescendantStats(key, this.endpoint, items);
+			const result: Array<Stat> = [];
+			await Promise.all(
+				stats.map(async (stat, index) => {
+					if (
+						(await reporter({
+							completed: index + 1,
+							current: stat.key,
+							total: stats.length,
+						})) === 'exclude'
+					)
+						return;
+					result.push(stat);
+				}),
+			);
 			return result;
 		}
 		const result: Array<Stat> = [];
-		let completed = 0;
+		let completed = 1;
 		let total = 1;
-		progress?.({ completed: 0, current: key, total });
 		const visit = async (dir: string) => {
 			const items = await this.listShallow(dir);
-			for (const item of items) {
-				result.push(item);
-				if (item.isDir) total++;
-			}
 			completed++;
-			progress?.({ completed, current: dir, total });
-			await Promise.all(items.filter((i) => i.isDir).map((d) => visit(d.key)));
+			total += items.length;
+			await Promise.all(
+				items.map(async (item) => {
+					const report = await reporter({ completed, current: item.key, total });
+					if (report === 'exclude') {
+						completed++;
+						return;
+					}
+					result.push(item);
+					if (report === 'include') {
+						completed++;
+						return;
+					}
+					if (item.isDir) await visit(item.key);
+				}),
+			);
 		};
 		await visit(key);
 		return result;

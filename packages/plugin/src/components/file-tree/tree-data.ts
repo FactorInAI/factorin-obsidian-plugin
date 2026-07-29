@@ -99,7 +99,7 @@ function resolveVisibleEndpoint(
 		current = child;
 	}
 	return {
-		compressedLabel: labelSegments.join('/'),
+		compressedLabel: labelSegments.join(' / '),
 		depth: nodes[startNodeId].depth,
 		nodeId: current.id,
 	};

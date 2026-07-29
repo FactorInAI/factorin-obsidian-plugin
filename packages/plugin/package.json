@@ -53,9 +53,7 @@
 	},
 	"devDependencies": {
 		"@repo/shared": "workspace:*",
-		"@types/glob-to-regexp": "^0.4.4",
 		"@unocss/postcss": "66.7.5",
-		"glob-to-regexp": "^0.4.1",
 		"postcss-merge-rules": "^8.0.1",
 		"solid-js": "^1.9.13",
 		"synthkernel": "./synthkernel.tgz",

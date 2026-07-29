@@ -4,7 +4,7 @@ import type { StoreAsync } from 'uni-kv';
 import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
 import hash from '@repo/shared/crypto';
 import { PluginSettingTab, requestUrl } from 'obsidian';
-import type { BatchOptimizer, Fs, RootFs } from '@/fs';
+import type { BatchOptimizer, Fs, ListReporter, RootFs } from '@/fs';
 import type { ConflictResolver, Decider } from '@/sync';
 import type { General, MaybePromise, RecordStat, Stat, Binary } from '@/types';
 import { VaultFs } from '@/fs';
@@ -32,7 +32,9 @@ type GeneralFn = (...args: General) => General;
 type RejectableApply<F extends GeneralFn> = (...input: Parameters<F>) => ReturnType<F> | undefined;
 type OrderedApplyEntry<F extends GeneralFn> = { apply: RejectableApply<F>; priority: number };
 
-export type RemoteLister = (info: Infras & { trigger: string }) => MaybePromise<Array<Stat>>;
+export type RemoteLister = (
+	info: Infras & { trigger: string; reporter: ListReporter },
+) => MaybePromise<Array<Stat>>;
 export type RemoteListerEntry = OrderedApplyEntry<RemoteLister>;
 export type OptimizerEntry = OrderedApplyEntry<BatchOptimizer>;
 

@@ -12,7 +12,7 @@ test('base-dir shim rewrites keys relative to its base', async () => {
 
 	const rootStat = await shim.stat('/');
 	const stat = await shim.stat('note.md');
-	const list = await shim.list('/');
+	const list = await shim.list('/', () => 'include');
 	const readStat = file('note.md', { size: 42 });
 	const writeStat = file('note.md', { size: 7 });
 	await shim.readStream('note.md', readStat);

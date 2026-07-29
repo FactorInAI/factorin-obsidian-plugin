@@ -1,25 +1,243 @@
-import type { UserOptions } from './glob-match-reusable';
-import GlobMatch from './glob-match-reusable';
+import { isFolder } from '@repo/shared/path';
+import type { GlobMatchRule } from '@/types';
 
-export function buildRules(
-	rules: Array<{ expr: string; options?: UserOptions }> = [],
-): Array<GlobMatch> {
-	return rules
-		.filter((rule) => rule.expr?.trim())
-		.map((rule) => new GlobMatch(rule.expr, rule.options));
+export type GlobMatchResult = 'include' | 'exclude' | 'advance';
+type SegmentMatcher = RegExp;
+
+type CompiledRule = {
+	readonly segments: Array<SegmentMatcher | '**'>;
+	readonly anchored: boolean;
+	readonly directoryOnly: boolean;
+	readonly hasSlash: boolean;
+};
+
+type Path = {
+	readonly segments: Array<string>;
+	readonly directory: boolean;
+};
+
+function parsePath(path: string): Path {
+	if (path === '/') return { directory: true, segments: [] };
+	const directory = isFolder(path);
+	return {
+		directory,
+		segments: path.slice(0, directory ? -1 : undefined).split('/'),
+	};
 }
 
-export function needIncludeFromGlobRules(
-	path: string,
-	inclusion: Array<GlobMatch>,
-	exclusion: Array<GlobMatch>,
+function escapeRegExpCharacter(character: string): string {
+	return /[\\^$.*+?()[\]{}|]/.test(character) ? `\\${character}` : character;
+}
+
+function compileSegment(pattern: string, flags: string): SegmentMatcher {
+	let source = '';
+
+	for (let index = 0; index < pattern.length; index++) {
+		const character = pattern[index];
+		if (character === '*') {
+			source += '.*';
+			continue;
+		}
+		if (character === '?') {
+			source += '.';
+			continue;
+		}
+		if (character !== '[') {
+			source += escapeRegExpCharacter(character);
+			continue;
+		}
+
+		const end = pattern.indexOf(']', index + 1);
+		if (end === -1) {
+			source += String.raw`\[`;
+			continue;
+		}
+
+		let characterClass = pattern.slice(index + 1, end);
+		const negated = characterClass.startsWith('!') || characterClass.startsWith('^');
+		if (negated) characterClass = characterClass.slice(1);
+		characterClass = characterClass.replaceAll('\\', String.raw`\\`);
+		source += `[${negated ? '^' : ''}${characterClass}]`;
+		index = end;
+	}
+
+	return new RegExp(`^${source}$`, flags);
+}
+
+function compileRule(rule: GlobMatchRule): CompiledRule | undefined {
+	const expression = rule.expr.trim().replaceAll('\\', '/');
+	if (!expression || expression === '/') return undefined;
+
+	const anchored = expression.startsWith('/');
+	const directoryOnly = expression.endsWith('/');
+	const body = expression.replace(/^\/+|\/+$/g, '');
+	if (!body) return undefined;
+
+	const parts = body.split('/');
+	const flags = rule.caseSensitive ? '' : 'i';
+	const segments = parts.map((part) =>
+		part === '**' && parts.length > 1 ? '**' : compileSegment(part, flags),
+	);
+
+	return {
+		anchored,
+		directoryOnly,
+		hasSlash: parts.length > 1,
+		segments,
+	};
+}
+
+function compileRules(rules: Array<GlobMatchRule>): Array<CompiledRule> {
+	const compiled: Array<CompiledRule> = [];
+	for (const rule of rules) {
+		const result = compileRule(rule);
+		if (result) compiled.push(result);
+	}
+	return compiled;
+}
+
+function matchesSegments(
+	pattern: Array<SegmentMatcher | '**'>,
+	path: Array<string>,
+	patternIndex = 0,
+	pathIndex = 0,
 ): boolean {
-	for (const rule of exclusion) if (rule.matchesAncestor(path)) return false;
+	if (patternIndex === pattern.length) return pathIndex === path.length;
 
-	const included = inclusion.some((rule) => rule.matchesPath(path));
-	if (inclusion.length > 0 && !included) return false;
-	if (included) return true;
+	const segment = pattern[patternIndex];
+	if (segment === '**') {
+		const trailingGlobstar = patternIndex === pattern.length - 1;
+		if (trailingGlobstar) return pathIndex < path.length || pattern.length === 1;
+		if (matchesSegments(pattern, path, patternIndex + 1, pathIndex)) return true;
+		return (
+			pathIndex < path.length && matchesSegments(pattern, path, patternIndex, pathIndex + 1)
+		);
+	}
 
-	for (const rule of exclusion) if (rule.matchesPath(path)) return false;
-	return true;
+	return (
+		pathIndex < path.length &&
+		segment.test(path[pathIndex]) &&
+		matchesSegments(pattern, path, patternIndex + 1, pathIndex + 1)
+	);
+}
+
+function matchesRule(rule: CompiledRule, path: Path): boolean {
+	const { segments } = path;
+	if (!rule.hasSlash) {
+		const matcher = rule.segments[0];
+		if (matcher === '**') return segments.length > 0;
+		if (rule.anchored)
+			return (
+				segments.length > 0 &&
+				matcher.test(segments[0]) &&
+				(!rule.directoryOnly || segments.length > 1 || path.directory)
+			);
+
+		return segments.some(
+			(segment, index) =>
+				matcher.test(segment) &&
+				(!rule.directoryOnly || index < segments.length - 1 || path.directory),
+		);
+	}
+
+	return matchesSegments(rule.segments, segments) && (!rule.directoryOnly || path.directory);
+}
+
+function matchesAncestor(rule: CompiledRule, path: Path): boolean {
+	for (let index = 1; index < path.segments.length; index++)
+		if (
+			matchesRule(rule, {
+				directory: true,
+				segments: path.segments.slice(0, index),
+			})
+		)
+			return true;
+
+	return false;
+}
+
+function prefixStates(pattern: Array<SegmentMatcher | '**'>, path: Array<string>): Set<number> {
+	let states = new Set([0]);
+
+	const close = (input: Set<number>) => {
+		const result = new Set(input);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const index of result) {
+				if (pattern[index] !== '**' || result.has(index + 1)) continue;
+				result.add(index + 1);
+				changed = true;
+			}
+		}
+		return result;
+	};
+
+	for (const segment of path) {
+		const next = new Set<number>();
+		for (const index of close(states)) {
+			const matcher = pattern[index];
+			if (matcher === '**') next.add(index);
+			else if (matcher?.test(segment)) next.add(index + 1);
+		}
+		states = next;
+		if (states.size === 0) return states;
+	}
+
+	return close(states);
+}
+
+function canMatchAnyDescendant(rule: CompiledRule, path: Path): boolean {
+	if (!rule.hasSlash) {
+		const matcher = rule.segments[0];
+		if (matcher === '**') return true;
+		if (!rule.anchored || path.segments.length === 0) return true;
+		return matcher.test(path.segments[0]);
+	}
+
+	const pending: Array<[number, boolean]> = [];
+	for (const state of prefixStates(rule.segments, path.segments)) pending.push([state, false]);
+	const visited = new Set<string>();
+
+	while (pending.length > 0) {
+		const [index, consumed] = pending.pop()!;
+		const key = `${index}:${consumed}`;
+		if (visited.has(key)) continue;
+		visited.add(key);
+
+		if (index === rule.segments.length) {
+			if (consumed) return true;
+			continue;
+		}
+
+		const segment = rule.segments[index];
+		if (segment === '**') {
+			pending.push([index + 1, consumed]);
+			pending.push([index, true]);
+		} else pending.push([index + 1, true]);
+	}
+	return false;
+}
+
+export function prepareGlobMatch(
+	inclusion: Array<GlobMatchRule> = [],
+	exclusion: Array<GlobMatchRule> = [],
+): (path: string) => GlobMatchResult {
+	const inclusions = compileRules(inclusion);
+	const exclusions = compileRules(exclusion);
+
+	return (path) => {
+		const parsed = parsePath(path);
+		if (exclusions.some((rule) => matchesAncestor(rule, parsed))) return 'exclude';
+		if (parsed.segments.length === 0) return 'advance';
+
+		const included = inclusions.some((rule) => matchesRule(rule, parsed));
+		if (included) return parsed.directory ? 'advance' : 'include';
+		if (exclusions.some((rule) => matchesRule(rule, parsed))) return 'exclude';
+		if (!parsed.directory) return inclusions.length === 0 ? 'include' : 'exclude';
+		if (inclusions.length === 0) return 'advance';
+		return inclusions.some((rule) => canMatchAnyDescendant(rule, parsed))
+			? 'advance'
+			: 'exclude';
+	};
 }

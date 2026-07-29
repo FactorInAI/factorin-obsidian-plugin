@@ -1,7 +1,7 @@
 import type { App, EventRef, TAbstractFile } from 'obsidian';
 import type { Ref } from 'synthkernel';
-import type { GlobMatchOptions, TogglableValue } from '@/types';
-import { buildRules, needIncludeFromGlobRules } from '@/utils/glob-match';
+import type { GlobMatchRule, TogglableValue } from '@/types';
+import { prepareGlobMatch } from '@/utils/glob-match';
 import untilTrue from '@/utils/until-true';
 import type { SyncStage } from './Observability';
 import type { SyncTerminateReason } from './Sync';
@@ -32,8 +32,8 @@ export default class Scheduler {
 		startupSync: TogglableValue;
 		scheduledSync: TogglableValue;
 		realtimeSync: TogglableValue;
-		exclusionRules: Array<GlobMatchOptions>;
-		inclusionRules: Array<GlobMatchOptions>;
+		exclusionRules: Array<GlobMatchRule>;
+		inclusionRules: Array<GlobMatchRule>;
 	};
 
 	private readonly requestSync = (trigger: string): Promise<SyncTerminateReason> =>
@@ -97,13 +97,8 @@ export default class Scheduler {
 		const { realtimeSync, exclusionRules, inclusionRules } = this.settings;
 		if (!realtimeSync.enabled) return;
 
-		const exclusions = buildRules(exclusionRules);
-		const inclusions = buildRules(inclusionRules);
-		if (
-			!needIncludeFromGlobRules(file.path, inclusions, exclusions) &&
-			!(old && needIncludeFromGlobRules(old, inclusions, exclusions))
-		)
-			return;
+		const match = prepareGlobMatch(inclusionRules, exclusionRules);
+		if (match(file.path) === 'exclude' && !(old && match(old) !== 'exclude')) return;
 
 		if (this.realtimeSyncTimer) window.clearTimeout(this.realtimeSyncTimer);
 		this.realtimeSyncTimer = window.setTimeout(

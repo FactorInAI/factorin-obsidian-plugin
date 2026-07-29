@@ -233,7 +233,7 @@ test('stat and list preserve metadata while decrypting keys', async () => {
 	];
 
 	const stat = await shim.stat('Folder/file.md');
-	const list = await shim.list('Folder/', () => undefined);
+	const list = await shim.list('Folder/', () => 'include');
 
 	expect(stat).toMatchObject({ isDir: false, mtime: 1234, size: 567, uid: 'etag-1' });
 	expect(stat.key).toBe('Folder/file.md');

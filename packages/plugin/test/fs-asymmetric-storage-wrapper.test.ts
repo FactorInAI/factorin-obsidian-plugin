@@ -42,7 +42,7 @@ test('list should infer folder anchors from remoteStatContext and return hierarc
 	});
 	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
-	expect(await wrapper.list('/')).toStrictEqual([
+	expect(await wrapper.list('/', () => 'include')).toStrictEqual([
 		folder('/'),
 		file('root.md', { size: 1, uid: 'root-file' }),
 		folder('folder/'),
@@ -69,7 +69,7 @@ test('list should skip malformed or orphan flattened entries without throwing', 
 	});
 	const wrapper = asymmetricStorageWrapper(remote.fs, store);
 
-	expect(await wrapper.list('/')).toStrictEqual([
+	expect(await wrapper.list('/', () => 'include')).toStrictEqual([
 		folder('/'),
 		folder('folder/'),
 		file('folder/child.md', { size: 4, uid: 'child' }),

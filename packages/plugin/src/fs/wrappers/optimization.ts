@@ -1,4 +1,4 @@
-import type { MaybePromise, Progress, Binary, FileStat } from '@/types';
+import type { MaybePromise, Binary, FileStat } from '@/types';
 import type {
 	BatchOptimizer,
 	DeleteAtom,
@@ -9,6 +9,7 @@ import type {
 	MoveAtom,
 	WriteAtom,
 	OutputAtom,
+	ListReporter,
 } from '../interface';
 
 type OptimizationOptions = {
@@ -79,13 +80,13 @@ class OptimizationFs implements WrappedFs {
 	}
 
 	write(key: string, value: Binary, stat: FileStat) {
-		const anticipated = this.pendingWrites.get(key);
+		const anticipated = this.pendingWrites.get(stat.key);
 		if (anticipated) return anticipated(() => this.original.write(key, value, stat));
 		return this.original.write(key, value, stat);
 	}
 
 	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
-		const anticipated = this.pendingWrites.get(key);
+		const anticipated = this.pendingWrites.get(stat.key);
 		if (anticipated) return anticipated(() => this.original.writeStream(key, value, stat));
 		return this.original.writeStream(key, value, stat);
 	}
@@ -107,8 +108,8 @@ class OptimizationFs implements WrappedFs {
 		return this.original.exists(key);
 	}
 
-	list(key: string, progress?: (progress: Progress) => void) {
-		return this.original.list(key, progress);
+	list(key: string, reporter: ListReporter) {
+		return this.original.list(key, reporter);
 	}
 
 	private scheduleFlush() {

@@ -166,11 +166,9 @@ export default class Bootstrap {
 			priority: 1000,
 		});
 		registerRemoteLister({
-			apply: async ({ remoteFs, record }) => {
+			apply: async ({ remoteFs, record, reporter }) => {
 				try {
-					return await remoteFs.list('/', (progress) =>
-						dispatch('remoteWalkProgress', progress),
-					);
+					return await remoteFs.list('/', reporter);
 				} catch (error) {
 					if (await remoteFs.exists('/')) throw error;
 					dispatch('logSync', 'Remote root deleted, recreating.');

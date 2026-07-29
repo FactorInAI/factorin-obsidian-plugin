@@ -137,6 +137,7 @@ const en: Translations = {
 		frag.appendText('.');
 	},
 	iconPlaceholder: 'Enter Lucide Icons code (e.g. puzzle)',
+	idle: 'Idle',
 	inclusionRules: 'Inclusion rules',
 	inclusionRulesDescription:
 		'Files / folders matching exclusion rules but also matching these glob patterns will still be synced.',

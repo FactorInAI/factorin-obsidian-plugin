@@ -217,7 +217,7 @@ test('delete should follow Obsidian trash fallback policy', async () => {
 	expect(fallbackVault.calls.trashLocal).toStrictEqual(['note.md']);
 });
 
-test('list should BFS descendants and exclude queried root', async () => {
+test('list should DFS descendants and exclude queried root', async () => {
 	const vault = createVaultStub({
 		list: {
 			'/': { files: ['root.md'], folders: ['folder'] },
@@ -233,15 +233,15 @@ test('list should BFS descendants and exclude queried root', async () => {
 		},
 	});
 
-	const stats = await vault.fs.list('/');
+	const stats = await vault.fs.list('/', () => 'advance');
 	const keys = stats.map(({ key }) => key);
 
-	expect(keys).toStrictEqual([
-		'root.md',
+	expect(keys.toSorted()).toStrictEqual([
 		'folder/',
 		'folder/child.md',
 		'folder/nested/',
 		'folder/nested/deep.md',
+		'root.md',
 	]);
 	expect(stats.some(({ key }) => key === '/')).toBe(false);
 });

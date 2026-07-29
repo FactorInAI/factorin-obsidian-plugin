@@ -23,6 +23,9 @@ export class Notice {
 }
 
 export class Vault {}
+export class TFolder {
+	children: Array<unknown> = [];
+}
 export class Plugin {}
 export class App {}
 export class Modal {}

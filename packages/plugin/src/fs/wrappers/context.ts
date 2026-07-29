@@ -1,6 +1,6 @@
 import type { DatabaseSync, StoreSync } from 'uni-kv';
-import type { MaybePromise, Progress, Stat, Binary, FileStat } from '@/types';
-import type { WrappedFs, Fs } from '../interface';
+import type { MaybePromise, Stat, Binary, FileStat } from '@/types';
+import type { WrappedFs, Fs, ListReporter } from '../interface';
 
 type ContextOptions<S extends string, M extends string> = {
 	db: DatabaseSync<Record<S, Stat>, Record<M, string>>;
@@ -98,8 +98,8 @@ class ContextFs<S extends string, M extends string> implements WrappedFs {
 		return this.original.exists(key);
 	}
 
-	list(key: string, progress?: (prog: Progress) => void) {
-		return replaceStats(this.store, this.original.list(key, progress));
+	list(key: string, reporter: ListReporter) {
+		return replaceStats(this.store, this.original.list(key, reporter));
 	}
 }
 

@@ -1,11 +1,11 @@
 import type {
 	Binary,
 	MaybePromise,
-	Progress,
 	Stat,
 	Fs,
 	WrappedFs,
 	FileStat,
+	ListReporter,
 } from '@hesprs/sync-engine-sdk';
 import { normalizeBaseDir } from '@repo/shared/path';
 
@@ -14,16 +14,21 @@ function joinUnifiedKey(baseDir: string, key: string) {
 	return joined.endsWith('//') ? joined.slice(0, -1) : joined;
 }
 
-function stripBaseDir(baseDir: string, stat: Stat): Stat {
-	const originalKey = stat.key;
-	if (!originalKey.startsWith(baseDir))
-		throw new Error(`Accessed out-of-scope path ${originalKey}`);
-	const key = originalKey.slice(baseDir.length);
-	return { ...stat, key: key === '' ? '/' : key };
+function stripBaseDir(baseDir: string, path: string) {
+	if (!path.startsWith(baseDir)) throw new Error(`Accessed out-of-scope path "${path}"`);
+	const key = path.slice(baseDir.length);
+	return key === '' ? '/' : key;
+}
+
+function stripBaseDirFromStat(baseDir: string, stat: Stat) {
+	const key = stripBaseDir(baseDir, stat.key);
+	return Object.assign(stat, { key });
 }
 
 function stripBaseDirFromStats(baseDir: string, stats: Array<Stat>) {
-	return stats.map((stat) => stripBaseDir(baseDir, stat)).filter((stat) => stat.key !== '/');
+	return stats
+		.map((stat) => stripBaseDirFromStat(baseDir, stat))
+		.filter((stat) => stat.key !== '/');
 }
 
 class BaseDirRemoteFs implements WrappedFs {
@@ -67,9 +72,9 @@ class BaseDirRemoteFs implements WrappedFs {
 		return this.original.mkdir(joinUnifiedKey(this.baseDir, key), recursive);
 	}
 
-	async stat(key: string) {
+	stat(key: string) {
 		return Promise.resolve(this.original.stat(joinUnifiedKey(this.baseDir, key))).then((stat) =>
-			stripBaseDir(this.baseDir, stat),
+			stripBaseDirFromStat(this.baseDir, stat),
 		);
 	}
 
@@ -77,9 +82,15 @@ class BaseDirRemoteFs implements WrappedFs {
 		return this.original.exists(joinUnifiedKey(this.baseDir, key));
 	}
 
-	async list(key: string, progress?: (prog: Progress) => void) {
+	list(key: string, reporter: ListReporter) {
 		return Promise.resolve(
-			this.original.list(joinUnifiedKey(this.baseDir, key), progress),
+			this.original.list(joinUnifiedKey(this.baseDir, key), (progress) =>
+				reporter(
+					Object.assign(progress, {
+						current: stripBaseDir(this.baseDir, progress.current),
+					}),
+				),
+			),
 		).then((stats) => stripBaseDirFromStats(this.baseDir, stats));
 	}
 }

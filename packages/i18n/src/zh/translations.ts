@@ -121,6 +121,7 @@ const zh: Translations = {
 		frag.appendText(' 中找到。');
 	},
 	iconPlaceholder: '输入 Lucide 图标代码（例如 puzzle）',
+	idle: '空闲',
 	inclusionRules: '包含规则',
 	inclusionRulesDescription: '匹配排除规则但同时也匹配这些 Glob 模式的文件 / 文件夹仍会被同步。',
 	installed: '已安装',

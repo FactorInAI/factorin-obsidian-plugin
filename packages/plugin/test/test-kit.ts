@@ -1,6 +1,6 @@
-import type { Fs, RootFs } from '@/fs';
+import type { Fs, ListReporter, RootFs } from '@/fs';
 import type { Request, RequestParam } from '@/modules/Registrar';
-import type { Progress, Stat, Binary, FileStat, FolderStat } from '@/types';
+import type { Stat, Binary, FileStat, FolderStat } from '@/types';
 
 type FsCalls = {
 	delete: Array<string>;
@@ -142,9 +142,9 @@ function fs(options: FsOptions = {}): FsHarness {
 			return await control.exists(key);
 		},
 		getUid: () => uid,
-		list: async (key: string, progress?: (progress: Progress) => void) => {
+		list: async (key: string, reporter: ListReporter) => {
 			calls.list.push(key);
-			return await control.list(key, progress);
+			return await control.list(key, reporter);
 		},
 		mkdir: async (key: string, recursive?: boolean) => {
 			calls.mkdir.push(key);

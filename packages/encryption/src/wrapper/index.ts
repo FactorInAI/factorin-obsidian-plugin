@@ -2,10 +2,10 @@ import type {
 	DatabaseSync,
 	Fs,
 	WrappedFs,
-	Progress,
 	Stat,
 	Binary,
 	FileStat,
+	ListReporter,
 } from '@hesprs/sync-engine-sdk';
 import type { EncryptionStores } from './path';
 import {
@@ -122,9 +122,11 @@ class EncryptionFs implements WrappedFs {
 		return this.original.exists(await this.encryptKey(key));
 	}
 
-	async list(key: string, progress?: (prog: Progress) => void) {
+	async list(key: string, reporter: ListReporter) {
 		const encryptedKey = await this.encryptKey(key);
-		const stats = await this.original.list(encryptedKey, progress);
+		const stats = await this.original.list(encryptedKey, async (progress) =>
+			reporter(Object.assign(progress, { current: await this.decryptKey(progress.current) })),
+		);
 		return this.decryptStats(stats);
 	}
 

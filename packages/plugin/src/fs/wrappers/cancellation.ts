@@ -1,7 +1,7 @@
 import type { Request } from '@/modules/Registrar';
-import type { MaybePromise, Progress, Binary, FileStat } from '@/types';
+import type { MaybePromise, Binary, FileStat } from '@/types';
 import { syncCancelledError } from '@/sync';
-import type { Fs, WrappedFs } from '../interface';
+import type { Fs, ListReporter, WrappedFs } from '../interface';
 
 function assertNotCancelled(isCancelled: () => boolean) {
 	if (isCancelled()) throw syncCancelledError;
@@ -74,8 +74,8 @@ class CancellationFs implements WrappedFs {
 		return guardCancellation(this.isCancelled, 'both', () => this.original.exists(key));
 	}
 
-	list(key: string, progress?: (prog: Progress) => void) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.list(key, progress));
+	list(key: string, reporter: ListReporter) {
+		return guardCancellation(this.isCancelled, 'both', () => this.original.list(key, reporter));
 	}
 }
 
