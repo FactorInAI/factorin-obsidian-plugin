@@ -6,7 +6,9 @@
 		"paths": {
 			"@": ["./src"],
 			"@/*": ["./src/*"],
-			"$/*": ["./test/*"]
+			"$/*": ["./test/*"],
+			"@hesprs/sync-engine-sdk": ["./src/sdk/index.ts"],
+			"@hesprs/sync-engine-sdk/dev": ["./src/sdk/dev.ts"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "tsdown.config.ts", "uno.config.ts"]

@@ -4,8 +4,18 @@
 	"private": true,
 	"license": "MIT",
 	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
 	"scripts": {
-		"check": "tsc"
+		"dev": "MODE=dev tsdown",
+		"build": "tsdown",
+		"fix": "oxlint --silent --fix && oxfmt",
+		"check": "tsc && oxlint && oxfmt --check",
+		"tests": "bun --preload=./test/mocks.ts test"
 	},
 	"dependencies": {
 		"obsidian": "latest"

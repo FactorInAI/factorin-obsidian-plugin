@@ -158,6 +158,20 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
   longer exists here). On conflict, take upstream's file and re-apply both.
 - `scripts/version-bump.ts` — rewired to our versioning scheme (see "Versioning"). On conflict, take
   upstream's file and re-apply the same redirection.
+- `packages/plugin/src/index.ts` — the two Overview §5.1 touch points: `Factorin` last in
+  `internalModules`, and `remoteFs: 'factorin'` / `moduleSources: []` / `moduleAutoUpdate: false` in the
+  `onload` defaults. Each is marked with a `// Factor.In — FORK EDIT` comment; grep for that string
+  after a merge.
+- `packages/plugin/tsconfig.json` — two `paths` entries mapping `@hesprs/sync-engine-sdk` and
+  `.../dev` to `./src/sdk/*.ts`. `@factorin/module` is compiled into this package and type-checks
+  against the SDK by package name; the SDK *is* this package, so resolving it to `./dist` would make the
+  SDK build depend on its own previous output. On conflict, take upstream's file and re-add the two
+  entries.
+
+> `@factorin/module` is deliberately **not** declared in `packages/plugin/package.json`. It resolves
+> through Bun's workspace linking. Declaring it would make the two packages depend on each other
+> (`@factorin/module` → `@hesprs/sync-engine-sdk` *is* `packages/plugin`), and Turbo rejects a cyclic
+> task graph — which would break the `postinstall` SDK build and therefore every build.
 
 ## History: the pre-v3 reset
 
