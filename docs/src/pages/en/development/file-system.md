@@ -300,7 +300,7 @@ export default function batchDeleteOptimizer(atoms: Array<InputAtom>, fs: S3Fs):
 
 **Important**: If the optimizer removes some atoms from the original atoms array, it **must** call `resolve()` by itself or by its custom atoms. Otherwise the syncing will hang forever.
 
-More complex example: [Hierarchical Optimizer](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/src/fs/hierarchal-optimizer.ts), showcases dependency wrapping.
+More complex example: [Hierarchical Optimizer](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/src/fs/hierarchical-optimizer.ts), showcases dependency wrapping.
 
 ### Registering an Optimizer
 

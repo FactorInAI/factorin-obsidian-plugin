@@ -25,6 +25,7 @@ import {
 	asymmetricStorageWrapper,
 	customHeadersMiddleware,
 	cancellationMiddleware,
+	optimizationCompanionWrapper,
 } from '@/fs';
 import controlsSettings from '@/settings/controls';
 import developmentSettings from '@/settings/development';
@@ -200,7 +201,6 @@ export default class Bootstrap {
 				optimizationWrapper(fs, {
 					batchOptimizer: optimizeLocal,
 					thatPool: this.remotePool,
-					thisPool: this.localPool,
 				}),
 			priority: 2000,
 		});
@@ -219,6 +219,10 @@ export default class Bootstrap {
 				}),
 			priority: 20_000,
 		});
+		registerLocalFsWrapper({
+			apply: (fs) => optimizationCompanionWrapper(fs, this.localPool),
+			priority: 21_000,
+		});
 
 		registerRemoteFsWrapper({
 			apply: (fs) =>
@@ -233,7 +237,6 @@ export default class Bootstrap {
 				optimizationWrapper(fs, {
 					batchOptimizer: optimizeRemote,
 					thatPool: this.localPool,
-					thisPool: this.remotePool,
 				}),
 			priority: 2000,
 		});
@@ -267,6 +270,10 @@ export default class Bootstrap {
 					store: 'remoteContext20000',
 				}),
 			priority: 20_000,
+		});
+		registerRemoteFsWrapper({
+			apply: (fs) => optimizationCompanionWrapper(fs, this.remotePool),
+			priority: 21_000,
 		});
 
 		registerRemoteRequestMiddleware({ apply: retryMiddleware, priority: 1000 });
@@ -356,12 +363,12 @@ export default class Bootstrap {
 		this.cleanupCallbacks.push(
 			on('syncStarted', ({ isCancelled }) => {
 				this.isCancelled = isCancelled;
-				this.memoryStates.hangingOperations.length = 0;
-				this.localPool.length = this.remotePool.length = 0;
+				this.memoryStates.hangingOperations.length =
+					this.localPool.length =
+					this.remotePool.length =
+						0;
 			}),
-			on('syncTerminated', () => {
-				this.isCancelled = undefined;
-			}),
+			on('syncTerminated', () => (this.isCancelled = undefined)),
 		);
 	};
 

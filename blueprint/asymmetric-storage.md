@@ -4,7 +4,7 @@ Asymmetric storage means that the file structure at remote differs from real hie
 
 ## Disadvantages in Traditional Methods
 
-Symmetric hierarchal file storage on both local and remote has significant drawbacks regarding query speed, request frequency, and obfuscation:
+Symmetric hierarchical file storage on both local and remote has significant drawbacks regarding query speed, request frequency, and obfuscation:
 
 - during traversal, the APP needs to recursively traverse nested folders, the minimum time complexity is O(depth) when all folders of the same depth are traversed concurrently.
 - the APP needs to make network request for each folder, may reach rate limit.
