@@ -162,16 +162,23 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
   `internalModules`, and `remoteFs: 'factorin'` / `moduleSources: []` / `moduleAutoUpdate: false` in the
   `onload` defaults. Each is marked with a `// Factor.In — FORK EDIT` comment; grep for that string
   after a merge.
-- `packages/plugin/tsconfig.json` — two `paths` entries mapping `@hesprs/sync-engine-sdk` and
-  `.../dev` to `./src/sdk/*.ts`. `@factorin/module` is compiled into this package and type-checks
-  against the SDK by package name; the SDK *is* this package, so resolving it to `./dist` would make the
-  SDK build depend on its own previous output. On conflict, take upstream's file and re-add the two
-  entries.
+- `packages/plugin/package.json` — one added devDependency, `"@factorin/module": "workspace:*"`. On
+  conflict, take upstream's file and re-add the entry.
 
-> `@factorin/module` is deliberately **not** declared in `packages/plugin/package.json`. It resolves
-> through Bun's workspace linking. Declaring it would make the two packages depend on each other
-> (`@factorin/module` → `@hesprs/sync-engine-sdk` *is* `packages/plugin`), and Turbo rejects a cyclic
-> task graph — which would break the `postinstall` SDK build and therefore every build.
+> **Two invariants keep that edge legal — break either and `bun install` fails.**
+>
+> 1. **`packages/factorin` depends on nothing in the workspace** — not
+>    `@hesprs/sync-engine-sdk`, not `@repo/shared`. The SDK *is* `packages/plugin`, so an SDK
+>    dependency there plus this one is a cycle, and Turbo rejects a cyclic task graph.
+> 2. **`@factorin/module` is resolved by Bun's workspace linking, never by a tsconfig `paths`
+>    alias.** A `paths` entry rewrites the bare specifier to a relative source path, which makes
+>    `rolldown-plugin-dts` treat the package as internal to the SDK's declaration bundle and demand a
+>    `.d.ts` that `tsgo` will not emit for a file outside `packages/plugin`'s `rootDir` (`tsgo did not
+>    generate dts file for packages/factorin/src/index.ts`).
+>
+> Together these are why `packages/factorin` has no `tsdown.config.ts` and no `build` script: a
+> standalone bundle would need `obsidianBridge` from `@hesprs/sync-engine-sdk/dev`. Internal modules
+> ship inside `main.js` and need no bundle of their own.
 
 ## History: the pre-v3 reset
 

@@ -18,9 +18,9 @@ import { registerFactorinIcon } from './icon';
  * be a supertype of the real kernel context, and a `registerI18n` accepting every
  * `ObsidianLanguageCode` is assignable to one accepting just these two.
  *
- * **Keep `src/` free of `@hesprs/sync-engine-sdk` imports.** The SDK dependency
- * survives for `tsdown.config.ts` only, which no compiler but this package's own
- * ever reads.
+ * **Keep this package free of `@hesprs/sync-engine-sdk`.** It is not a dependency
+ * at all any more: dropping it is what lets `packages/plugin` depend on
+ * `@factorin/module` without cycling Turbo's task graph.
  */
 export type FactorinLanguageCode = 'en' | 'zh';
 
