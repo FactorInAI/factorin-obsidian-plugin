@@ -7,6 +7,7 @@
 			"@": ["./src"],
 			"@/*": ["./src/*"],
 			"$/*": ["./test/*"],
+			"@factorin/module": ["../factorin/src/index.ts"],
 			"@hesprs/sync-engine-sdk": ["./src/sdk/index.ts"],
 			"@hesprs/sync-engine-sdk/dev": ["./src/sdk/dev.ts"]
 		}
