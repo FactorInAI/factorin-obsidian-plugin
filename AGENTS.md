@@ -2,6 +2,8 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 
 ## Context
 
+This repository is the **Factorin fork** of this monorepo. Read `FACTORIN.md` before merging from upstream or touching `manifest.json`, `package.json` or `README.md` — it lists the Factorin-owned files and the one-time `git config merge.ours.driver true` setup every clone needs.
+
 `blueprint/` at the project root contains the canonical spec of this project. Read this when touching sophisticated parts in plugin core.
 
 Study the structure of other modules and read documentation in `docs` when working on modules.
