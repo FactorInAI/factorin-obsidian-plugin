@@ -1,6 +1,35 @@
-import type { ObsidianLanguageCode, TranslationResource } from '@hesprs/sync-engine-sdk';
 import { en, zh } from './i18n';
 import { registerFactorinIcon } from './icon';
+
+/**
+ * The locales Factor.In ships translations for.
+ *
+ * A narrowing of the SDK's `ObsidianLanguageCode`, declared here rather than
+ * imported. `@hesprs/sync-engine-sdk` *is* `packages/plugin`, and its types are
+ * published from `packages/plugin/dist`, which turbo's `postinstall`
+ * (`turbo run build -F @hesprs/sync-engine-sdk`) is in the middle of producing at
+ * the moment this file first enters a compiler. Because `packages/plugin` bundles
+ * Factor.In from source, importing the SDK from here means the SDK build has to
+ * type a file that imports the SDK's own not-yet-emitted `dist/index.d.ts` — that
+ * is what broke declaration emit for this file (`tsgo did not generate dts file
+ * for packages/factorin/src/index.ts`).
+ *
+ * Narrowing is safe in the direction that matters: `FactorinContext` only has to
+ * be a supertype of the real kernel context, and a `registerI18n` accepting every
+ * `ObsidianLanguageCode` is assignable to one accepting just these two.
+ *
+ * **Keep `src/` free of `@hesprs/sync-engine-sdk` imports.** The SDK dependency
+ * survives for `tsdown.config.ts` only, which no compiler but this package's own
+ * ever reads.
+ */
+export type FactorinLanguageCode = 'en' | 'zh';
+
+/**
+ * The shape `registerI18n` accepts, narrowed from the SDK's
+ * `Record<string, string | Fragment<General>>`. Factor.In's resources are plain
+ * strings; see {@link FactorinLanguageCode} for why this is not imported.
+ */
+export type FactorinTranslationResource = Record<string, string>;
 
 /**
  * The slice of the kernel context this module needs.
@@ -12,13 +41,13 @@ import { registerFactorinIcon } from './icon';
  * terms of this class. Naming `Context` here would make the two types reference
  * each other through their own definitions. Upstream's internal modules (see
  * `Extensibility`) sidestep this the same way — declare the members structurally,
- * using only leaf SDK types.
+ * using only leaf types.
  *
  * **Keep it that way as `start()` grows**: add members to this type, never
  * `Context` / `SelectFromContext` / `Settings` / `Translations`.
  */
 type FactorinContext = {
-	registerI18n: (locale: ObsidianLanguageCode, resource: TranslationResource) => void;
+	registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => void;
 };
 
 /**

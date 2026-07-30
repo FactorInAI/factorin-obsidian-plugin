@@ -1,16 +1,16 @@
-import type { ObsidianLanguageCode, TranslationResource } from '@hesprs/sync-engine-sdk';
+import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
 import { beforeEach, describe, expect, test } from 'bun:test';
 import Factorin from '@/index';
 import { FACTORIN_ICON } from '@/icon';
 import { en, zh } from '@/i18n';
 import { registeredIcons } from './mocks';
 
-type Registration = [ObsidianLanguageCode, TranslationResource];
+type Registration = [FactorinLanguageCode, FactorinTranslationResource];
 
 function createContext() {
 	const registrations: Array<Registration> = [];
 	return {
-		registerI18n: (locale: ObsidianLanguageCode, resource: TranslationResource) => {
+		registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => {
 			registrations.push([locale, resource]);
 		},
 		registrations,

@@ -42,17 +42,29 @@ source change.
 
 ## Rules
 
-**Dependency direction is one-way.** `packages/factorin` imports the SDK
-(`@hesprs/sync-engine-sdk`) and `obsidian`, and nothing else in the workspace. No
-upstream package may import from here — the sole exception is the `internalModules`
-wiring in `packages/plugin/src/index.ts`.
+**Dependency direction is one-way.** `packages/factorin` imports `obsidian` and
+nothing else in the workspace. No upstream package may import from here — the sole
+exception is the `internalModules` wiring in `packages/plugin/src/index.ts`.
+
+**`src/` must not import `@hesprs/sync-engine-sdk`.** The SDK *is*
+`packages/plugin`, published from `packages/plugin/dist`, and `packages/plugin`
+compiles this package's sources inside its own program (see the `@factorin/module`
+entry in `packages/plugin/tsconfig.json`). So an SDK import here means the
+`postinstall` SDK build has to type a file that imports the SDK's own
+not-yet-emitted `dist/index.d.ts`, and declaration emit fails with `tsgo did not
+generate dts file for packages/factorin/src/index.ts`. Declare the leaf types
+locally instead — `FactorinLanguageCode` and `FactorinTranslationResource` in
+`src/index.ts` are narrowings of the SDK's `ObsidianLanguageCode` and
+`TranslationResource`, and narrowing is the safe direction for a context slice.
+The SDK devDependency stays for `tsdown.config.ts`, which only this package's own
+tooling reads.
 
 **Never name `Context` in this package's type surface.** Downloadable modules can
 write `SelectFromContext<{…}>`, which expands to `Context extends O ? O : never`.
 Factor.In is a member of the plugin's own `internalModules` array, so the plugin's
 `Context` is *defined in terms of this class*; naming it here makes the two types
 reference each other through their own definitions. Declare the context slice
-structurally instead, from leaf SDK types only — the same thing upstream's internal
+structurally instead, from leaf types only — the same thing upstream's internal
 modules (e.g. `Extensibility`) do. See the `FactorinContext` comment in `src/index.ts`.
 
 **`@factorin/module` is not declared in `packages/plugin/package.json`.** It is
@@ -84,5 +96,5 @@ Run from the repository root (Bun `1.3.13`, pinned by `packageManager`):
 | `bun --bun turbo run check -F @factorin/module` | `tsc` + `oxlint` + `oxfmt --check` |
 | `bun --bun turbo run build -F @factorin/module` | The standalone module bundle (unused by the plugin) |
 
-`bun install` must run first — its `postinstall` builds the SDK that this package
-type-checks against.
+`bun install` must run first — its `postinstall` builds the SDK that
+`tsdown.config.ts` (and the rest of the workspace) resolves against.
