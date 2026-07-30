@@ -12,7 +12,7 @@ function renderFailedTaskRow(
 	setIcon(icon, getTaskIcon(name, isDir));
 	setTooltip(icon, prettyName);
 
-	main.createSpan({ cls: 'text-[--text-muted]', text: prettyName });
+	main.createSpan({ cls: 'text-[--text-muted] whitespace-nowrap', text: prettyName });
 	main.createSpan({ cls: 'font-semibold truncate', text: key });
 	row.createDiv({ cls: 'text-[--text-muted] break-words mt-1', text: error });
 }

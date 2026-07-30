@@ -53,7 +53,8 @@ export type {
 	DeciderEntry,
 	RemoteFsEntry,
 	FsWrapperEntry,
-	RequestMiddlewareEntry,
+	RemoteRequestMiddlewareEntry,
+	LocalRequestMiddlewareEntry,
 	RemoteLister,
 	RemoteListerEntry,
 	OptimizerEntry,
@@ -61,11 +62,11 @@ export type {
 	ConflictResolverEntry,
 	Request,
 	CheckConnectionResult,
-	RequestParam,
 } from '@/modules/Registrar';
 export type { RecordStore } from '@/modules/Storage';
 export type { ModuleMeta, AugmentedModuleMeta } from '@/modules/Extensibility';
 export type { SyncTerminateReason } from '@/modules/Sync';
 export type { ExistingMemoryDB } from '@/modules/Bootstrap';
 export type * from '@/fs/interface';
+export type { VaultRequest } from '@/fs';
 export type SelectFromContext<O extends object> = Context extends O ? O : never;

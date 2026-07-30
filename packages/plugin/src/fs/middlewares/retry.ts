@@ -6,23 +6,28 @@ import sleep from '@/utils/sleep';
 type RetryOptions = {
 	maxRetry?: number;
 	isRetryable?: (error: unknown) => boolean;
-	retryDelayMs?: number;
+	retryDelay?: (count: number) => number;
+};
+
+const backoff = (count: number, baseMs = 1000, maxMs = 30_000): number => {
+	const exp = Math.min(baseMs * 2 ** count, maxMs);
+	return Math.random() * exp;
 };
 
 export default function retryMiddleware(request: Request, options?: RetryOptions): Request {
-	const { maxRetry = 3, isRetryable = isRetryableError, retryDelayMs = 1000 } = options ?? {};
+	const { maxRetry = 4, isRetryable = isRetryableError, retryDelay = backoff } = options ?? {};
 	return async (args) => {
 		for (let i = 0; ; i++)
 			try {
 				return await request(args);
 			} catch (error) {
 				if (!isRetryable(error) || i >= maxRetry) throw error;
-				await sleep(retryDelayMs);
+				await sleep(retryDelay(i));
 			}
 	};
 }
 
-const RETRYABLE_STATUS_CODES = new Set([401, 408, 425, 429, 502, 503, 504]);
+const RETRYABLE_STATUS_CODES = new Set([401, 408, 425, 429, 500, 502, 503, 504]);
 
 const RETRYABLE_MESSAGE_PATTERNS = [
 	/\bnet::ERR_CONNECTION_CLOSED\b/i,

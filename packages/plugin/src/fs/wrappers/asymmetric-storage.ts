@@ -280,7 +280,6 @@ export default function asymmetricStorageWrapper(
 }
 
 const SAFE_81 = " !$'(),-.0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
-const SAFE_79 = "!$'(),-0123456789;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}";
 
 function generateId(str: string): string {
 	let h1 = 0xde_ad_be_ef | 0,
@@ -295,8 +294,8 @@ function generateId(str: string): string {
 	h2 = Math.imul(h2 ^ (h2 >>> 16), 2_246_822_507);
 	h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3_266_489_909);
 	let hash = 4_294_967_296 * (2_097_151 & h2) + (h1 >>> 0);
-	const c4 = hash % 79;
-	hash = Math.trunc(hash / 79);
+	const c4 = hash % 81;
+	hash = Math.trunc(hash / 81);
 	const c3 = hash % 81;
 	hash = Math.trunc(hash / 81);
 	const c2 = hash % 81;
@@ -304,7 +303,7 @@ function generateId(str: string): string {
 	const c1 = hash % 81;
 	hash = (hash / 81) | 0;
 	const c0 = hash % 81;
-	return SAFE_81[c0] + SAFE_81[c1] + SAFE_81[c2] + SAFE_81[c3] + SAFE_79[c4];
+	return SAFE_81[c0] + SAFE_81[c1] + SAFE_81[c2] + SAFE_81[c3] + SAFE_81[c4];
 }
 function generateAnchor(source: string, existing: Set<string>) {
 	let anchor: string;

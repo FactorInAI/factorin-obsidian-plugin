@@ -23,7 +23,7 @@ export function textToUint8Array(text: string): Binary {
 	return encoder.encode(text);
 }
 
-export function uint8ArrayToText(bytes: Uint8Array): string {
+export function uint8ArrayToText(bytes: Binary): string {
 	return decoder.decode(bytes);
 }
 

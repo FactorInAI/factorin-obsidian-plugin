@@ -22,7 +22,7 @@ test('retry middleware retries retryable request and waits between attempts', as
 		if (attempts < 3) throw { res: { status: 503 } };
 		return response;
 	});
-	const wrapped = retryMiddleware(harness.request, { maxRetry: 2, retryDelayMs: 25 });
+	const wrapped = retryMiddleware(harness.request, { maxRetry: 2, retryDelay: () => 25 });
 
 	expect(wrapped({ url: 'retry.md' })).resolves.toStrictEqual(response);
 	expect(harness.calls).toStrictEqual([
@@ -43,7 +43,7 @@ test('retry middleware stops on non-retryable error', async () => {
 	const wrapped = retryMiddleware(harness.request, {
 		isRetryable: () => false,
 		maxRetry: 3,
-		retryDelayMs: 25,
+		retryDelay: () => 25,
 	});
 
 	expect(wrapped({ url: 'missing.md' })).rejects.toStrictEqual({ res: { status: 404 } });

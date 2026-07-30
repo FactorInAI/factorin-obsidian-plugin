@@ -1,93 +1,94 @@
-import type { Request } from '@/modules/Registrar';
-import type { MaybePromise, Binary, FileStat } from '@/types';
+import type { Ref } from 'synthkernel';
+import type { MaybePromise, Binary, FileStat, General } from '@/types';
 import { syncCancelledError } from '@/sync';
 import type { Fs, ListReporter, WrappedFs } from '../interface';
 
-function assertNotCancelled(isCancelled: () => boolean) {
+function assertNotCancelled(isCancelled: Ref<boolean>) {
 	if (isCancelled()) throw syncCancelledError;
-}
-
-async function guardCancellation<T>(
-	isCancelled: () => boolean,
-	when: 'pre' | 'post' | 'both',
-	operation: () => Promise<T> | T,
-) {
-	if (when !== 'post') assertNotCancelled(isCancelled);
-	const result = await operation();
-	if (when !== 'pre') assertNotCancelled(isCancelled);
-	return result;
 }
 
 class CancellationFs implements WrappedFs {
 	constructor(
 		public readonly original: Fs,
-		private readonly isCancelled: () => boolean,
+		private readonly isCancelled: Ref<boolean>,
 	) {}
+
+	private async guardCancellation<T>(
+		when: 'pre' | 'post' | 'both',
+		operation: () => Promise<T> | T,
+	) {
+		if (when !== 'post') assertNotCancelled(this.isCancelled);
+		const result = await operation();
+		if (when !== 'pre') assertNotCancelled(this.isCancelled);
+		return result;
+	}
 
 	getUid() {
 		return this.original.getUid();
 	}
 
 	read(key: string, stat: FileStat) {
-		return guardCancellation(this.isCancelled, 'pre', () => this.original.read(key, stat));
+		return this.guardCancellation('pre', () => this.original.read(key, stat));
 	}
 
 	readStream(key: string, stat: FileStat) {
-		return guardCancellation(this.isCancelled, 'pre', () =>
-			this.original.readStream(key, stat),
-		);
+		return this.guardCancellation('pre', () => this.original.readStream(key, stat));
 	}
 
 	write(key: string, value: Binary, stat: FileStat) {
-		return guardCancellation(this.isCancelled, 'post', () =>
-			this.original.write(key, value, stat),
-		);
+		return this.guardCancellation('post', () => this.original.write(key, value, stat));
 	}
 
 	writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): MaybePromise<string> {
-		return guardCancellation(this.isCancelled, 'post', () =>
-			this.original.writeStream(key, value, stat),
-		);
+		return this.guardCancellation('post', () => this.original.writeStream(key, value, stat));
 	}
 
 	delete(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.delete(key));
+		return this.guardCancellation('both', () => this.original.delete(key));
 	}
 
 	move(oldKey: string, newKey: string) {
-		return guardCancellation(this.isCancelled, 'both', () =>
-			this.original.move(oldKey, newKey),
-		);
+		return this.guardCancellation('both', () => this.original.move(oldKey, newKey));
 	}
 
 	mkdir(key: string, recursive?: boolean) {
-		return guardCancellation(this.isCancelled, 'both', () =>
-			this.original.mkdir(key, recursive),
-		);
+		return this.guardCancellation('both', () => this.original.mkdir(key, recursive));
 	}
 
 	stat(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.stat(key));
+		return this.guardCancellation('both', () => this.original.stat(key));
 	}
 
 	exists(key: string) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.exists(key));
+		return this.guardCancellation('both', () => this.original.exists(key));
 	}
 
 	list(key: string, reporter: ListReporter) {
-		return guardCancellation(this.isCancelled, 'both', () => this.original.list(key, reporter));
+		return this.guardCancellation('both', () => this.original.list(key, reporter));
 	}
 }
 
-export function cancellationMiddleware(request: Request, isCancelled: () => boolean): Request {
-	return async (params) => {
+export function cancellationMiddleware<
+	T extends (...args: ReadonlyArray<General>) => Promise<General>,
+>(request: T, isCancelled: Ref<boolean>): T {
+	return (async (...params: Parameters<T>) => {
 		assertNotCancelled(isCancelled);
-		const response = await request(params);
-		assertNotCancelled(isCancelled);
-		return response;
-	};
+		const promise = new Promise<Awaited<ReturnType<T>>>((resolve, reject) => {
+			const unsub = isCancelled.subscribe((cancelled) => {
+				if (cancelled) {
+					unsub();
+					reject(new DOMException('Aborted', 'AbortError'));
+				}
+			});
+			request(...params)
+				.then(resolve)
+				.catch(reject)
+				.finally(unsub);
+		});
+		return promise;
+	}) as T;
 }
 
-export function cancellationWrapper(original: Fs, isCancelled: () => boolean): WrappedFs {
+export function cancellationWrapper(original: Fs, isCancelled: Ref<boolean>): WrappedFs {
 	return new CancellationFs(original, isCancelled);
 }

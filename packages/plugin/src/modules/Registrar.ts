@@ -4,16 +4,17 @@ import type { StoreAsync } from 'uni-kv';
 import { toArrayBuffer, toUint8Array } from '@repo/shared/binary';
 import hash from '@repo/shared/crypto';
 import { PluginSettingTab, requestUrl } from 'obsidian';
-import type { BatchOptimizer, Fs, ListReporter, RootFs } from '@/fs';
+import type { BatchOptimizer, Fs, ListReporter, RootFs, VaultRequest } from '@/fs';
 import type { ConflictResolver, Decider } from '@/sync';
 import type { General, MaybePromise, RecordStat, Stat, Binary } from '@/types';
-import { VaultFs } from '@/fs';
+import { createVaultRequest, VaultFs } from '@/fs';
 import type { On } from './EventBus';
 import type { RecordStore } from './Storage';
 
 type RejectableWrapper<T> = (value: T) => T | undefined;
 type OrderedWrapperEntry<T> = { priority: number; apply: RejectableWrapper<T> };
-export type RequestMiddlewareEntry = OrderedWrapperEntry<Request>;
+export type RemoteRequestMiddlewareEntry = OrderedWrapperEntry<Request>;
+export type LocalRequestMiddlewareEntry = OrderedWrapperEntry<VaultRequest>;
 export type FsWrapperEntry = OrderedWrapperEntry<Fs>;
 
 export type CheckConnectionResult = { success: true } | { success: false; reason: string };
@@ -44,13 +45,15 @@ export type SettingEntry = {
 };
 
 export type RequestParam = Omit<RequestUrlParam, 'body'> & { body?: string | Binary };
-export type Request = (params: RequestParam | string) => Promise<{
+type RequestResponse = {
 	text: () => string;
 	bytes: () => Binary;
 	json: () => General;
 	headers: Record<string, string>;
 	status: number;
-}>;
+};
+export type Request = (params: RequestParam | string) => Promise<RequestResponse>;
+
 export type Infras = { localFs: Fs; remoteFs: Fs; record: RecordStore };
 
 const request: Request = async (params: RequestParam | string) => {
@@ -76,7 +79,8 @@ export default class Registrar {
 	private readonly remoteOptimizerRegistry = new Set<OptimizerEntry>();
 	private readonly remoteListerRegistry = new Set<RemoteListerEntry>();
 	private readonly settingRegistry = new Set<SettingEntry>();
-	private readonly requestMiddlewareRegistry = new Set<RequestMiddlewareEntry>();
+	private readonly remoteRequestMiddlewareRegistry = new Set<RemoteRequestMiddlewareEntry>();
+	private readonly localRequestMiddlewareRegistry = new Set<LocalRequestMiddlewareEntry>();
 	private readonly remoteFsRegistry = new Map<string, RemoteFsEntry>();
 	private readonly deciderRegistry = new Map<string, DeciderEntry>();
 	private readonly conflictResolverRegistry = new Map<string, ConflictResolverEntry>();
@@ -110,25 +114,22 @@ export default class Registrar {
 			return () => registry.delete(key);
 		};
 
-	private readonly registerLocalFsWrapper = this.setRegister(this.localFsWrapperRegistry);
-	private readonly registerRemoteFsWrapper = this.setRegister(this.remoteFsWrapperRegistry);
-	private readonly registerRequestMiddleware = this.setRegister(this.requestMiddlewareRegistry);
-	private readonly registerRemoteOptimizer = this.setRegister(this.remoteOptimizerRegistry);
-	private readonly registerLocalOptimizer = this.setRegister(this.localOptimizerRegistry);
-	private readonly registerRemoteLister = this.setRegister(this.remoteListerRegistry);
-	private readonly registerSetting = this.setRegister(this.settingRegistry);
-	private readonly registerConflictResolver = this.mapRegister(this.conflictResolverRegistry);
-	private readonly registerRemoteFs = this.mapRegister(this.remoteFsRegistry);
-	private readonly registerDecider = this.mapRegister(this.deciderRegistry);
-
 	private readonly registerCss = (css: string) => {
 		const style = createEl('style', { text: css, type: 'text/css' });
 		document.head.appendChild(style);
 		return () => style.remove();
 	};
 
-	private readonly createLocalFs = () =>
-		this.wrapInOrder(new VaultFs(this.ctx.app.vault), this.localFsWrapperRegistry);
+	private readonly getVaultRequest = () =>
+		this.wrapInOrder(createVaultRequest(this.ctx.app), this.localRequestMiddlewareRegistry);
+
+	private readonly createLocalFs = () => {
+		const { vault } = this.ctx.app;
+		return this.wrapInOrder(
+			new VaultFs(this.getVaultRequest(), vault.getName()),
+			this.localFsWrapperRegistry,
+		);
+	};
 
 	private readonly createRemoteFs = (remoteFs = this.settings.remoteFs) => {
 		const entry = this.remoteFsRegistry.get(remoteFs);
@@ -139,7 +140,8 @@ export default class Registrar {
 		return this.wrapInOrder(entry.instantiate(this.getRequest()), this.remoteFsWrapperRegistry);
 	};
 
-	private readonly getRequest = () => this.wrapInOrder(request, this.requestMiddlewareRegistry);
+	private readonly getRequest = () =>
+		this.wrapInOrder(request, this.remoteRequestMiddlewareRegistry);
 
 	private readonly wrapInOrder = <T>(initial: T, set: Set<OrderedWrapperEntry<T>>) => {
 		const middlewares: Record<number, Array<RejectableWrapper<T>>> = {};
@@ -236,21 +238,23 @@ export default class Registrar {
 		getDecider: this.getDecider,
 		getNamespace: this.getNamespace,
 		getRequest: this.getRequest,
+		getVaultRequest: this.getVaultRequest,
 		initializeSync: this.initializeSync,
 		listRemote: this.listRemote,
 		optimizeLocal: this.optimizeLocal,
 		optimizeRemote: this.optimizeRemote,
-		registerConflictResolver: this.registerConflictResolver,
+		registerConflictResolver: this.mapRegister(this.conflictResolverRegistry),
 		registerCss: this.registerCss,
-		registerDecider: this.registerDecider,
-		registerLocalFsWrapper: this.registerLocalFsWrapper,
-		registerLocalOptimizer: this.registerLocalOptimizer,
-		registerRemoteFs: this.registerRemoteFs,
-		registerRemoteFsWrapper: this.registerRemoteFsWrapper,
-		registerRemoteLister: this.registerRemoteLister,
-		registerRemoteOptimizer: this.registerRemoteOptimizer,
-		registerRequestMiddleware: this.registerRequestMiddleware,
-		registerSetting: this.registerSetting,
+		registerDecider: this.mapRegister(this.deciderRegistry),
+		registerLocalFsWrapper: this.setRegister(this.localFsWrapperRegistry),
+		registerLocalOptimizer: this.setRegister(this.localOptimizerRegistry),
+		registerLocalRequestMiddleware: this.setRegister(this.localRequestMiddlewareRegistry),
+		registerRemoteFs: this.mapRegister(this.remoteFsRegistry),
+		registerRemoteFsWrapper: this.setRegister(this.remoteFsWrapperRegistry),
+		registerRemoteLister: this.setRegister(this.remoteListerRegistry),
+		registerRemoteOptimizer: this.setRegister(this.remoteOptimizerRegistry),
+		registerRemoteRequestMiddleware: this.setRegister(this.remoteRequestMiddlewareRegistry),
+		registerSetting: this.setRegister(this.settingRegistry),
 		remoteFsRegistry: this.remoteFsRegistry,
 		rerenderSettingTab: this.rerenderSettingTab,
 	};

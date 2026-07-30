@@ -1,5 +1,6 @@
 import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
+import type { Ref } from 'synthkernel';
 import type { DatabaseSync } from 'uni-kv';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
 import type { ModuleEditorTranslations } from '@/components/ModuleEditorModal';
@@ -47,7 +48,8 @@ import type {
 	OptimizerEntry,
 	SettingEntry,
 	FsWrapperEntry,
-	RequestMiddlewareEntry,
+	RemoteRequestMiddlewareEntry,
+	LocalRequestMiddlewareEntry,
 	RemoteListerEntry,
 } from './Registrar';
 
@@ -61,13 +63,15 @@ export type ExistingMemoryDB = DatabaseSync<
 	}
 >;
 
+const MAX_VAULT_CONCURRENCY = 200;
+
 export default class Bootstrap {
 	private readonly cleanupCallbacks: Array<() => void> = [];
 	private readonly memoryStates: Omit<MemoryControlSharedState, 'maxMemory'> = {
 		hangingOperations: [],
 		memoryConsumption: 0,
 	};
-	private isCancelled?: () => boolean;
+	private isCancelled?: Ref<boolean>;
 
 	private readonly localPool: Array<string> = [];
 	private readonly remotePool: Array<string> = [];
@@ -120,7 +124,8 @@ export default class Bootstrap {
 			registerRemoteLister: (entry: RemoteListerEntry) => () => boolean;
 			registerSetting: (entry: SettingEntry) => () => boolean;
 			registerConflictResolver: (id: string, entry: ConflictResolverEntry) => void;
-			registerRequestMiddleware: (entry: RequestMiddlewareEntry) => void;
+			registerRemoteRequestMiddleware: (entry: RemoteRequestMiddlewareEntry) => void;
+			registerLocalRequestMiddleware: (entry: LocalRequestMiddlewareEntry) => void;
 		},
 	) {
 		ctx.registerI18n('en', en);
@@ -140,7 +145,8 @@ export default class Bootstrap {
 			registerRemoteLister,
 			registerSetting,
 			registerConflictResolver,
-			registerRequestMiddleware,
+			registerRemoteRequestMiddleware,
+			registerLocalRequestMiddleware,
 			dispatch,
 			optimizeLocal,
 			optimizeRemote,
@@ -263,8 +269,8 @@ export default class Bootstrap {
 			priority: 20_000,
 		});
 
-		registerRequestMiddleware({ apply: retryMiddleware, priority: 1000 });
-		registerRequestMiddleware({
+		registerRemoteRequestMiddleware({ apply: retryMiddleware, priority: 1000 });
+		registerRemoteRequestMiddleware({
 			apply: (request) =>
 				rateLimiterMiddleware(request, {
 					maxConcurrency: getMaxConcurrency(),
@@ -272,7 +278,7 @@ export default class Bootstrap {
 				}),
 			priority: 2000,
 		});
-		registerRequestMiddleware({
+		registerRemoteRequestMiddleware({
 			apply: (fs) =>
 				customHeadersMiddleware(
 					fs,
@@ -280,11 +286,26 @@ export default class Bootstrap {
 				),
 			priority: 3000,
 		});
-		registerRequestMiddleware({
+		registerRemoteRequestMiddleware({
 			apply: (request) => {
 				if (this.isCancelled) return cancellationMiddleware(request, this.isCancelled);
 			},
 			priority: 4000,
+		});
+
+		registerLocalRequestMiddleware({
+			apply: (request) =>
+				rateLimiterMiddleware(request, {
+					maxConcurrency: MAX_VAULT_CONCURRENCY,
+					minInterval: 0,
+				}),
+			priority: 1000,
+		});
+		registerLocalRequestMiddleware({
+			apply: (request) => {
+				if (this.isCancelled) return cancellationMiddleware(request, this.isCancelled);
+			},
+			priority: 2000,
 		});
 
 		registerDecider('bidirectional', {
