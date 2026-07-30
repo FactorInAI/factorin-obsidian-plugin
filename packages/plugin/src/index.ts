@@ -1,6 +1,7 @@
 import './global.css';
 import type { Command, EventRef, App } from 'obsidian';
 import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
+import Factorin from '@factorin/module';
 import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
 import type { AddRibbonIcon } from './modules/Observability';
@@ -33,6 +34,10 @@ const internalModules = [
 	ProgressModal,
 	ModulesModal,
 	Bootstrap,
+	// Factor.In — FORK EDIT (documents/overview.md §5.1).
+	// Bundled as an internal module instead of downloaded.
+	// Last in the list, so its start() runs after every other module has registered.
+	Factorin,
 ] as const;
 
 type InternalModules = typeof internalModules;
@@ -90,13 +95,19 @@ export default class SyncEngine extends Plugin {
 			maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },
 			maxRequestConcurrency: { enabled: true, value: 50 },
 			minRequestInterval: { enabled: false, value: 0 },
-			moduleAutoUpdate: true,
-			moduleSources: ['https://sync.consensia.cc/modules.json'],
+			// Factor.In — FORK EDIT (documents/overview.md §2, §5.1). Infra insulation.
+			// An empty catalog list plus auto-update off keeps the plugin off sync.consensia.cc.
+			// It therefore never loads code it did not ship.
+			// The Factor.In backend is compiled in, so there is nothing to download.
+			moduleAutoUpdate: false,
+			moduleSources: [],
 			modules: {},
 			noticeStatusOnMobile: true,
 			realtimeSync: { enabled: false, value: 5000 },
 			realtimeSyncFastMode: true,
-			remoteFs: '',
+			// Factor.In — FORK EDIT (documents/overview.md §5.1).
+			// Default to the Factor.In backend rather than leaving the user to pick one.
+			remoteFs: 'factorin',
 			scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
 			startupSync: { enabled: false, value: 5000 },
 		};

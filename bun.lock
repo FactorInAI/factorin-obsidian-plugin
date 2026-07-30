@@ -36,9 +36,6 @@
       "dependencies": {
         "obsidian": "latest",
       },
-      "devDependencies": {
-        "@hesprs/sync-engine-sdk": "workspace:*",
-      },
     },
     "packages/i18n": {
       "name": "i18n",
@@ -54,6 +51,7 @@
         "obsidian": "latest",
       },
       "devDependencies": {
+        "@factorin/module": "workspace:*",
         "@repo/shared": "workspace:*",
         "@unocss/postcss": "^66.7.5",
         "postcss-merge-rules": "^8.0.1",

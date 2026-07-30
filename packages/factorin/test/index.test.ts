@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, test } from 'bun:test';
+import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
+import { en, zh } from '@/i18n';
+import { FACTORIN_ICON } from '@/icon';
+import Factorin from '@/index';
+import registeredIcons from './mocks';
+
+type Registration = [FactorinLanguageCode, FactorinTranslationResource];
+
+function createContext() {
+	const registrations: Array<Registration> = [];
+	return {
+		registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => {
+			registrations.push([locale, resource]);
+		},
+		registrations,
+	};
+}
+
+describe('Factor.In module', () => {
+	beforeEach(() => registeredIcons.clear());
+
+	test('registers its translation resources when constructed', () => {
+		const ctx = createContext();
+		new Factorin(ctx);
+		expect(ctx.registrations).toEqual([
+			['en', en],
+			['zh', zh],
+		]);
+	});
+
+	test('exposes a moduleSettings object for the kernel', () => {
+		expect(new Factorin(createContext()).moduleSettings).toEqual({});
+	});
+
+	test('start() registers the Factor.In icon under a stable id', () => {
+		new Factorin(createContext()).start();
+		expect(registeredIcons.get(FACTORIN_ICON)).toContain('currentColor');
+	});
+
+	test('dispose() is safe before start() and idempotent after it', () => {
+		const module = new Factorin(createContext());
+		expect(() => module.dispose()).not.toThrow();
+		module.start();
+		expect(() => module.dispose()).not.toThrow();
+		expect(() => module.dispose()).not.toThrow();
+	});
+
+	// Nothing pushes to `cleanup` while the module is a shell.
+	// The drain is reachable only from here, hence the private-field reach.
+	// Every later `start()` registration will rely on it.
+	test('dispose() runs each cleanup callback exactly once and empties the queue', () => {
+		const module = new Factorin(createContext());
+		const calls: Array<string> = [];
+		const queue = (module as unknown as { cleanup: Array<() => void> }).cleanup;
+		queue.push(() => calls.push('first'));
+		queue.push(() => calls.push('second'));
+
+		module.dispose();
+		expect(calls).toEqual(['first', 'second']);
+		expect(queue).toEqual([]);
+
+		module.dispose();
+		expect(calls).toEqual(['first', 'second']);
+	});
+
+	test('start() and dispose() can be cycled, as plugin reload does', () => {
+		const module = new Factorin(createContext());
+		module.start();
+		module.dispose();
+		registeredIcons.clear();
+		module.start();
+		expect(registeredIcons.has(FACTORIN_ICON)).toBe(true);
+		module.dispose();
+	});
+});

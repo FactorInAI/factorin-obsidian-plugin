@@ -16,10 +16,10 @@ an Obsidian icon in code — see [Runtime usage](#runtime-usage-obsidian-ribbon-
 
 ## Inventory
 
-| File | What | Use |
-|------|------|-----|
-| `logo.svg` | Full lockup: mark + "FACTOR.IN" wordmark (800×100) | Docs, marketing, store listing |
-| `mark.svg` | Brandmark only, brand colors (800×800) | Favicon, marketing, full-color contexts; **source of truth** for the runtime icon |
+| File       | What                                               | Use                                                                               |
+| ---------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `logo.svg` | Full lockup: mark + "FACTOR.IN" wordmark (800×100) | Docs, marketing, store listing                                                    |
+| `mark.svg` | Brandmark only, brand colors (800×800)             | Favicon, marketing, full-color contexts; **source of truth** for the runtime icon |
 
 Optional theme variants (`logo-dark.svg` / `logo-light.svg`) can be added here if
 a context needs them; none are required today.
@@ -38,7 +38,7 @@ registerFactorinIcon();                                   // addIcon('factorin',
 addRibbonIcon(FACTORIN_ICON, 'Factor.In', () => { … });
 ```
 
-`src/icon.ts` stores the mark as the *inner* SVG content on a `0 0 100 100`
+`src/icon.ts` stores the mark as the _inner_ SVG content on a `0 0 100 100`
 viewport with `fill="currentColor"`, so it follows the active theme. Its geometry
 mirrors `mark.svg` (scaled ×0.125) — regenerate it from `mark.svg` if the brand
 changes. `logo.svg` / `mark.svg` carry the brand's own colors and are **not** for
