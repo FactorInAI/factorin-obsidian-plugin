@@ -1,9 +1,8 @@
 # Factor.In brand assets
 
-**Owned by Factor.In — never sourced from or overwritten by upstream.** Upstream
-(Sync Engine) keeps its own docs-site logos under `docs/public/`; these are ours.
-Everything Factor.In lives under `packages/factorin/`, so this directory never
-collides on an upstream merge.
+**Owned by Factor.In — never sourced from or overwritten by upstream.** Everything
+Factor.In lives under `packages/factorin/`, so this directory never collides on an
+upstream merge (and `.gitattributes` marks the whole package `merge=ours`).
 
 ## Source of truth
 
@@ -45,8 +44,13 @@ mirrors `mark.svg` (scaled ×0.125) — regenerate it from `mark.svg` if the bra
 changes. `logo.svg` / `mark.svg` carry the brand's own colors and are **not** for
 the ribbon.
 
-## Docs / store rebrand
+## Where these files are used
 
-If the docs site is rebranded, copy `logo.svg` over `docs/public/logo*.svg` — but
-that is an upstream-owned path, so add those specific files to `.gitattributes`
-as `merge=ours` so an upstream pull can't revert them.
+- `README.md` at the repository root renders `logo.svg` as its header.
+- Store listing / marketing material, when Factor.In Obsidian is submitted to
+  Obsidian's community plugin store.
+
+Upstream's VitePress site (`docs/`, which carried its own `docs/public/logo*.svg`)
+was pruned from this fork — see `FACTOR.IN.md` § "Files deleted in this fork". If it
+is ever restored, its logos become Factor.In-owned files and belong in
+`.gitattributes` as `merge=ours`.

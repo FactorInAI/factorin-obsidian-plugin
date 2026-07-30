@@ -1,1 +1,0 @@
-../../../../../blueprint/asymmetric-storage.md

@@ -1,3 +1,0 @@
-# Benchmark
-
-Benchmark under construction.

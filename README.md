@@ -1,142 +1,93 @@
 <h1 align="center">
-    <img src="./docs/public/logo.svg" alt="Sync Engine logo" width="280px">
+    <img src="./packages/factorin/assets/logo.svg" alt="Factor.In" width="280px">
     <br />
-    Sync Engine
+    Factor.In Obsidian
     <br />
 </h1>
 
-<h4 align="center">Next-generation syncing plugin for Obsidian vault. Free · Performant · Extensible.</h4>
+<h4 align="center">Your Factor.In library, in your vault — and AI workflows, in your editor.</h4>
 
-<p align="center">
-    <a href="https://github.com/hesprs/obsidian-webdav-sync/releases/latest">
-        <img src="https://img.shields.io/github/downloads/hesprs/obsidian-webdav-sync/manifest.json.svg?style=flat&label=%E2%AC%87%20Downloads&labelColor=008811&color=333333&displayAssetName=false" alt="accumulated downloads">
-    </a>
-    <a href="https://github.com/hesprs/obsidian-webdav-sync/actions">
-        <img src="https://img.shields.io/github/actions/workflow/status/hesprs/obsidian-webdav-sync/ci.yml?style=flat&logo=github&logoColor=white&label=CI&labelColor=d4ab00&color=333333" alt="ci">
-    </a>
-    <a href="https://sync.consensia.cc">
-        <img src="https://img.shields.io/badge/Documentation-Ready-333333?labelColor=5C73E7&logo=vitepress&logoColor=white" alt="Documentation" />
-    </a>
-    <img src="https://img.shields.io/badge/Types-Strict-333333?logo=typescript&labelColor=blue&logoColor=white" alt="TypeScript">
-    <img src="https://img.shields.io/badge/%F0%9F%96%90%EF%B8%8F%20Made%20by-Humans-333333?labelColor=15C2C0" alt="Made by Humans">
-</p>
+## What it is
 
-<p align="center">
-    <a href="https://github.com/hesprs/synthkernel">
-        <img src="https://github.com/hesprs/synthkernel/raw/refs/heads/main/assets/powered-by-synthkernel.svg" width="200px" alt="powered by SynthKernel"></img>
-    </a>
-</p>
+Factor.In Obsidian makes Obsidian a first-class interface to [Factor.In](https://factorin.com).
 
-<p align="center">
-    <a href="./README.zh.md">
-        <strong>简体中文</strong>
-    </a> • 
-    <a href="https://community.obsidian.md/plugins/webdav-sync">
-        <strong>Plugin Store</strong>
-    </a> • 
-    <a href="#license-copyright-and-originality">
-        <strong>License</strong>
-    </a>
-</p>
+Factor.In is where you build the library that feeds your AI runs: documents, prompts, agent
+skills, projects, and tasks. This plugin brings that library into your vault as ordinary
+markdown files, and lets you launch Factor.In **workflows** — off-device agentic runs — on the
+note you are looking at.
 
-## Introduction
+Two things, one plugin:
 
-Sync Engine is a revolutionary solution for vault syncing. Its not only a syncing plugin, it is a modular platform that everyone can build upon.
+- **Library sync** — paste a Factor.In API token and your library syncs into the vault under
+  `Documents/`. Edits made in Obsidian flow back. No WebDAV URLs, no passwords, no manual
+  backend setup.
+- **AI workflows** — "Write with AI" and "Run Task with AI" hand a content item to Factor.In,
+  which runs it off-device and writes the result back into your library. The output arrives in
+  your vault on the next sync.
 
-The core ships the infrastructure, and all backends (WebDAV, S3, GDrive) and features (i18n, optimization, sync strategy) come from composable modules. You and your AI agents can build your own modules via convenient SDK, extend the plugin, contribute to community, all without modifying the source code.
+## Requirements
 
-There's already a lot of plugins to sync your notes between devices. But the advantage becomes clear with a comparison:
+- Obsidian **1.12.3** or newer (desktop or mobile).
+- A Factor.In account and an API token with **Drive** access, minted in Factor.In's token UI.
 
-- [Remotely Save](https://github.com/remotely-save/remotely-save): full-featured syncing plugins, but currently has optional payment, unmaintained, and 200 unresolved issues.
-- **All plugins similar to Remotely Save**: one plugin owns everything, you use part of it, others worsen the loading time. Vibe-coded / maintenance issues / optional payments possible.
-- [Syncthing](https://syncthing.net/): a great way of P2P syncing, but requires both of your devices to be online, not 24/7.
-- [Self-hosted Live Sync](https://github.com/vrtmrz/obsidian-livesync) / [Fast note sync](https://github.com/haierkeys/obsidian-fast-note-sync): most robust solutions in the room, but require custom server setup.
-- [Git Integration](https://github.com/Vinzent03/obsidian-git): ideal for production-level collaboration and provenance, but not suitable for daily usage.
+## Install
 
-Sync engine is free (MIT License), extensible, community-driven, human curated, AI-friendly, with a highly optimized core.
+The plugin is not in Obsidian's community plugin store yet. Install a build manually:
 
-## Features
+1. Download `main.js`, `manifest.json` and `styles.css` from a Factor.In Obsidian release.
+2. Copy them into `<your vault>/.obsidian/plugins/factorin-obsidian-plugin/`.
+3. Restart Obsidian, open **Settings → Community plugins**, and enable **Factor.In Obsidian**.
 
-🧰 **Complete Basic Features**:
+To build from source instead, see [FACTOR.IN.md](./FACTOR.IN.md).
 
-- Bidirectional syncing.
-- Startup / periodic / save-on-change syncing.
-- Conflict resolution strategies (keep both / latest survive / keep remote / keep local / skip).
-- Advanced rate / memory control options.
-- Custom headers.
-- You can extend most above features by writing modules.
+## Connect
 
-🖥 **Supported Backends**:
+1. Open **Settings → Factor.In Obsidian**.
+2. Paste your `fi_…` API token and press **Connect**.
+3. Pick your account if the token unlocks more than one.
 
-- WebDAV (`WebDAV` official module).
-- S3 (work in progress).
-- Google Drive (planned).
-- You can effortlessly expand this list by creating custom modules. Contributions welcome!
+The plugin asks Factor.In which account and drive the token unlocks, then mounts it. Your token
+is stored in Obsidian's secret storage — it is never written into the plugin's settings file.
+A token with read-only Drive access syncs one way; a token with write access syncs both ways.
 
-🧩 **Extensible Architecture**:
+On the first successful connect, `Documents/Welcome.md` is created and opened.
 
-- You can add backends, optimizers, sync triggers, i18n resources, decision strategies, setting entries, custom file processing, and invoke all possible operations in custom modules.
-- Documentation, AI agent skills (in-progress), and SDK with debug and testing kit are provided.
-- Plugin provides dedicated module discovery and management UI.
-- Repo accepts any module contribution as long as it respects [contribution guide](./CONTRIBUTING.md).
+## Sync behaviour
 
-⚡ **Lightening Fast**:
+- Bidirectional, incremental sync — the whole library is never re-uploaded.
+- Sync on startup, on a schedule, or on save.
+- Conflict resolution strategies: keep both, latest survives, keep remote, keep local, skip.
+- Rate and memory controls for large libraries.
 
-- Incremental syncing never uploads the full vault each time.
-- Innovative [**Anchored Asymmetric Storage™**](./blueprint/asymmetric-storage.md) technology substantially accelerates syncing.
-- Real-time sync uses cached remote states, allowing it to complete within milliseconds.
-- **40 times** smaller size than Remotely Save, **20 times** faster startup time.
-- Handles vaults with more than 3000 files and gigabytes smoothly.
-- Highly optimized core sync timing never wastes one millisecond.
-- Extensible optimizer slot ensures every request is optimized for your own service.
+The plugin talks only to Factor.In. Its backend is compiled in, so it downloads no code at
+runtime and contacts no third-party module catalog.
 
-📦 **Module-provided Features**:
+## AI workflows
 
-- 🔐 Client-side encryption: provided by `Encryption` official module. Achieves **theoretically higher security and better performance** than similar solutions (like Remotely Save), see detail in the [encryption specification](https://github.com/hesprs/obsidian-webdav-sync/blob/main/docs/encryption.md).
-- 📑 Smart merge: provided by `Smart Merge` official module. Merges documents when conflict is detected, can intelligently identify different languages and code, and applying different strategies.
+With a token that carries the `workflows` scope, the command palette gains:
 
-## Install & Setup
+- **Factor.In: Write with AI** — run a workflow against the active document or prompt; the run
+  produces a new version of it.
+- **Factor.In: Run Task with AI** — run a workflow against a task.
 
-Sync Engine v3 is in beta testing, you can install via BRAT:
+Runs take minutes. The plugin shows live status and the run id; the files a run produces land in
+your library and reach the vault with the next sync.
 
-1. Go to **Community plugins** and search for `BRAT`.
-2. Install and enable it.
-3. Click **Add beta plugin** and fill `https://github.com/hesprs/obsidian-webdav-sync` into _repository_.
-4. Select _Latest_ and install + enable Sync Engine.
+> **Status:** the workflow commands appear only once your token reports the `workflows` scope.
+> Until the Factor.In workflow API is public, library sync is the shipping surface.
 
-Configuration:
+## Privacy
 
-1. Go to plugin settings, find **Module management**, open the panel.
-2. Browse and install needed translations and backends.
-3. Configure your backend, automatic connectivity check is shown as an icon inside **Storage backend** entry.
-4. Start your first sync.
+- Your API token lives in Obsidian's secret storage, never in `data.json`.
+- The plugin contacts `api.factorin.com` and `drive.factorin.com`, and nothing else.
+- No telemetry.
 
-## Common Questions
+## Support
 
-<details><summary>What should I do if I get an error during syncing?</summary>
-
-You can simply retry the sync. An error does not block later syncs nor corrupt your files.
-
-If the error persists after retrying, please [open an issue](https://github.com/hesprs/obsidian-webdav-sync/issues/new), describing the error, your setup, with the support log attached.
-
-</details>
-
-<details><summary>How should I manage my WebDAV storage when using this plugin?</summary>
-
-According to this plugin's [file handling strategy](https://hesprs.github.io/projects/obsidian-webdav-sync#technical-breakdown), all remote changes will be propagated to all vaults. So it's generally not recommended to manually manage your WebDAV storage unless you intend to add / remove these files. Manual management is more discouraged when you have encryption or asymmetric storage enabled.
-
-</details>
-
-## Roadmap
-
-Below is a list of planned features and improvements, the faster this plugin is adopted and the star ⭐ grows, the faster the development will be. Also, we welcome contributors that would like to help us with the development of either modules or core.
-
-- [x] v3.0: Rewrite entirely, dynamic module loading, module store, asymmetric storage, and rebrand
-- [ ] v3.1: Extensible conflict resolution
+Questions and bug reports go to the Factor.In team. For a sync problem, attach the support log
+the plugin's settings tab can export — it records what the last syncs did.
 
 ## License
 
-The source code of Sync Engine and modules in this repository are licensed under the [MIT License](https://mit-license.org/).<br>
-The documents in `blueprint/` directory and documentation website are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
-
-Copyright ©️ 2026 Hēsperus and All Contributors
+MIT. Copyright ©️ 2026 Factor.In. Portions copyright ©️ 2026 Hēsperus and contributors, used
+under the MIT license.

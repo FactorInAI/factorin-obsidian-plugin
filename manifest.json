@@ -1,10 +1,10 @@
 {
-	"id": "sync-engine",
-	"name": "Sync Engine",
-	"version": "3.0.0-beta-15",
+	"id": "factorin-obsidian-plugin",
+	"name": "Factor.In Obsidian",
+	"version": "0.1.0",
 	"minAppVersion": "1.12.3",
-	"authorUrl": "https://hesprs.github.io",
-	"description": "Next-generation syncing for your vault. Designed for maximum performance and extensibility.",
-	"author": "Hēsperus",
+	"authorUrl": "https://factorin.com",
+	"description": "Sync your Factor.In library into your vault and run Factor.In AI workflows on your notes, without leaving Obsidian.",
+	"author": "Factor.In",
 	"isDesktopOnly": false
 }
