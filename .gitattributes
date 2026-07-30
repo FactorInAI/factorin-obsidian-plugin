@@ -1,6 +1,18 @@
+# Factor.In-owned files: `merge=ours` keeps our version on every upstream merge.
+# Requires `git config merge.ours.driver true` once per clone — see FACTOR.IN.md.
+
+# Branding & identity (Milestone 2)
 manifest.json                   merge=ours
+versions.json                   merge=ours
 package.json                    merge=ours
 packages/plugin/manifest.json   merge=ours
 README.md                       merge=ours
-FACTOR.IN.md                     merge=ours
+README.zh.md                    merge=ours
+
+# Fork documentation & the ownership list itself
+FACTOR.IN.md                    merge=ours
 .gitattributes                  merge=ours
+
+# Factor.In package (new tree upstream never touches; listed so an upstream
+# file landing on the same path can never overwrite ours)
+packages/factorin/**            merge=ours
