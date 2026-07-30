@@ -58,18 +58,22 @@ const pluginConfig = defineConfig({
 const sdkConfig = defineConfig({
 	...sharedConfig,
 	clean: !dev,
-	// Factor.In — FORK EDIT: `@factorin/module` is external to the SDK build only.
-	// `src/index.ts` imports it, and `src/sdk/index.ts` re-exports `Context`, which is
-	// defined in terms of it — so `packages/factorin/src/index.ts` lands in the dts
-	// graph. tsgo runs on `packages/plugin/tsconfig.json`, whose `include` is confined
-	// to this package, so it emits no declaration for that file and the dts build dies
-	// with `tsgo did not generate dts file for packages/factorin/src/index.ts`.
-	// Marking it external is the same escape hatch `obsidian` already uses: its types
-	// are all over this SDK's public surface precisely because it is never bundled.
-	// `dist/index.d.ts` keeps a bare `import … from '@factorin/module'`, which resolves
-	// through the workspace link in-repo and is not checked anyway (root tsconfig sets
-	// `skipLibCheck`). Deliberately NOT in `sharedConfig`: `pluginConfig` must keep
-	// inlining Factor.In into `main.js`, which ships as a single file.
+	/**
+	 * Factor.In — FORK EDIT: `@factorin/module` is external to the SDK build only.
+	 *
+	 * `src/index.ts` imports it, and `src/sdk/index.ts` re-exports `Context`, which is
+	 * defined in terms of it — so `packages/factorin/src/index.ts` lands in the dts
+	 * graph. tsgo runs on `packages/plugin/tsconfig.json`, whose `include` is confined
+	 * to this package, so it emits no declaration for that file and the dts build dies
+	 * with `tsgo did not generate dts file for packages/factorin/src/index.ts`.
+	 *
+	 * Marking it external is the same escape hatch `obsidian` already uses: its types
+	 * are all over this SDK's public surface precisely because it is never bundled.
+	 * `dist/index.d.ts` keeps a bare `import … from '@factorin/module'`, which resolves
+	 * through the workspace link in-repo and is not checked anyway (root tsconfig sets
+	 * `skipLibCheck`). Deliberately NOT in `sharedConfig`: `pluginConfig` must keep
+	 * inlining Factor.In into `main.js`, which ships as a single file.
+	 */
 	deps: {
 		neverBundle: ['obsidian', '@factorin/module'],
 		onlyBundle: false,

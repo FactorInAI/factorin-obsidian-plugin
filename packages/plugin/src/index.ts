@@ -34,9 +34,9 @@ const internalModules = [
 	ProgressModal,
 	ModulesModal,
 	Bootstrap,
-	// Factor.In — FORK EDIT (documents/overview.md §5.1). Bundled as an internal
-	// module instead of downloaded; last in the list so its start() runs after
-	// every other module has registered.
+	// Factor.In — FORK EDIT (documents/overview.md §5.1).
+	// Bundled as an internal module instead of downloaded.
+	// Last in the list, so its start() runs after every other module has registered.
 	Factorin,
 ] as const;
 
@@ -95,18 +95,18 @@ export default class SyncEngine extends Plugin {
 			maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },
 			maxRequestConcurrency: { enabled: true, value: 50 },
 			minRequestInterval: { enabled: false, value: 0 },
-			// Factor.In — FORK EDIT (documents/overview.md §2, §5.1). Infra insulation:
-			// an empty catalog list and auto-update off mean the plugin never contacts
-			// sync.consensia.cc and never loads code it did not ship. The Factor.In
-			// backend is compiled in, so there is nothing to download.
+			// Factor.In — FORK EDIT (documents/overview.md §2, §5.1). Infra insulation.
+			// An empty catalog list plus auto-update off keeps the plugin off sync.consensia.cc.
+			// It therefore never loads code it did not ship.
+			// The Factor.In backend is compiled in, so there is nothing to download.
 			moduleAutoUpdate: false,
 			moduleSources: [],
 			modules: {},
 			noticeStatusOnMobile: true,
 			realtimeSync: { enabled: false, value: 5000 },
 			realtimeSyncFastMode: true,
-			// Factor.In — FORK EDIT (documents/overview.md §5.1): default to the
-			// Factor.In backend rather than leaving the user to pick one.
+			// Factor.In — FORK EDIT (documents/overview.md §5.1).
+			// Default to the Factor.In backend rather than leaving the user to pick one.
 			remoteFs: 'factorin',
 			scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
 			startupSync: { enabled: false, value: 5000 },
