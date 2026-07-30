@@ -19,20 +19,20 @@ git config merge.ours.driver true
 ```
 
 This is a local config value — it cannot be committed, so each developer and each CI checkout has to run
-it. (`merge=ours` as a *driver* is unrelated to `git merge -s ours`; the driver resolves per-file conflicts
+it. (`merge=ours` as a _driver_ is unrelated to `git merge -s ours`; the driver resolves per-file conflicts
 by keeping our version.)
 
 ## Plugin identity
 
 Everything a user sees is Factor.In's. The Obsidian manifest is the source of that identity:
 
-| Field | Value |
-|---|---|
-| `id` | `factorin-obsidian-plugin` (also the folder under `<vault>/.obsidian/plugins/`) |
-| `name` | Factor.In Obsidian |
-| `author` | Factor.In |
-| `authorUrl` | `https://factorin.com` |
-| `minAppVersion` | `1.12.3` (upstream's floor; raise only with a reason) |
+| Field           | Value                                                                           |
+| --------------- | ------------------------------------------------------------------------------- |
+| `id`            | `factorin-obsidian-plugin` (also the folder under `<vault>/.obsidian/plugins/`) |
+| `name`          | Factor.In Obsidian                                                              |
+| `author`        | Factor.In                                                                       |
+| `authorUrl`     | `https://factorin.com`                                                          |
+| `minAppVersion` | `1.12.3` (upstream's floor; raise only with a reason)                           |
 
 Never reintroduce the strings "Sync Engine", `sync-engine`, or Hēsperus into a **user-facing** surface —
 the manifest, the README, or plugin UI. They stay where they describe upstream's own code: the SDK
@@ -80,31 +80,31 @@ plugin ships as a single JS bundle and cannot reference an SVG by URL.
 
 `.gitattributes` marks these `merge=ours`, so an upstream merge always keeps the Factor.In version:
 
-| File | Why it's ours |
-|---|---|
-| `manifest.json` | Obsidian manifest — Factor.In id/name/author/description/version |
-| `versions.json` | version→`minAppVersion` map for *our* versioning scheme |
-| `package.json` | fork name, metadata, upstream-base record, workspace list |
-| `packages/plugin/manifest.json` | listed pre-emptively; see "One manifest" above |
-| `README.md` | Factor.In product docs, no upstream references |
-| `README.zh.md` | deleted in this fork; see below |
-| `FACTOR.IN.md` | this file |
-| `.gitattributes` | the list itself |
-| `packages/factorin/**` | all Factor.In code and brand assets |
+| File                            | Why it's ours                                                    |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `manifest.json`                 | Obsidian manifest — Factor.In id/name/author/description/version |
+| `versions.json`                 | version→`minAppVersion` map for _our_ versioning scheme          |
+| `package.json`                  | fork name, metadata, upstream-base record, workspace list        |
+| `packages/plugin/manifest.json` | listed pre-emptively; see "One manifest" above                   |
+| `README.md`                     | Factor.In product docs, no upstream references                   |
+| `README.zh.md`                  | deleted in this fork; see below                                  |
+| `FACTOR.IN.md`                  | this file                                                        |
+| `.gitattributes`                | the list itself                                                  |
+| `packages/factorin/**`          | all Factor.In code and brand assets                              |
 
 Everything else is upstream's and merges normally.
 
 ## Files deleted in this fork
 
-The `ours` driver only settles *content* conflicts. A file we deleted that upstream later modifies
+The `ours` driver only settles _content_ conflicts. A file we deleted that upstream later modifies
 comes back as a "deleted by us" conflict — resolve it by deleting again (`git rm <path>`), not by
 taking upstream's version:
 
-| Path | Why |
-|---|---|
-| `docs/` | upstream's VitePress site. We do not publish a docs site; product docs live in `README.md`, contributor docs here. Removing it also drops the `docs` workspace, the `dev:docs`/`build:docs` scripts, and the docs half of `bun check`. |
-| `README.zh.md` | upstream-branded Chinese README. Factor.In has no translated product docs yet; a stale Sync Engine page at the repo root is worse than none. |
-| `.github/workflows/deploy.yml` | deployed the docs site and the module catalog to upstream's GitHub Pages. Both are upstream infra we deliberately do not use. |
+| Path                           | Why                                                                                                                                                                                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/`                        | upstream's VitePress site. We do not publish a docs site; product docs live in `README.md`, contributor docs here. Removing it also drops the `docs` workspace, the `dev:docs`/`build:docs` scripts, and the docs half of `bun check`. |
+| `README.zh.md`                 | upstream-branded Chinese README. Factor.In has no translated product docs yet; a stale Sync Engine page at the repo root is worse than none.                                                                                           |
+| `.github/workflows/deploy.yml` | deployed the docs site and the module catalog to upstream's GitHub Pages. Both are upstream infra we deliberately do not use.                                                                                                          |
 
 `scripts/deploy-modules.ts` and `modules.json` survive as upstream files but are inert here: nothing
 runs them, and the branded build ships with `moduleSources: []` (no third-party module catalog).
@@ -151,7 +151,7 @@ The owned files above resolve themselves. Then work through:
 
 ### Known fork-local edits outside the owned list
 
-These live in upstream files, so they are *not* `merge=ours` — we want upstream's changes to keep
+These live in upstream files, so they are _not_ `merge=ours` — we want upstream's changes to keep
 flowing. Expect to re-apply them by hand when a merge conflicts:
 
 - `AGENTS.md` — a pointer to this file, plus removal of the `docs/` site references (that workspace no
@@ -168,13 +168,13 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
 > **Two invariants keep that edge legal — break either and `bun install` fails.**
 >
 > 1. **`packages/factorin` depends on nothing in the workspace** — not
->    `@hesprs/sync-engine-sdk`, not `@repo/shared`. The SDK *is* `packages/plugin`, so an SDK
+>    `@hesprs/sync-engine-sdk`, not `@repo/shared`. The SDK _is_ `packages/plugin`, so an SDK
 >    dependency there plus this one is a cycle, and Turbo rejects a cyclic task graph.
 > 2. **`@factorin/module` is resolved by Bun's workspace linking, never by a tsconfig `paths`
 >    alias.** A `paths` entry rewrites the bare specifier to a relative source path, which makes
 >    `rolldown-plugin-dts` treat the package as internal to the SDK's declaration bundle and demand a
 >    `.d.ts` that `tsgo` will not emit for a file outside `packages/plugin`'s `rootDir` (`tsgo did not
->    generate dts file for packages/factorin/src/index.ts`).
+generate dts file for packages/factorin/src/index.ts`).
 >
 > Together these are why `packages/factorin` has no `tsdown.config.ts` and no `build` script: a
 > standalone bundle would need `obsidianBridge` from `@hesprs/sync-engine-sdk/dev`. Internal modules

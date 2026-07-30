@@ -1,11 +1,11 @@
 import './global.css';
 import type { Command, EventRef, App } from 'obsidian';
 import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
+import Factorin from '@factorin/module';
 import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
 import type { AddRibbonIcon } from './modules/Observability';
 import type { GlobMatchRule } from './types';
-import Factorin from '@factorin/module';
 import Bootstrap from './modules/Bootstrap';
 import EventBus from './modules/EventBus';
 import Extensibility from './modules/Extensibility';

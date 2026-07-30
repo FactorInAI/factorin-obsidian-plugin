@@ -1,9 +1,9 @@
-import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
 import { beforeEach, describe, expect, test } from 'bun:test';
-import Factorin from '@/index';
-import { FACTORIN_ICON } from '@/icon';
+import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
 import { en, zh } from '@/i18n';
-import { registeredIcons } from './mocks';
+import { FACTORIN_ICON } from '@/icon';
+import Factorin from '@/index';
+import registeredIcons from './mocks';
 
 type Registration = [FactorinLanguageCode, FactorinTranslationResource];
 

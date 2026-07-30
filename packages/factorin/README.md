@@ -43,7 +43,7 @@ nothing else — no workspace package at all, not even `@repo/shared`. No upstre
 package may import from here; the sole exception is the `internalModules` wiring in
 `packages/plugin/src/index.ts`.
 
-**`src/` must not import `@hesprs/sync-engine-sdk`.** The SDK *is*
+**`src/` must not import `@hesprs/sync-engine-sdk`.** The SDK _is_
 `packages/plugin`, published from `packages/plugin/dist`, and `packages/plugin`
 compiles this package's sources inside its own program. So an SDK import here means
 the `postinstall` SDK build has to type a file that imports the SDK's own
@@ -64,7 +64,7 @@ dependency on this package is a cycle Turbo rejects. Internal modules ship insid
 **Never name `Context` in this package's type surface.** Downloadable modules can
 write `SelectFromContext<{…}>`, which expands to `Context extends O ? O : never`.
 Factor.In is a member of the plugin's own `internalModules` array, so the plugin's
-`Context` is *defined in terms of this class*; naming it here makes the two types
+`Context` is _defined in terms of this class_; naming it here makes the two types
 reference each other through their own definitions. Declare the context slice
 structurally instead, from leaf types only — the same thing upstream's internal
 modules (e.g. `Extensibility`) do. See the `FactorinContext` comment in `src/index.ts`.
@@ -72,7 +72,7 @@ modules (e.g. `Extensibility`) do. See the `FactorinContext` comment in `src/ind
 **Resolve `@factorin/module` through Bun's workspace linking, never through a
 tsconfig `paths` alias.** A `paths` entry in `packages/plugin/tsconfig.json` rewrites
 the bare specifier to a relative source path, so `rolldown-plugin-dts` treats this
-package as *internal* to the SDK's declaration bundle and demands a `.d.ts` for
+package as _internal_ to the SDK's declaration bundle and demands a `.d.ts` for
 `src/index.ts` that `tsgo` will not emit for a file outside the plugin's `rootDir`.
 A real `workspace:*` dependency keeps the specifier bare, so the SDK's `dist/index.d.ts`
 re-exports it as an external import — the same treatment `@repo/shared` gets.
@@ -93,10 +93,10 @@ packages/factorin/
 
 Run from the repository root (Bun `1.3.13`, pinned by `packageManager`):
 
-| Command | What |
-|---|---|
-| `bun run build:plugin` | Build the plugin, Factor.In bundled in → `packages/plugin/dist-plugin/` |
-| `bun --bun turbo run tests -F @factorin/module` | This package's tests |
-| `bun --bun turbo run check -F @factorin/module` | `tsc` + `oxlint` + `oxfmt --check` |
+| Command                                         | What                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `bun run build:plugin`                          | Build the plugin, Factor.In bundled in → `packages/plugin/dist-plugin/` |
+| `bun --bun turbo run tests -F @factorin/module` | This package's tests                                                    |
+| `bun --bun turbo run check -F @factorin/module` | `tsc` + `oxlint` + `oxfmt --check`                                      |
 
 There is no `build` for this package — see "This package has no build" above.
