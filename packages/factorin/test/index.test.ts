@@ -46,6 +46,24 @@ describe('Factor.In module', () => {
 		expect(() => module.dispose()).not.toThrow();
 	});
 
+	// Nothing pushes to `cleanup` while the module is a shell.
+	// The drain is reachable only from here, hence the private-field reach.
+	// Every later `start()` registration will rely on it.
+	test('dispose() runs each cleanup callback exactly once and empties the queue', () => {
+		const module = new Factorin(createContext());
+		const calls: Array<string> = [];
+		const queue = (module as unknown as { cleanup: Array<() => void> }).cleanup;
+		queue.push(() => calls.push('first'));
+		queue.push(() => calls.push('second'));
+
+		module.dispose();
+		expect(calls).toEqual(['first', 'second']);
+		expect(queue).toEqual([]);
+
+		module.dispose();
+		expect(calls).toEqual(['first', 'second']);
+	});
+
 	test('start() and dispose() can be cycled, as plugin reload does', () => {
 		const module = new Factorin(createContext());
 		module.start();

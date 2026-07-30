@@ -15,8 +15,8 @@ describe('Factor.In translation resources', () => {
 		expect(sortedKeys(zh)).toEqual(sortedKeys(en));
 	});
 
-	// Keys land in one flat, kernel-wide i18n object shared with every other module,
-	// so an unprefixed key would silently collide with upstream's.
+	// Keys land in one flat, kernel-wide i18n object shared with every other module.
+	// An unprefixed key would silently collide with upstream's.
 	// See the `src/i18n.ts` doc comment.
 	test.each(locales)('%s prefixes every key with `factorin`', (_locale, resource) => {
 		expect(sortedKeys(resource).filter((key) => !key.startsWith('factorin'))).toEqual([]);
