@@ -2,5 +2,5 @@ manifest.json                   merge=ours
 package.json                    merge=ours
 packages/plugin/manifest.json   merge=ours
 README.md                       merge=ours
-FACTORIN.md                     merge=ours
+FACTOR.IN.md                     merge=ours
 .gitattributes                  merge=ours

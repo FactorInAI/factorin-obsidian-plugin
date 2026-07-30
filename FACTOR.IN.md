@@ -1,10 +1,10 @@
-# Factorin fork — repository & merge strategy
+# Factor.In fork — repository & merge strategy
 
-This repository is a **branded fork of the upstream Sync Engine monorepo**. Factorin ships as its own
-Obsidian plugin ("Factorin Sync"), built from upstream's v3 codebase with Factorin-specific code kept in
+This repository is a **branded fork of the upstream Sync Engine monorepo**. Factor.In ships as its own
+Obsidian plugin ("Factor.In Sync"), built from upstream's v3 codebase with Factor.In-specific code kept in
 its own workspace package so upstream stays mergeable.
 
-Read this before merging anything from upstream. The full architecture rationale lives in the Factorin
+Read this before merging anything from upstream. The full architecture rationale lives in the Factor.In
 `Overview` design document; this file is the operational half — what is ours, what is theirs, and how to
 take an upstream update.
 
@@ -38,15 +38,15 @@ commands below at `upstream/main` when that happens.
 
 ## Owned files (never taken from upstream)
 
-`.gitattributes` marks these `merge=ours`, so an upstream merge always keeps the Factorin version:
+`.gitattributes` marks these `merge=ours`, so an upstream merge always keeps the Factor.In version:
 
 | File | Why it's ours |
 |---|---|
-| `manifest.json` | Obsidian manifest — Factorin id/name/author/description |
+| `manifest.json` | Obsidian manifest — Factor.In id/name/author/description |
 | `package.json` | fork name and metadata |
 | `packages/plugin/manifest.json` | listed pre-emptively; see note below |
-| `README.md` | Factorin product docs, no upstream references |
-| `FACTORIN.md` | this file |
+| `README.md` | Factor.In product docs, no upstream references |
+| `FACTOR.IN.md` | this file |
 | `.gitattributes` | the list itself |
 
 > `packages/plugin/manifest.json` does **not** exist in upstream `feat/fs` — the root `manifest.json` is
@@ -66,8 +66,8 @@ The owned files above resolve themselves. Expect conflicts only in the deliberat
 Overview document lists (today: the `internalModules` array and the default settings literal in
 `packages/plugin/src/index.ts`) — re-apply the same edit to the new upstream version.
 
-Also at every merge, diff upstream's WebDAV FS core against the pinned copy Factorin vendors under
-`packages/factorin/src/backend/webdav/` and port fixes deliberately. Vendored code never conflicts, so it
+Also at every merge, diff upstream's WebDAV FS core against the pinned copy Factor.In vendors under
+`packages/FACTOR.IN/src/backend/webdav/` and port fixes deliberately. Vendored code never conflicts, so it
 will silently go stale if nobody looks.
 
 ### Known fork-local edits outside the owned list
@@ -84,9 +84,9 @@ them is empty. Rather than merge, the fork's mainline was reset onto the v3 mono
 The pre-v3 state (single-package layout with a root `src/`) is preserved for reference at:
 
 - commit `a1e7ff5c8cc499bdec7abd9cf44f51f86a4a51c2`
-- branch `factorin/pre-v3` and tag `pre-v3-base`
+- branch `FACTOR.IN/pre-v3` and tag `pre-v3-base`
 
-Nothing was lost in the reset: the pre-v3 tree carried no Factorin patches — the branding work had not
+Nothing was lost in the reset: the pre-v3 tree carried no Factor.In patches — the branding work had not
 started, and none of the files the old plan targeted exist in v3.
 
 ## Building
