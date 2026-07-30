@@ -17,5 +17,8 @@
 	},
 	"dependencies": {
 		"obsidian": "latest"
+	},
+	"devDependencies": {
+		"@repo/shared": "workspace:*"
 	}
 }

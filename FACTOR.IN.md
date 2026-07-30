@@ -31,7 +31,7 @@ Everything a user sees is Factor.In's. The Obsidian manifest is the source of th
 | `id`            | `factorin-obsidian-plugin` (also the folder under `<vault>/.obsidian/plugins/`) |
 | `name`          | Factor.In Obsidian                                                              |
 | `author`        | Factor.In                                                                       |
-| `authorUrl`     | `https://factorin.com`                                                          |
+| `authorUrl`     | `https://factor.in` (the marketing URL; service hosts stay `*.factorin.com`)    |
 | `minAppVersion` | `1.12.3` (upstream's floor; raise only with a reason)                           |
 
 Never reintroduce the strings "Sync Engine", `sync-engine`, or Hēsperus into a **user-facing** surface —
@@ -167,9 +167,13 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
 
 > **Two invariants keep that edge legal — break either and `bun install` fails.**
 >
-> 1. **`packages/factorin` depends on nothing in the workspace** — not
->    `@hesprs/sync-engine-sdk`, not `@repo/shared`. The SDK _is_ `packages/plugin`, so an SDK
->    dependency there plus this one is a cycle, and Turbo rejects a cyclic task graph.
+> 1. **`packages/factorin` never depends on `@hesprs/sync-engine-sdk`** — not as a
+>    `dependency`, not as a `devDependency`, not type-only. The SDK _is_ `packages/plugin`, so an
+>    SDK dependency there plus this one is a cycle, and Turbo rejects a cyclic task graph. The
+>    SDK leaf types the vendored WebDAV FS needs are re-declared in
+>    `packages/factorin/src/backend/webdav/types.ts` instead.
+>    `@repo/shared` **is** allowed and is depended on: it is a leaf with no `build`/`dev` task and
+>    no dependencies, so the edge adds nothing to the task graph and cannot cycle.
 > 2. **`@factorin/module` is resolved by Bun's workspace linking, never by a tsconfig `paths`
 >    alias.** A `paths` entry rewrites the bare specifier to a relative source path, which makes
 >    `rolldown-plugin-dts` treat the package as internal to the SDK's declaration bundle and demand a

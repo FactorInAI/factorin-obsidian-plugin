@@ -9,7 +9,7 @@
 
 ## What it is
 
-Factor.In Obsidian makes Obsidian a first-class interface to [Factor.In](https://factorin.com).
+Factor.In Obsidian makes Obsidian a first-class interface to [Factor.In](https://factor.in).
 
 Factor.In is where you build the library that feeds your AI runs: documents, prompts, agent
 skills, projects, and tasks. This plugin brings that library into your vault as ordinary
