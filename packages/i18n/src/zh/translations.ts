@@ -200,6 +200,7 @@ const zh: Translations = {
 	scheduledSyncDescription: '按照指定的时间间隔定期触发同步。在输入框中修改间隔时间。',
 	scheduledSyncPlaceholder: '输入间隔（例如 10min, 0.5h）',
 	searchModules: '搜索模块',
+	selectAll: '全选',
 	showInstalledOnly: '仅显示已安装',
 	showProgress: '显示进度',
 	skip: '跳过',

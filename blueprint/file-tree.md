@@ -26,11 +26,17 @@ Behavior: selecting / unselecting only, no collapsing, no expansion.
 Single API shape:
 
 ```TypeScript
-type Mount = (el: Element, tasks: Array<BaseTask>) => {
+type Mount = (el: Element, tasks: Array<BaseTask>, selectAll: string) => {
 	unmount: () => void;
 	getState: () => { selected: Array<BaseTask>; deselected: Array<BaseTask> };
 };
 ```
+
+Select all / deselect all:
+
+- This option is rendered in style similar to a normal tree node with a checkbox icon `folders`, and corresponding state text `selectAll` or `deselectAll`, positioned like a root node in the tree, above all task nodes.
+- When any of the tasks is selected, the action should be `deselectAll`. Only when none of the tasks is selected, action is `selectAll`.
+- The checkbox should show indeterminate state when tasks are partially selected, otherwise show checked / unchecked.
 
 ## Implementation
 

@@ -13,6 +13,25 @@
 	border-style: solid;
 }
 
+input[type='checkbox']:indeterminate::after {
+	content: '';
+	top: -1px;
+	inset-inline-start: -1px;
+	position: absolute;
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	display: block;
+	background-color: var(--checkbox-marker-color);
+	mask-position: 52% 52%;
+	mask-size: 65%;
+	mask-repeat: no-repeat;
+	mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2012%208'%3E%3Cpath%20fill='%23000'%20d='M1%203h10v2H1z'/%3E%3C/svg%3E");
+}
+input[type='checkbox']:indeterminate {
+	background-color: var(--checkbox-color);
+	border-color: var(--checkbox-color);
+}
+
 .conflict.ours,
 .conflict.theirs {
 	position: relative;

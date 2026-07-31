@@ -2,6 +2,7 @@ import type { Context, Events, Translations } from '@';
 import type { App, SecretStorage } from 'obsidian';
 import type { Ref } from 'synthkernel';
 import type { DatabaseSync } from 'uni-kv';
+import type { FileTreeTranslations } from '@/components/file-tree';
 import type { HeadersEditorTranslations } from '@/components/HeadersEditorModal';
 import type { ModuleEditorTranslations } from '@/components/ModuleEditorModal';
 import type { UnknownModuleTranslations } from '@/components/UnknownModuleModal';
@@ -92,7 +93,8 @@ export default class Bootstrap {
 		MiscellaneousSettingTranslations &
 		HeadersEditorTranslations &
 		UnknownModuleTranslations &
-		ModuleEditorTranslations;
+		ModuleEditorTranslations &
+		FileTreeTranslations;
 	declare readonly settings: {
 		maxMemoryConsumption: TogglableValue;
 		maxRequestConcurrency: TogglableValue;

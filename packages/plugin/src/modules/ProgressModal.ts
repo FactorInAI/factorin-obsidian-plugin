@@ -74,6 +74,7 @@ export default class ProgressModal extends Modal {
 				const { unmount, getState } = mountFileTree(
 					this.detailContainer as HTMLDivElement,
 					tasks,
+					this.t('selectAll'),
 				);
 				const cleanupUnmount = this.modalCleanupCallbacks.subscribe(unmount);
 				this.description?.setText(this.t('confirmDeleteDescription'));
@@ -95,6 +96,7 @@ export default class ProgressModal extends Modal {
 				const { unmount, getState } = mountFileTree(
 					this.detailContainer as HTMLDivElement,
 					tasks,
+					this.t('selectAll'),
 				);
 				const cleanupUnmount = this.modalCleanupCallbacks.subscribe(unmount);
 				this.description?.setText(this.t('confirmTasksDescription'));

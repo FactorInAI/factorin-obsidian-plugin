@@ -220,6 +220,7 @@ const en: Translations = {
 		'Periodically trigger synchronizations over specified intervals. Alter the interval in the field.',
 	scheduledSyncPlaceholder: 'Enter interval (e.g. 10min, 0.5h)',
 	searchModules: 'Search modules',
+	selectAll: 'Select all',
 	showInstalledOnly: 'Show installed only',
 	showProgress: 'Show progress',
 	skip: 'Skip',

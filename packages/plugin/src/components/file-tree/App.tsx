@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js';
 import { setIcon, setTooltip } from 'obsidian';
-import { For } from 'solid-js';
+import { createEffect, For } from 'solid-js';
 import { getTaskColor, getTaskIcon } from '@/sync';
 import type { FileTreeData } from './types';
 
@@ -8,9 +8,35 @@ export default function App(props: {
 	data: FileTreeData;
 	isSelected: (nodeId: string) => boolean;
 	toggle: (nodeId: string, nextSelected: boolean) => void;
+	selectAll: string;
 }): JSX.Element {
+	const selectedCount = () =>
+		props.data.taskNodeIds.filter((nodeId) => props.isSelected(nodeId)).length;
+	const allSelected = () => selectedCount() === props.data.taskNodeIds.length;
+	const someSelected = () => selectedCount() > 0 && !allSelected();
+	const toggleAll = () => {
+		const nextSelected = selectedCount() === 0;
+		for (const nodeId of props.data.taskNodeIds) props.toggle(nodeId, nextSelected);
+	};
+
 	return (
 		<div class="flex flex-col gap-1">
+			<div class="flex min-h-7 items-center" onClick={toggleAll}>
+				<div class="mx-1 flex min-w-0 items-center gap-2">
+					<input
+						checked={allSelected()}
+						class="m-0! cursor-pointer accent-[--interactive-accent]"
+						ref={(element) => {
+							createEffect(() => {
+								element.indeterminate = someSelected();
+							});
+						}}
+						type="checkbox"
+					/>
+					<div class="h-4 w-4" ref={(element) => setIcon(element, 'folders')} />
+					<div class="min-w-0 break-words text-[--text-normal]">{props.selectAll}</div>
+				</div>
+			</div>
 			<For each={props.data.orderedNodeIds}>
 				{(nodeId) => {
 					const node = props.data.nodes[nodeId];
