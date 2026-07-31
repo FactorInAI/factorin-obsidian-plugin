@@ -36,6 +36,9 @@
       "dependencies": {
         "obsidian": "latest",
       },
+      "devDependencies": {
+        "@repo/shared": "workspace:*",
+      },
     },
     "packages/i18n": {
       "name": "i18n",

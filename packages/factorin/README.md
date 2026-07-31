@@ -25,9 +25,10 @@ downloaded at runtime. That is the whole point of the branded fork: no module
 catalog, no CDN, no integrity handshake, no auto-update. A Factor.In build never
 contacts `sync.consensia.cc`.
 
-Today it is a shell: it registers its i18n resources and the Factor.In icon. The
-`factorin` remote FS, the API-token settings section, and the workflow UI land in
-later milestones.
+Today it registers its i18n resources and the Factor.In icon, and carries the vendored
+WebDAV FS core under `src/backend/webdav/` (see `VENDORED.md` there). Wiring that FS
+into `registerRemoteFs('factorin', …)`, the API-token settings section, and the
+workflow UI land in later milestones.
 
 ## How it reaches the plugin
 
@@ -38,10 +39,17 @@ single build with no intermediate artifact.
 
 ## Rules
 
-**Dependency direction is one-way.** `packages/factorin` imports `obsidian` and
-nothing else — no workspace package at all, not even `@repo/shared`. No upstream
-package may import from here; the sole exception is the `internalModules` wiring in
-`packages/plugin/src/index.ts`.
+**Dependency direction is one-way.** `packages/factorin` depends on `obsidian` and
+`@repo/shared`, and nothing else. No upstream package may import from here; the sole
+exception is the `internalModules` wiring in `packages/plugin/src/index.ts`.
+
+`@repo/shared` is safe because it is a leaf: no `build` or `dev` task, no
+dependencies of its own, exported as raw `./src/*.ts`. The edge
+`@factorin/module → @repo/shared` therefore adds nothing to Turbo's task graph and
+cannot cycle — unlike an SDK edge, which would (see the next rule). The vendored
+WebDAV FS uses its path/binary helpers exactly as upstream does; re-implementing
+`normalizeUrl` / `normalizeKey` / `concatBinary` here would fork the path grammar the
+sync engine agrees on. See `src/backend/webdav/VENDORED.md`.
 
 **`src/` must not import `@hesprs/sync-engine-sdk`.** The SDK _is_
 `packages/plugin`, published from `packages/plugin/dist`, and `packages/plugin`
@@ -85,9 +93,20 @@ packages/factorin/
 ├── src/
 │   ├── index.ts       the module class (default export)
 │   ├── i18n.ts        translation resources, registered via ctx.registerI18n
-│   └── icon.ts        the Factor.In brandmark, inlined as an Obsidian icon
+│   ├── icon.ts        the Factor.In brandmark, inlined as an Obsidian icon
+│   └── backend/
+│       └── webdav/    vendored WebDAV FS core — READ VENDORED.md BEFORE EDITING
 └── test/
+    ├── test-kit.ts        vendored copy of the SDK's test kit
+    ├── fs-webdav.test.ts  ┐ vendored upstream WebDAV tests
+    └── base-dir.test.ts   ┘
 ```
+
+`src/backend/webdav/` is upstream's code, pinned. Everything in it except `types.ts`
+is byte-identical to `packages/webdav/src/` apart from import specifiers, and that
+property is load-bearing: it is what makes an upstream refresh a readable `git diff`.
+Fix bugs upstream-side where you can, and read `VENDORED.md` before touching anything
+there.
 
 ## Commands
 
