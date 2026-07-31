@@ -157,6 +157,23 @@ test('write and read round trip content', async () => {
 	expect(await shim.read('Folder/file.md', stat)).toStrictEqual(plaintext);
 });
 
+test('moved encrypted content remains decryptable', async () => {
+	const remote = createRemote();
+	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });
+	const plaintext = bytes('content survives a move');
+
+	await shim.write(
+		'Folder/file.md',
+		plaintext,
+		file('Folder/file.md', { size: plaintext.byteLength }),
+	);
+	await shim.move('Folder/file.md', 'Moved/file.md');
+
+	expect(
+		await shim.read('Moved/file.md', file('Moved/file.md', { size: plaintext.byteLength })),
+	).toStrictEqual(plaintext);
+});
+
 test('readStream decrypts with provided size', async () => {
 	const remote = createRemote();
 	const shim = encryptionWrapper(remote.fs, { memoryDB, password: PASSWORD });

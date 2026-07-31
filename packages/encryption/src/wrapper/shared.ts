@@ -26,11 +26,8 @@ export async function deriveFileKey(
 	rootFileKey: BufferSource,
 	fileSalt: BufferSource,
 	encryptedFileSize: number,
-	virtualPath: string,
 ): Promise<Binary> {
-	const fileKeySalt = await sha256Digest(
-		concatBinary(fileSalt, encodeUInt96(encryptedFileSize), textToUint8Array(virtualPath)),
-	);
+	const fileKeySalt = await sha256Digest(concatBinary(fileSalt, encodeUInt64(encryptedFileSize)));
 	return deriveHkdfKey(rootFileKey, FILE_KEY_INFO, fileKeySalt);
 }
 
@@ -95,10 +92,18 @@ export function getEncryptedChunkSize(chunkIndex: number, encryptedFileSize: num
 }
 
 export function encodeUInt96(value: number): Binary {
+	return encodeUInt(value, 12);
+}
+
+export function encodeUInt64(value: number): Binary {
+	return encodeUInt(value, 8);
+}
+
+function encodeUInt(value: number, byteLength: number): Binary {
 	if (!Number.isSafeInteger(value) || value < 0)
 		throw new Error('Value must be a non-negative safe integer');
 	let remainder = value;
-	const result = new Uint8Array(12);
+	const result = new Uint8Array(byteLength);
 	for (let index = result.length - 1; index >= 0; index -= 1) {
 		result[index] = remainder & 0xff;
 		remainder = Math.floor(remainder / 256);

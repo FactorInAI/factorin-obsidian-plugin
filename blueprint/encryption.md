@@ -1,6 +1,6 @@
-# Client-side Encryption v1
+# Client-side Encryption v2
 
-The plugin uploads encrypted files to remote, download and decrypt back to local. The schema below aims to achieve similar encryption function as `rclone` but with higher security.
+The plugin uploads encrypted files to remote, download and decrypt back to local.
 
 ## Terminology
 
@@ -9,7 +9,7 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 - IV = Initialization Vector = Nonce
 - B = Byte
 - b = bit
-- KiB = 1024B
+- 1KiB = 1024B
 - || = concatenate
 
 ### Threat Model & Constraints
@@ -22,7 +22,8 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 - No central server to store salts or nonce, no extra meta file creation.
 - Encrypted file names must be deterministic.
 - Impossible or huge-cost-little-gain to achieve in this context:
-  - prevent file being rolling back to previous version by malicious server
+  - prevent file rollback to a previous version
+  - prevent file unintended renaming or movement
   - prevent file deletion by malicious server
   - obfuscate file size or modification time
   - obfuscate total file number
@@ -48,10 +49,10 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 - _root file key_: 32B, derived from _master key_ used to generate _file key_ for each file
 - _file key_: 32B, derived from _root file key_ and random _file salt_
 - _file salt_: 16B, pure random, to derive _file key_ each time to encrypt or decrypt a file
-- _file key salt_: 32B, `SHA256` of _file salt_ || file size in 12B || UTF-8 file path
+- _file key salt_: 32B, `SHA256` of _file salt_ || encrypted file size in 8B
 - _chunk nonce_: 12B, chunk index represented in 12B.
 - _encrypted file / folder name_: `Base64URL` of `AES-GCM-SIV` encrypted file name
-- _encrypted file / folder path_: _encrypted file / folder name_ of all ancestor hierarchies joined by `/`.
+- _encrypted file / folder path_: _encrypted file / folder name_ of all ancestor hierarchies joint by `/`.
 - _file chunk_: 131,088B, 128KiB-chunked and `AES-GCM-256` encrypted piece of file (end chunk can be smaller)
 - _encrypted file content_: _file salt_ || all chunks sequentially
 
@@ -81,7 +82,7 @@ Then come to the traversal and syncing logic:
 
 ## File / Folder Path Encryption
 
-- All paths should be represented in UTF-8 and normalized to Unicode NFC (current plugin logic already ensures this)
+- All paths should be represented in UTF-8 and normalized to Unicode NFC
 - Cascade and encrypt the whole path chain, for each file name (should be a standalone name like `bar`, `foo.md`):
   - use `AES-GCM-SIV-256` to encrypt file name with key: _name key_, content: file name, nonce: fixed at UTF-8 of `file-name-v1` in bytes.
   - obtain the final name using `Base64URL` on the result yielded above
@@ -91,10 +92,10 @@ Then come to the traversal and syncing logic:
 
 ## File Encryption
 
-- Input raw file, raw file size, and file path
+- Input raw file and raw file size
 - Generate random 16B _file salt_ via `CSPRNG`
 - Calculate encrypted file size as `raw size + 16B + ceil(raw size / 128KiB) * 16B`
-- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 12B || UTF-8 file path
+- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 8B
 - Calculate _file key_ using `HKDF-SHA-256` of _root file key_ (salt: _file key salt_, info: `file-key-v1`).
 - Splice the file content into 128KiB chunks, special size for the last chunk, for each chunk:
   - get chunk index starting from 0 represented in 12B as _chunk nonce_
@@ -104,9 +105,9 @@ Then come to the traversal and syncing logic:
 
 ## One-pass Decryption
 
-- Input encrypted file, encrypted size in bytes, and decrypted relative path
+- Input encrypted file and encrypted size in bytes
 - Splice the first 16B as _file salt_
-- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 12B || UTF-8 file path
+- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 8B
 - Calculate _file key_ using `HKDF-SHA-256` of _root file key_ (salt: _file key salt_, info: `file-key-v1`).
 - Continue to splice into 131,088B pieces (exception for the last chunk), for each piece:
   - count _chunk index_ as _chunk nonce_
@@ -117,13 +118,13 @@ Then come to the traversal and syncing logic:
 
 Streamed decryption receives a `ReadableStream`, generates another `ReadableStream`, and pipe decrypts it between streams.
 
-- Input the decrypted file path, encrypted size in bytes, and accept a sequential binary stream of the file content
+- Input the encrypted size in bytes, and accept a sequential binary stream of the file content
 - Split and concatenate the chunk internally
 - For example, if the first received binary is 2,000,000B in size, the range decrypter:
   - strips first 16B as _file salt_
   - add up counter for each chunk and strip next 1966380B as 15 _completed chunks_
   - save the last 33604B as an _incomplete chunk_ and save to a buffer
-  - decrypt the 15 _completed chunks_ as one-pass decryption
+  - decrypt the 15 _completed chunks_ like one-pass decryption
   - concatenate content, and pipe to new stream.
   - when next binary stream chunk arrives, it concatenates the content in the buffer with the first certain size of bytes in the new binary as the first _completed chunk_.
   - repeat until the original stream finishes, the class treats the rest content in its buffer as a _completed chunk_, decrypt directly, pipe to the new stream, then end it.
@@ -132,9 +133,9 @@ Streamed decryption receives a `ReadableStream`, generates another `ReadableStre
 
 Streamed encryption follows symmetrical path with streamed decryption.
 
-- Input the unencrypted file path, unencrypted size in bytes, and a `ReadableStream` of file content.
+- Input the unencrypted size in bytes and a `ReadableStream` of file content.
 - Calculate the encrypted size as `raw size + 16B + ceil(raw size / 128KiB) * 16B`
-- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 12B || UTF-8 file path
+- Calculate _file key salt_ as `SHA256` of _file salt_ || encrypted file size in 8B
 - Calculate _file key_ using `HKDF-SHA-256` of _root file key_ (salt: _file key salt_, info: `file-key-v1` constant string).
 - Creates a `TransformStream` above the original stream.
 - Constantly reads the stream, encrypts and maintains a buffer of raw bytes: if the buffer < 128KiB after reserving a stream chunk, continue reading; if larger than 128KiB, encrypt the max number of 128KiB chunks in the buffer and emit. When stream ends, encrypt and emit the rest in the buffer.
