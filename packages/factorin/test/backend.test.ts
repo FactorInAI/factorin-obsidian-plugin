@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Binary, FileStat, Fs, Request, RootFs, Stat } from '@/backend/webdav/types';
-import {
-	BASE_DIR_WRAPPER_PRIORITY,
-	FACTORIN_REMOTE_FS,
-	registerFactorinBackend,
-} from '@/backend';
+import { BASE_DIR_WRAPPER_PRIORITY, FACTORIN_REMOTE_FS, registerFactorinBackend } from '@/backend';
 import { createBackendContext } from './backend-context';
 
 const DRIVE_URL = 'https://drive.factorin.com/acme';
@@ -83,7 +79,7 @@ describe('factorin backend credentials', () => {
 		const { entry } = setup();
 		const { calls, request } = createRequest();
 
-		await expect(entry.checkConnection(request)).resolves.toEqual({ success: true });
+		expect(await entry.checkConnection(request)).toEqual({ success: true });
 		expect(calls).toHaveLength(1);
 		expect(calls[0].method).toBe('PROPFIND');
 		expect(calls[0].url).toBe(`${DRIVE_URL}/`);
@@ -93,7 +89,7 @@ describe('factorin backend credentials', () => {
 	test('checkConnection reports a failing Drive response rather than throwing', async () => {
 		const { entry } = setup();
 		const { request } = createRequest(401);
-		await expect(entry.checkConnection(request)).resolves.toEqual({
+		expect(await entry.checkConnection(request)).toEqual({
 			reason: '401',
 			success: false,
 		});
@@ -174,7 +170,7 @@ describe('factorin base-directory wrapper', () => {
 			move: () => undefined,
 			read: () => emptyBinary,
 			readStream: () => new ReadableStream<Binary>(),
-			stat: () => ({ isDir: true, key: '/' }) as Stat,
+			stat: () => ({ isDir: true, key: '/' }),
 			write: () => '',
 			writeStream: () => '',
 		} satisfies RootFs;

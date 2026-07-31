@@ -28,7 +28,7 @@ contacts `sync.consensia.cc`.
 Today it registers its i18n resources, the Factor.In icon, and the single first-party
 `factorin` remote FS — the vendored WebDAV FS core under `src/backend/webdav/` (see
 `VENDORED.md` there), pointed at the account's Drive endpoint by `src/backend/index.ts`.
-The API-token settings section that *populates* that configuration, and the workflow UI,
+The API-token settings section that _populates_ that configuration, and the workflow UI,
 land in later milestones.
 
 ### The backend, in one paragraph
@@ -36,13 +36,13 @@ land in later milestones.
 `src/backend/index.ts` is `registerRemoteFs('factorin', …)` plus the base-directory
 `registerRemoteFsWrapper`, and nothing else. Credentials are resolved **lazily, on every
 instantiation**, from `moduleSettings` (`driveUrl`, `accountSlug`, `baseDirectory`) and
-`secretStorage` (`tokenKey` → the raw `fi_…` token, which *is* the WebDAV Basic-auth
+`secretStorage` (`tokenKey` → the raw `fi_…` token, which _is_ the WebDAV Basic-auth
 password — see the Overview document §6.0). Nothing is cached at `start()`: the connect
 flow rewrites those fields whenever the user reconnects or switches account, and a
 captured config would both go stale and pin a secret in memory. Unconfigured, it throws
 `Please connect your Factor.In account!`, which the settings tab surfaces as-is.
 
-Because that is the *whole* difference from upstream's `webdav` backend, every upstream
+Because that is the _whole_ difference from upstream's `webdav` backend, every upstream
 decider, conflict resolver, scheduler and FS wrapper drives it with zero awareness of
 Factor.In.
 

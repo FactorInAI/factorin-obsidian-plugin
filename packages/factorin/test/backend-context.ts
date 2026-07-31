@@ -29,6 +29,7 @@ export function createBackendContext(): BackendContextHarness {
 	const secrets = new Map<string, string>();
 	const wrappers = new Set<FactorinFsWrapperEntry>();
 	const app = {
+		// oxlint-disable-next-line unicorn/no-null -- Obsidian's `getSecret` returns `string | null`.
 		secretStorage: { getSecret: (key: string) => secrets.get(key) ?? null },
 		vault: { getName: () => VAULT_NAME },
 	} as unknown as App;
