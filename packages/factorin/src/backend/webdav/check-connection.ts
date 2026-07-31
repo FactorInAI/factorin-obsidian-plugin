@@ -1,5 +1,5 @@
-import type { CheckConnectionResult, Request } from './types';
 import { normalizeUrl } from '@repo/shared/path';
+import type { CheckConnectionResult, Request } from './types';
 import { buildUrl, getAuthorization } from './utils';
 
 export type WebdavConnectionOptions = {

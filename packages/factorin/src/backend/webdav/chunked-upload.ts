@@ -1,5 +1,5 @@
-import type { Binary, Request, Stat } from './types';
 import { concatBinary } from '@repo/shared/binary';
+import type { Binary, Request, Stat } from './types';
 import { buildUrl, getFileUid, getHeader } from './utils';
 
 const NEXTCLOUD_CHUNK_SIZE = 5 * 1024 * 1024;

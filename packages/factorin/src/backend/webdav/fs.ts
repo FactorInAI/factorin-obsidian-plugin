@@ -1,12 +1,3 @@
-import type {
-	Binary,
-	FileStat,
-	FolderStat,
-	ListReporter,
-	Request,
-	RootFs,
-	Stat,
-} from './types';
 import { concatBinary } from '@repo/shared/binary';
 import { getStatus } from '@repo/shared/get-status';
 import {
@@ -16,8 +7,9 @@ import {
 	normalizeUrl,
 	stripEndSlash,
 } from '@repo/shared/path';
-import parseXML from './parse-xml';
+import type { Binary, FileStat, FolderStat, ListReporter, Request, RootFs, Stat } from './types';
 import writeNextcloudChunkedUpload from './chunked-upload';
+import parseXML from './parse-xml';
 import createWebDAVReadStream from './read-stream';
 import { buildUrl, getAuthorization, getFileUid, getHeader } from './utils';
 

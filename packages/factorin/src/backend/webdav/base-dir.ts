@@ -1,13 +1,5 @@
-import type {
-	Binary,
-	MaybePromise,
-	Stat,
-	Fs,
-	WrappedFs,
-	FileStat,
-	ListReporter,
-} from './types';
 import { normalizeBaseDir } from '@repo/shared/path';
+import type { Binary, MaybePromise, Stat, Fs, WrappedFs, FileStat, ListReporter } from './types';
 
 function joinUnifiedKey(baseDir: string, key: string) {
 	const joined = `${baseDir}${key}`;

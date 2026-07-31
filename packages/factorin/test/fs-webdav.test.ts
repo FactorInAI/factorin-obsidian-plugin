@@ -1,10 +1,15 @@
-// Vendored alongside the FS core it covers — see src/backend/webdav/VENDORED.md.
-// Local edits: these imports (SDK -> vendored leaf types, `@/webdav/*` ->
-// `@/backend/webdav/*`, `testKit` -> the local copy) and the `mock.module`
-// specifier below. Everything else is upstream's, so keep it diffable.
-import type { Binary, Progress, Request, RootFs } from '@/backend/webdav/types';
+/**
+ * Vendored alongside the FS core it covers — see `src/backend/webdav/VENDORED.md`.
+ *
+ * Local edits are confined to specifiers: the imports below (SDK -> vendored leaf
+ * types, `@/webdav/*` -> `@/backend/webdav/*`, `testKit` -> the local copy) and the
+ * `mock.module` specifier further down. Everything else is upstream's, so keep it
+ * diffable.
+ */
+
 import { beforeEach, expect, mock, test } from 'bun:test';
 import type { WebdavFsOptions } from '@/backend/webdav/fs';
+import type { Binary, Progress, Request, RootFs } from '@/backend/webdav/types';
 import { checkConnection } from '@/backend/webdav/check-connection';
 import WebdavFs from '@/backend/webdav/fs';
 import createWebDAVReadStream from '@/backend/webdav/read-stream';

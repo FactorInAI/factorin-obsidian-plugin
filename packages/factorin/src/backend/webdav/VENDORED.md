@@ -23,49 +23,49 @@ lifecycle around it is ours.
 
 ## The pin
 
-| | |
-| --- | --- |
+|                     |                                                  |
+| ------------------- | ------------------------------------------------ |
 | Upstream repository | `https://github.com/hesprs/obsidian-webdav-sync` |
-| Branch | `feat/fs` |
-| Commit | `30ba2e9` |
-| Version | `3.0.0-beta-15` |
-| Source path | `packages/webdav/src/` |
+| Branch              | `feat/fs`                                        |
+| Commit              | `30ba2e9`                                        |
+| Version             | `3.0.0-beta-15`                                  |
+| Source path         | `packages/webdav/src/`                           |
 
 That is the repository's recorded upstream base — `factorin.upstream` in the root
 `package.json`, and the reset commit named in `FACTOR.IN.md` § "History: the pre-v3
 reset". It is deliberately not duplicated as a literal anywhere else; those two are the
 source of truth and this table quotes them.
 
-**This monorepo *is* the fork, so upstream's copy is already checked out here** — the
+**This monorepo _is_ the fork, so upstream's copy is already checked out here** — the
 files under `packages/webdav/src/` are the originals this directory was copied from, and
 they merge normally on every upstream merge. That makes the refresh below a local diff:
 no fetch, no remote, no vendor tarball.
 
 ## What was copied
 
-| Here | Upstream |
-| --- | --- |
-| `fs.ts` | `packages/webdav/src/webdav/fs.ts` |
-| `chunked-upload.ts` | `packages/webdav/src/webdav/chunked-upload.ts` |
-| `read-stream.ts` | `packages/webdav/src/webdav/read-stream.ts` |
-| `check-connection.ts` | `packages/webdav/src/webdav/check-connection.ts` |
-| `utils.ts` | `packages/webdav/src/webdav/utils.ts` |
-| `parse-xml.ts` | `packages/webdav/src/parse-xml.ts` |
-| `base-dir.ts` | `packages/webdav/src/base-dir.ts` |
-| `../../../test/fs-webdav.test.ts` | `packages/webdav/test/fs-webdav.test.ts` |
-| `../../../test/base-dir.test.ts` | `packages/webdav/test/base-dir.test.ts` |
+| Here                              | Upstream                                         |
+| --------------------------------- | ------------------------------------------------ |
+| `fs.ts`                           | `packages/webdav/src/webdav/fs.ts`               |
+| `chunked-upload.ts`               | `packages/webdav/src/webdav/chunked-upload.ts`   |
+| `read-stream.ts`                  | `packages/webdav/src/webdav/read-stream.ts`      |
+| `check-connection.ts`             | `packages/webdav/src/webdav/check-connection.ts` |
+| `utils.ts`                        | `packages/webdav/src/webdav/utils.ts`            |
+| `parse-xml.ts`                    | `packages/webdav/src/parse-xml.ts`               |
+| `base-dir.ts`                     | `packages/webdav/src/base-dir.ts`                |
+| `../../../test/fs-webdav.test.ts` | `packages/webdav/test/fs-webdav.test.ts`         |
+| `../../../test/base-dir.test.ts`  | `packages/webdav/test/base-dir.test.ts`          |
 
 ## What was deliberately **not** copied
 
 The module-lifecycle half of `packages/webdav`. Factor.In supplies its own:
 
-| Upstream file | Why not |
-| --- | --- |
-| `src/index.ts` | the `Webdav` module class — settings shape, `registerRemoteFs('webdav', …)`, `registerRemoteFsWrapper`, `registerSetting`. Factor.In's module class is `packages/factorin/src/index.ts`; the FS registers under `factorin`, against Factor.In's own settings. |
-| `src/setting.ts` | upstream's settings section (endpoint / username / password fields). Factor.In's is an API token plus an account slug. |
-| `src/handle-input.ts` | helper for that settings section only. |
-| `src/i18n.ts` | upstream's `webdav*` translation keys. Factor.In's live in `src/i18n.ts`, prefixed `factorin`. |
-| `package.json`, `tsdown.config.ts` | this is not a separate package — no bundle, no manifest, no catalog entry. |
+| Upstream file                      | Why not                                                                                                                                                                                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`                     | the `Webdav` module class — settings shape, `registerRemoteFs('webdav', …)`, `registerRemoteFsWrapper`, `registerSetting`. Factor.In's module class is `packages/factorin/src/index.ts`; the FS registers under `factorin`, against Factor.In's own settings. |
+| `src/setting.ts`                   | upstream's settings section (endpoint / username / password fields). Factor.In's is an API token plus an account slug.                                                                                                                                        |
+| `src/handle-input.ts`              | helper for that settings section only.                                                                                                                                                                                                                        |
+| `src/i18n.ts`                      | upstream's `webdav*` translation keys. Factor.In's live in `src/i18n.ts`, prefixed `factorin`.                                                                                                                                                                |
+| `package.json`, `tsdown.config.ts` | this is not a separate package — no bundle, no manifest, no catalog entry.                                                                                                                                                                                    |
 
 ## Local edits
 
@@ -73,11 +73,11 @@ Two, both mechanical, both confined to import specifiers. **The bodies are byte-
 to upstream** — that is the property that makes the refresh a clean diff, so keep it.
 
 1. **`@hesprs/sync-engine-sdk` → `./types`.** This package must not depend on the SDK in
-   any form. The SDK *is* `packages/plugin`, and `packages/plugin` already depends on
+   any form. The SDK _is_ `packages/plugin`, and `packages/plugin` already depends on
    `@factorin/module`, so an SDK dependency here closes a cycle Turbo rejects — and it
    breaks the SDK's own declaration emit. `types.ts` re-declares the dozen leaf types the
    FS core touches, copied verbatim from `packages/plugin/src/{types,fs/interface,
-   modules/Registrar}.ts`; its doc comment carries the full table and rationale.
+modules/Registrar}.ts`; its doc comment carries the full table and rationale.
 
 2. **`@/parse-xml` → `./parse-xml`** in `fs.ts`. Upstream's `parse-xml.ts` sits one level
    up from its `webdav/` directory and is reached through that package's `@/*` alias; here
