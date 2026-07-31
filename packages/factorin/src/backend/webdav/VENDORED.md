@@ -83,6 +83,15 @@ modules/Registrar}.ts`; its doc comment carries the full table and rationale.
    up from its `webdav/` directory and is reached through that package's `@/*` alias; here
    everything is in one directory.
 
+Both rewrites move an import between oxfmt's sort groups, so **the import _block_ will not
+match upstream's line-for-line even though the bodies do** — `./types` and `./parse-xml`
+sort as relative imports where `@hesprs/sync-engine-sdk` and `@/parse-xml` did not. Run
+`oxfmt` over this package after any refresh and commit the reordering; skipping it fails
+CI at `@factorin/module#check`, and the resulting diff looks alarming but is pure sort.
+Keep provenance comments as `/** … */` headers above the import block for the same reason:
+oxfmt will strand a `//` comment mid-block, and oxlint's `capitalized-comments` checks
+every line of a `//` run but only the first line of a block comment.
+
 `@repo/shared/{path,binary,get-status}` imports are **left exactly as upstream writes
 them**. That package is in this monorepo, has no build step and depends on nothing, so
 `@factorin/module` simply declares it — see "Dependency direction" in this package's
