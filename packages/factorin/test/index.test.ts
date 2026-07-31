@@ -36,7 +36,7 @@ describe('Factor.In module', () => {
 		expect(new Factorin(createContext()).moduleSettings).toEqual({
 			accountSlug: '',
 			// Seeded from the vault, exactly as upstream WebDAV seeds its own: an empty
-			// base directory normalizes to `/`, which is not a usable key prefix.
+			// Base directory normalizes to `/`, which is not a usable key prefix.
 			baseDirectory: `${VAULT_NAME}/`,
 			driveUrl: '',
 			tokenKey: '',
@@ -70,8 +70,8 @@ describe('Factor.In module', () => {
 	});
 
 	// The backend's two unregister callbacks go through this queue, and so will every
-	// later `start()` registration. Asserting the drain itself needs callbacks whose
-	// order and arity are visible, hence the private-field reach.
+	// Later `start()` registration. Asserting the drain itself needs callbacks whose
+	// Order and arity are visible, hence the private-field reach.
 	test('dispose() runs each cleanup callback exactly once and empties the queue', () => {
 		const module = new Factorin(createContext());
 		const calls: Array<string> = [];

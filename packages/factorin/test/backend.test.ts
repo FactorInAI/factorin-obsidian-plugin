@@ -62,7 +62,7 @@ describe('factorin backend registration', () => {
 	});
 
 	// Not an arbitrary number: it has to match upstream WebDAV's so the prefix is
-	// applied at the same point in the chain, underneath anything that rewrites keys.
+	// Applied at the same point in the chain, underneath anything that rewrites keys.
 	test("registers the base-directory wrapper at upstream WebDAV's priority", () => {
 		const { wrapper } = setup();
 		expect(BASE_DIR_WRAPPER_PRIORITY).toBe(6318);
@@ -100,7 +100,7 @@ describe('factorin backend credentials', () => {
 	});
 
 	// The settings tab catches this and shows the message, so an unconnected account
-	// reads as itself instead of as a failed handshake.
+	// Reads as itself instead of as a failed handshake.
 	test('checkConnection asks the user to connect when no token is stored', () => {
 		const { entry } = setup(connectedSettings(), undefined);
 		const { request } = createRequest();
@@ -125,7 +125,7 @@ describe('factorin backend credentials', () => {
 	});
 
 	// The connect flow rewrites these fields whenever the user reconnects or switches
-	// account, so a config captured at registration time would go stale silently.
+	// Account, so a config captured at registration time would go stale silently.
 	test('resolves the config again on every instantiation', async () => {
 		const { ctx, entry, settings } = setup();
 		const { calls, request } = createRequest();
@@ -162,7 +162,7 @@ describe('factorin base-directory wrapper', () => {
 	});
 
 	// The wrapper chain is global: every registered wrapper is offered every remote FS,
-	// including other backends'. Ours must be a no-op for anything it did not build.
+	// Including other backends'. Ours must be a no-op for anything it did not build.
 	test('leaves a foreign FS alone', () => {
 		const { wrapper } = setup();
 		const foreign = {

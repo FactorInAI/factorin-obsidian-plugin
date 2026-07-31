@@ -92,8 +92,8 @@ export default class Factorin {
 	// `registerSetting`, `addCommand`, …) is made from `start()`, not the constructor.
 	constructor(private readonly ctx: FactorinContext) {
 		// Upstream's WebDAV module seeds the same default from the same place, for the
-		// same reason: an empty base directory normalizes to `/`, which the wrapper would
-		// then join onto every key as a prefix.
+		// Same reason: an empty base directory normalizes to `/`, which the wrapper would
+		// Then join onto every key as a prefix.
 		this.moduleSettings.baseDirectory ||= defaultBaseDirectory(ctx.app);
 		ctx.registerI18n('en', en);
 		ctx.registerI18n('zh', zh);

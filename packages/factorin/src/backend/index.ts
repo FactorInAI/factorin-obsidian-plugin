@@ -157,7 +157,7 @@ export function registerFactorinBackend(
 	return [
 		registerRemoteFs(FACTORIN_REMOTE_FS, {
 			// Throwing here rather than resolving `{ success: false }` is deliberate and
-			// matches upstream: the settings tab catches it and surfaces the message, so
+			// Matches upstream: the settings tab catches it and surfaces the message, so
 			// "not connected yet" reads as itself instead of as a failed handshake.
 			checkConnection: (request) => {
 				const { endpoint, password, username } = resolveConfig();
