@@ -39,10 +39,17 @@ function connectedSettings() {
 	};
 }
 
-/** A registered backend plus the harness it was registered against. */
-function setup(settings = connectedSettings(), token: string | undefined = TOKEN) {
+/**
+ * A registered backend plus the harness it was registered against.
+ *
+ * The token is seeded by default — pass `{ storeToken: false }` to exercise the
+ * unconnected path. It is a flag rather than an optional token argument because
+ * an explicit `undefined` argument fires a parameter default, so "no token" would
+ * have silently seeded one.
+ */
+function setup(settings = connectedSettings(), { storeToken = true } = {}) {
 	const ctx = createBackendContext();
-	if (token !== undefined) ctx.secrets.set(TOKEN_KEY, token);
+	if (storeToken) ctx.secrets.set(TOKEN_KEY, TOKEN);
 	const cleanup = registerFactorinBackend(ctx, settings);
 	const entry = ctx.remoteFs.get(FACTORIN_REMOTE_FS);
 	if (!entry) throw new Error('backend did not register');
@@ -98,7 +105,7 @@ describe('factorin backend credentials', () => {
 	// The settings tab catches this and shows the message, so an unconnected account
 	// Reads as itself instead of as a failed handshake.
 	test('checkConnection asks the user to connect when no token is stored', () => {
-		const { entry } = setup(connectedSettings(), undefined);
+		const { entry } = setup(connectedSettings(), { storeToken: false });
 		const { request } = createRequest();
 		expect(() => entry.checkConnection(request)).toThrow(
 			'Please connect your Factor.In account!',
