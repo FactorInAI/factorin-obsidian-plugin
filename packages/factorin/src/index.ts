@@ -1,6 +1,5 @@
 import type { FactorinAccount, FactorinBootstrap } from './api/types';
 import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
-import type { FactorinTranslations } from './i18n';
 import type { FactorinSettingTranslate } from './setting';
 import type { FactorinPullOnlyContext } from './sync/pull-only';
 import { fetchBootstrap, pickDefaultAccount } from './api/client';
@@ -173,14 +172,6 @@ export default class Factorin {
 		factorinTokenKey: string;
 		factorinUserName: string;
 	};
-
-	/**
-	 * Contributes this module's keys to the merged translation type, so that
-	 * `ctx.translate` — instantiated at these keys in `setting.ts` — typechecks.
-	 * The runtime resources are registered in the constructor; this is type-only,
-	 * exactly like upstream `Bootstrap`'s `declare readonly i18n`.
-	 */
-	declare i18n: FactorinTranslations;
 
 	/**
 	 * The connected token's grants, straight off this session's bootstrap —

@@ -15,11 +15,8 @@ import type { FactorinTranslations } from './i18n';
 type Fragment<A = undefined> = (frag: DocumentFragment, args: A) => void;
 type TranslationResource = Record<string, string | Fragment>;
 type InterpolationValues = Record<string, string | number | boolean | null | undefined>;
-type TranslateParams<R extends Fragment | string> = R extends Fragment<infer A>
-	? [undefined] extends [A]
-		? []
-		: [A]
-	: [] | [InterpolationValues];
+type TranslateParams<R extends Fragment | string> =
+	R extends Fragment<infer A> ? ([undefined] extends [A] ? [] : [A]) : [] | [InterpolationValues];
 type Translate<O extends TranslationResource> = <K extends keyof O>(
 	key: K,
 	...args: TranslateParams<O[K]>
