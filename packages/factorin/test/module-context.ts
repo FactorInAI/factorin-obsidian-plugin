@@ -57,17 +57,17 @@ export function createModuleContext() {
 			settingEntries.push(entry);
 			return () => {
 				const index = settingEntries.indexOf(entry);
-				if (index >= 0) settingEntries.splice(index, 1);
+				if (index !== -1) settingEntries.splice(index, 1);
 			};
 		},
-		rerenders: 0,
 		rerenderSettingTab: () => {
 			harness.rerenders += 1;
 		},
-		saves: 0,
+		rerenders: 0,
 		saveSettings: async () => {
 			harness.saves += 1;
 		},
+		saves: 0,
 		settingEntries,
 		translate,
 	};

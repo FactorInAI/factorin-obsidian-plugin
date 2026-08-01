@@ -87,23 +87,23 @@ describe('fetchBootstrap', () => {
 		expect(bootstrap.token.permissions).toEqual({});
 	});
 
-	test.each([401, 403])('%i reads as a rejected token, not a server fault', async (status) => {
+	test.each([401, 403])('%i reads as a rejected token, not a server fault', (status) => {
 		replyWith({ status });
-		await expect(fetchBootstrap('fi_revoked')).rejects.toThrow(
+		return expect(fetchBootstrap('fi_revoked')).rejects.toThrow(
 			'Factor.In rejected the token. Check it was copied whole and not revoked.',
 		);
 	});
 
-	test('any other non-200 surfaces the status code', async () => {
+	test('any other non-200 surfaces the status code', () => {
 		replyWith({ status: 503 });
-		await expect(fetchBootstrap('fi_x')).rejects.toThrow('Factor.In API error: 503');
+		return expect(fetchBootstrap('fi_x')).rejects.toThrow('Factor.In API error: 503');
 	});
 
 	test.each([[[]], [undefined]])(
 		'an accounts list of %p is the actionable error, not a crash downstream',
-		async (accounts) => {
+		(accounts) => {
 			replyWith({ json: payload({ accounts }), status: 200 });
-			await expect(fetchBootstrap('fi_x')).rejects.toThrow(
+			return expect(fetchBootstrap('fi_x')).rejects.toThrow(
 				'This token cannot reach any Factor.In account with a Drive.',
 			);
 		},

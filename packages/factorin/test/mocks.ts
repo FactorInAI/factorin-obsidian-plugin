@@ -159,19 +159,23 @@ export class SettingStub {
 export const renderedSettings: Array<SettingStub> = [];
 
 void mock.module('obsidian', () => ({
-	addIcon: (iconId: string, svgContent: string) => {
-		registeredIcons.set(iconId, svgContent);
-	},
 	Notice: class {
 		constructor(message: string) {
 			notices.push(message);
 		}
+
+		hide() {
+			return undefined;
+		}
+	},
+	Setting: SettingStub,
+	addIcon: (iconId: string, svgContent: string) => {
+		registeredIcons.set(iconId, svgContent);
 	},
 	requestUrl: async (params: RequestUrlCall): Promise<RequestUrlReply> => {
 		requestUrlCalls.push(params);
 		return requestUrlReply;
 	},
-	Setting: SettingStub,
 }));
 
 export default registeredIcons;

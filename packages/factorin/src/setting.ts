@@ -74,8 +74,7 @@ export default function factorinSetting(el: HTMLElement, host: FactorinSettingHo
 				button.setDisabled(true).setButtonText(translate('factorinConnecting'));
 				try {
 					await host.connect(trimmed);
-					// Rerender rather than patch: the status line, the account
-					// picker, and this button all depend on the new state.
+					// Rerender rather than patch: the status line, the account picker, and this button all depend on the new state.
 					host.rerender();
 				} catch (error) {
 					new Notice(translate('factorinConnectFailed', { message: errorMessage(error) }));

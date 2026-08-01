@@ -48,9 +48,13 @@ export async function fetchBootstrap(token: string): Promise<FactorinBootstrap> 
  * reported as the actionable problem it is.
  */
 function normalizeBootstrap(raw: WireBootstrap): FactorinBootstrap {
-	const accounts = (raw.accounts ?? []).map(({ drive_url, ...account }) => ({
-		...account,
-		driveUrl: drive_url,
+	const accounts = (raw.accounts ?? []).map((account) => ({
+		driveUrl: account.drive_url,
+		id: account.id,
+		name: account.name,
+		personal: account.personal,
+		role: account.role,
+		slug: account.slug,
 	}));
 	if (!accounts.length)
 		throw new Error('This token cannot reach any Factor.In account with a Drive.');
