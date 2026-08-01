@@ -3,16 +3,30 @@ import type { FactorinBootstrap, FactorinPermissions } from './api/types';
 import type { FactorinTranslations } from './i18n';
 
 /**
- * The kernel's `Translate<Translations>` narrowed to this module's own keys.
- * Legal to declare structurally (Overview document §4.1): the real translator
- * is a generic function over the merged key union, and instantiating it at
- * `keyof FactorinTranslations` — which the module contributes via `declare
- * i18n` — returns `string` for every one of these keys.
+ * Structural copy of `@hesprs/sync-engine-sdk`'s i18n `Translate<O>`
+ * (`packages/plugin/src/modules/I18n.ts`) — duplicated rather than imported, so
+ * this package stays free of the SDK (see the `FactorinLanguageCode` comment in
+ * `index.ts`). Must stay shaped *exactly* like the original: the real kernel's
+ * `ctx.translate` is `Translate<any>`, and only a matching *generic* function
+ * type — not a concrete `(key, params?) => string` — is structurally assignable
+ * from it (a concrete signature fails on both the rest-parameter tuple shape and
+ * the conditional return type).
  */
-export type FactorinSettingTranslate = (
-	key: keyof FactorinTranslations,
-	params?: Record<string, string | number>,
-) => string;
+type Fragment<A = undefined> = (frag: DocumentFragment, args: A) => void;
+type TranslationResource = Record<string, string | Fragment>;
+type InterpolationValues = Record<string, string | number | boolean | null | undefined>;
+type TranslateParams<R extends Fragment | string> = R extends Fragment<infer A>
+	? [undefined] extends [A]
+		? []
+		: [A]
+	: [] | [InterpolationValues];
+type Translate<O extends TranslationResource> = <K extends keyof O>(
+	key: K,
+	...args: TranslateParams<O[K]>
+) => O[K] extends string ? string : DocumentFragment;
+
+/** The kernel's `Translate<Translations>` narrowed to this module's own keys. */
+export type FactorinSettingTranslate = Translate<FactorinTranslations>;
 
 /**
  * What the settings section needs from the module. It is deliberately the
