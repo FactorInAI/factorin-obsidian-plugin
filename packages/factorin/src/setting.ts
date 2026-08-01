@@ -6,11 +6,11 @@ import type { FactorinTranslations } from './i18n';
  * Structural copy of `@hesprs/sync-engine-sdk`'s i18n `Translate<O>`
  * (`packages/plugin/src/modules/I18n.ts`) — duplicated rather than imported, so
  * this package stays free of the SDK (see the `FactorinLanguageCode` comment in
- * `index.ts`). Must stay shaped *exactly* like the original: the real kernel's
- * `ctx.translate` is `Translate<any>`, and only a matching *generic* function
- * type — not a concrete `(key, params?) => string` — is structurally assignable
- * from it (a concrete signature fails on both the rest-parameter tuple shape and
- * the conditional return type).
+ * `index.ts`). Must stay shaped *exactly* like the original: it is a *generic*
+ * function type — not a concrete `(key, params?) => string` — because only a
+ * matching generic is structurally assignable from the kernel's own (a concrete
+ * signature fails on both the rest-parameter tuple shape and the conditional
+ * return type).
  */
 type Fragment<A = undefined> = (frag: DocumentFragment, args: A) => void;
 type TranslationResource = Record<string, string | Fragment>;
@@ -22,7 +22,27 @@ type Translate<O extends TranslationResource> = <K extends keyof O>(
 	...args: TranslateParams<O[K]>
 ) => O[K] extends string ? string : DocumentFragment;
 
-/** The kernel's `Translate<Translations>` narrowed to this module's own keys. */
+/**
+ * The exact shape the kernel exposes on `ctx.translate`: `Translate<any>`, its
+ * keys spanning every module's resources (`General` = `any`, see the SDK's
+ * `I18n.root`). **This — not the narrowed {@link FactorinSettingTranslate} — is
+ * what `FactorinContext` must hold.** Narrowing the key set to
+ * `FactorinTranslations` in the context breaks the kernel→module assignability
+ * the `ModuleConstructor` check needs: the conditional return
+ * (`…extends string ? string : DocumentFragment`) cannot be proven from the
+ * kernel's `string | DocumentFragment` once `K` ranges over only our keys, so
+ * `Translate<any>` is not assignable *to* `Translate<FactorinTranslations>`.
+ * The narrowing happens at the call boundary in `index.ts` instead.
+ */
+export type FactorinContextTranslate = Translate<any>;
+
+/**
+ * The kernel translate narrowed to this module's own keys — used *inside* this
+ * file, where concrete-key calls resolve the conditional return to `string`
+ * (e.g. `statusText` returns a `string`). Obtained from
+ * {@link FactorinContextTranslate} by one cast at the call boundary; sound
+ * because the kernel returns a string for every `factorin` key.
+ */
 export type FactorinSettingTranslate = Translate<FactorinTranslations>;
 
 /**

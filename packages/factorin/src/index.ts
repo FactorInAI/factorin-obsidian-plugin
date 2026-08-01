@@ -1,6 +1,6 @@
 import type { FactorinAccount, FactorinBootstrap } from './api/types';
 import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
-import type { FactorinSettingTranslate } from './setting';
+import type { FactorinContextTranslate, FactorinSettingTranslate } from './setting';
 import type { FactorinPullOnlyContext } from './sync/pull-only';
 import { fetchBootstrap, pickDefaultAccount } from './api/client';
 import { defaultBaseDirectory, registerFactorinBackend } from './backend';
@@ -63,7 +63,7 @@ type FactorinContext = FactorinBackendContext &
 		}) => () => void;
 		rerenderSettingTab: () => void;
 		saveSettings: () => Promise<void>;
-		translate: FactorinSettingTranslate;
+		translate: FactorinContextTranslate;
 	};
 
 /**
@@ -252,11 +252,19 @@ export default class Factorin {
 
 	readonly start = () => {
 		const { ctx } = this;
+		/*
+		 * `ctx.translate` is the kernel's `Translate<any>` (its keys span every
+		 * module). Narrow to this module's keys once, here, for the two consumers
+		 * that need it: the decider's string `prettyName` and the settings host.
+		 * Sound because the kernel returns a string for every `factorin` key; see
+		 * `FactorinContextTranslate` in `./setting`.
+		 */
+		const translate = ctx.translate as FactorinSettingTranslate;
 		registerFactorinIcon();
 		this.hydrate();
 		this.cleanup.push(
 			...registerFactorinBackend(ctx, this.moduleSettings),
-			registerPullOnlyDecider(ctx, ctx.translate('factorinPullOnly')),
+			registerPullOnlyDecider(ctx, translate('factorinPullOnly')),
 			ctx.registerSetting({
 				/*
 				 * Rebuilt from live module state on every `display()`, so a connect,
@@ -271,7 +279,7 @@ export default class Factorin {
 						permissions: this.permissions,
 						rerender: ctx.rerenderSettingTab,
 						selectAccount: this.selectAccount,
-						translate: ctx.translate,
+						translate,
 					}),
 				priority: FACTORIN_SETTING_PRIORITY,
 			}),
