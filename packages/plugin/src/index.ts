@@ -90,6 +90,15 @@ export default class SyncEngine extends Plugin {
 				'**/~$*.xlsx',
 				this.app.vault.configDir,
 			].map(createGlobMatchOptions),
+			// Factor.In — FORK EDIT (documents/overview.md §5.1, §6.2, §11).
+			// The connect flow's persisted state: internal modules don't get the
+			// settings.modules[id] path, so the Factorin module mirrors its
+			// moduleSettings into the root store under factorin-prefixed keys.
+			factorinAccountSlug: '',
+			factorinBaseDirectory: '',
+			factorinDriveUrl: '',
+			factorinTokenKey: '',
+			factorinUserName: '',
 			inclusionRules: [],
 			maxFileSize: { enabled: false, value: 31_457_280 },
 			maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },

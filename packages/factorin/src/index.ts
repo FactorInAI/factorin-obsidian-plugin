@@ -1,7 +1,14 @@
+import type { FactorinAccount, FactorinBootstrap } from './api/types';
 import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
+import type { FactorinTranslations } from './i18n';
+import type { FactorinSettingTranslate } from './setting';
+import type { FactorinPullOnlyContext } from './sync/pull-only';
+import { fetchBootstrap, pickDefaultAccount } from './api/client';
 import { defaultBaseDirectory, registerFactorinBackend } from './backend';
 import { en, zh } from './i18n';
 import { registerFactorinIcon } from './icon';
+import factorinSetting from './setting';
+import { FACTORIN_PULL_ONLY_DECIDER, registerPullOnlyDecider } from './sync/pull-only';
 
 /**
  * The locales Factor.In ships translations for.
@@ -45,31 +52,58 @@ export type FactorinTranslationResource = Record<string, string>;
  * `Extensibility`) sidestep this the same way — declare the members structurally,
  * using only leaf types.
  *
- * **Keep it that way as `start()` grows**: add members to this type, never
+ * **Keep it that way as the module grows**: add members to this type, never
  * `Context` / `SelectFromContext` / `Settings` / `Translations`.
  */
-type FactorinContext = FactorinBackendContext & {
-	registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => void;
-};
+type FactorinContext = FactorinBackendContext &
+	FactorinPullOnlyContext & {
+		registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => void;
+		registerSetting: (entry: {
+			apply: (el: HTMLElement) => void;
+			priority: number;
+		}) => () => void;
+		rerenderSettingTab: () => void;
+		saveSettings: () => Promise<void>;
+		translate: FactorinSettingTranslate;
+	};
 
 /**
- * Factor.In's own state — today, entirely the backend's configuration
+ * Factor.In's own state: the backend's configuration
  * ({@link FactorinBackendSettings}: Drive URL, account slug, `secretStorage` key
- * for the `fi_…` token, base directory).
+ * for the `fi_…` token, base directory) plus the connected user's display name
+ * for the settings tab's status line.
  *
- * **Not persisted yet.** Internal modules do not get the `settings.modules[id]`
- * path that downloaded ones do — `Extensibility.loadModule` is what writes that,
- * and it only ever sees modules it downloaded. So this object lives and dies with
- * the plugin instance. Nothing is lost by that today: the fields are only
- * populated by hand, for verification. The connect flow (Overview document §6.2)
- * is what makes them worth keeping, and it is that task's job to mirror them into
- * the root store through the `onload` settings literal in
- * `packages/plugin/src/index.ts`, prefixed `factorin` (§5.1, §11).
+ * Internal modules do not get the `settings.modules[id]` persistence path that
+ * downloaded ones do — `Extensibility.loadModule` is what writes that, and it
+ * only ever sees modules it downloaded. So this object lives and dies with the
+ * plugin instance, and the connect flow mirrors every field into the root store
+ * under `factorin`-prefixed keys (see the class's `settings` declaration and the
+ * `onload` settings literal in `packages/plugin/src/index.ts`; Overview document
+ * §5.1, §11). `start()` hydrates it back from those keys.
  *
  * The token is never part of this shape in either case — only the key it is
  * stored under.
  */
-export type FactorinSettings = FactorinBackendSettings;
+export type FactorinSettings = FactorinBackendSettings & {
+	/** The connected user's display name — status line only, never sent anywhere. */
+	userName: string;
+};
+
+/**
+ * The `secretStorage` key the raw `fi_…` token lives under. A fixed string
+ * rather than something generated: there is exactly one Factor.In token per
+ * vault, and a stable key is what lets a reconnect overwrite the old secret
+ * instead of stranding it.
+ */
+export const FACTORIN_TOKEN_KEY = 'factorinApiToken';
+
+/**
+ * Where the Factor.In section sorts in the settings tab. Deliberately the slot
+ * upstream's WebDAV module uses for its backend section (`packages/webdav`,
+ * priority 749): after the head section (0), before features (1000). The two
+ * never collide — the branded build ships no downloadable modules (Overview §2).
+ */
+export const FACTORIN_SETTING_PRIORITY = 749;
 
 /**
  * The Factor.In module.
@@ -80,13 +114,22 @@ export type FactorinSettings = FactorinBackendSettings;
  * registered **last** in `internalModules` so its `start()` sees every other
  * module's registrations.
  *
- * It registers its i18n resources, the Factor.In icon, and the single
- * first-party `factorin` remote FS (see `src/backend/`). The API-token settings
- * section and the workflow UI arrive in later milestones.
+ * It registers its i18n resources, the Factor.In icon, the single first-party
+ * `factorin` remote FS (see `src/backend/`), the pull-only decider (see
+ * `src/sync/pull-only.ts`), and the API-token settings section (see
+ * `src/setting.ts`). The workflow UI arrives in a later milestone.
  */
 export default class Factorin {
 	/** Unregister callbacks accumulated by `start()`, drained by `dispose()`. */
 	private readonly cleanup: Array<() => void> = [];
+
+	/**
+	 * The bootstrap fetched by this session's connect — the in-memory half of the
+	 * connection (Overview document §6.2): the account list behind the settings
+	 * tab's picker and the token's permissions behind {@link permissions}. Gone
+	 * after a reload by design; the persisted half is `moduleSettings`.
+	 */
+	private connection?: FactorinBootstrap;
 
 	/*
 	 * `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
@@ -108,12 +151,144 @@ export default class Factorin {
 		baseDirectory: '',
 		driveUrl: '',
 		tokenKey: '',
+		userName: '',
+	};
+
+	/**
+	 * This module's slice of the root settings store, declared structurally with
+	 * leaf types only (never the merged `Settings` — Overview document §4.1). The
+	 * kernel injects the store; declaring the members here is what forces the
+	 * `onload` settings literal in `packages/plugin/src/index.ts` to carry their
+	 * defaults, which is the persistence path internal modules get (§5.1, §11).
+	 *
+	 * `decider` is upstream's own key (also declared by `Registrar`): the connect
+	 * flow writes it to honor the token's `drive` grant — `write` → bidirectional,
+	 * anything less → pull-only.
+	 */
+	declare settings: {
+		decider: string;
+		factorinAccountSlug: string;
+		factorinBaseDirectory: string;
+		factorinDriveUrl: string;
+		factorinTokenKey: string;
+		factorinUserName: string;
+	};
+
+	/**
+	 * Contributes this module's keys to the merged translation type, so that
+	 * `ctx.translate` — instantiated at these keys in `setting.ts` — typechecks.
+	 * The runtime resources are registered in the constructor; this is type-only,
+	 * exactly like upstream `Bootstrap`'s `declare readonly i18n`.
+	 */
+	declare i18n: FactorinTranslations;
+
+	/**
+	 * The connected token's grants, straight off this session's bootstrap —
+	 * cached in memory only, never persisted (Overview document §6.2). `drive`
+	 * decides the sync direction at connect time; `workflows` gates the §8 UI.
+	 * `undefined` until a connect succeeds (including after every reload, until
+	 * the §6.3 startup re-auth lands).
+	 */
+	get permissions() {
+		return this.connection?.token.permissions;
+	}
+
+	/**
+	 * The Connect button (Overview document §6.2): fetch what the token unlocks,
+	 * mount its default account — personal, falling back to first — and persist.
+	 * Throws with a user-facing message on any failure; the settings section
+	 * surfaces it as a Notice.
+	 */
+	readonly connect = async (token: string) => {
+		const bootstrap = await fetchBootstrap(token);
+		this.connection = bootstrap;
+		await this.mount(pickDefaultAccount(bootstrap.accounts), token);
+	};
+
+	/**
+	 * Re-point the mount at another account from this session's bootstrap — the
+	 * settings tab's account picker. The token is read back from `secretStorage`
+	 * rather than retained by `connect`, so the raw secret never outlives the
+	 * call that stored it.
+	 */
+	readonly selectAccount = async (slug: string) => {
+		const account = this.connection?.accounts.find((candidate) => candidate.slug === slug);
+		if (!account) throw new Error(`Unknown Factor.In account: "${slug}".`);
+		const token = this.ctx.app.secretStorage.getSecret(this.moduleSettings.tokenKey);
+		if (token === null) throw new Error('Please connect your Factor.In account!');
+		await this.mount(account, token);
+	};
+
+	/**
+	 * The single writer of connection state: token into `secretStorage` under
+	 * {@link FACTORIN_TOKEN_KEY}, the account's Drive config into
+	 * `moduleSettings`, every field mirrored into the root store, the decider
+	 * chosen from the token's `drive` grant — then one `saveSettings()`.
+	 */
+	private readonly mount = async (account: FactorinAccount, token: string) => {
+		const { app, saveSettings } = this.ctx;
+		app.secretStorage.setSecret(FACTORIN_TOKEN_KEY, token);
+		const { moduleSettings, settings } = this;
+		moduleSettings.accountSlug = account.slug;
+		moduleSettings.driveUrl = account.driveUrl;
+		moduleSettings.tokenKey = FACTORIN_TOKEN_KEY;
+		moduleSettings.userName = this.connection?.name ?? '';
+		settings.factorinAccountSlug = moduleSettings.accountSlug;
+		settings.factorinBaseDirectory = moduleSettings.baseDirectory;
+		settings.factorinDriveUrl = moduleSettings.driveUrl;
+		settings.factorinTokenKey = moduleSettings.tokenKey;
+		settings.factorinUserName = moduleSettings.userName;
+		settings.decider =
+			this.permissions?.drive === 'write' ? 'bidirectional' : FACTORIN_PULL_ONLY_DECIDER;
+		await saveSettings();
+	};
+
+	/**
+	 * Rebuild `moduleSettings` from the root store's `factorin*` keys. Runs at
+	 * `start()` — after the kernel has injected `settings` — so a connection made
+	 * in an earlier session survives the reload. Empty persisted fields (a fresh
+	 * install) leave the constructor's defaults in place.
+	 */
+	private readonly hydrate = () => {
+		const { moduleSettings, settings } = this;
+		moduleSettings.accountSlug = settings.factorinAccountSlug;
+		moduleSettings.driveUrl = settings.factorinDriveUrl;
+		moduleSettings.tokenKey = settings.factorinTokenKey;
+		moduleSettings.userName = settings.factorinUserName;
+		if (settings.factorinBaseDirectory)
+			moduleSettings.baseDirectory = settings.factorinBaseDirectory;
 	};
 
 	readonly start = () => {
+		const { ctx } = this;
 		registerFactorinIcon();
-		this.cleanup.push(...registerFactorinBackend(this.ctx, this.moduleSettings));
+		this.hydrate();
+		this.cleanup.push(
+			...registerFactorinBackend(ctx, this.moduleSettings),
+			registerPullOnlyDecider(ctx, ctx.translate('factorinPullOnly')),
+			ctx.registerSetting({
+				/*
+				 * Rebuilt from live module state on every `display()`, so a connect,
+				 * an account switch, or a reload is reflected without any listener
+				 * plumbing.
+				 */
+				apply: (el) =>
+					factorinSetting(el, {
+						connect: this.connect,
+						connection: this.connection,
+						moduleSettings: this.moduleSettings,
+						permissions: this.permissions,
+						rerender: ctx.rerenderSettingTab,
+						selectAccount: this.selectAccount,
+						translate: ctx.translate,
+					}),
+				priority: FACTORIN_SETTING_PRIORITY,
+			}),
+		);
 	};
 
-	readonly dispose = () => this.cleanup.splice(0).forEach((fn) => fn());
+	readonly dispose = () => {
+		this.cleanup.splice(0).forEach((fn) => fn());
+		this.connection = undefined;
+	};
 }
