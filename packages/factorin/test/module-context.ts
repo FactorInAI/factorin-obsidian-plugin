@@ -1,4 +1,5 @@
 import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
+import type { FactorinSettingTranslate } from '@/setting';
 import type { FactorinDeciderEntry, FactorinDeciderInput } from '@/sync/pull-only';
 import { en } from '@/i18n';
 import { createBackendContext } from './backend-context';
@@ -8,13 +9,21 @@ import { createBackendContext } from './backend-context';
  * `{{name}}` interpolation, mirroring upstream `I18n.interpolate`. Using the
  * real strings keeps assertions honest — a status-line test compares against
  * what a user would actually read.
+ *
+ * Cast to `FactorinSettingTranslate` rather than typed as it directly (same
+ * move upstream's own `I18n.translate` makes): a concrete `(key, params?) =>
+ * string` is not structurally assignable to the kernel's generic `Translate<O>`
+ * — see the comment on `FactorinSettingTranslate` in `src/setting.ts`.
  */
-export function translate(key: keyof typeof en, params?: Record<string, string | number>) {
+export const translate = ((
+	key: keyof typeof en,
+	params?: Record<string, string | number | boolean | null | undefined>,
+) => {
 	let value: string = en[key];
 	for (const [name, replacement] of Object.entries(params ?? {}))
 		value = value.replaceAll(`{{${name}}}`, String(replacement));
 	return value;
-}
+}) as FactorinSettingTranslate;
 
 /** The root-store slice the kernel injects — see `packages/plugin/src/index.ts`. */
 export function createStore() {
