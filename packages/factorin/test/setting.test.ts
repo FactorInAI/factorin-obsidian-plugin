@@ -69,7 +69,11 @@ describe('the Factor.In settings section', () => {
 	 */
 	test('reads the persisted identity when only moduleSettings survived', () => {
 		const { host } = createHost({
-			moduleSettings: { accountSlug: 'jon-doe', driveUrl: 'https://d/jon/', userName: 'Jon Doe' },
+			moduleSettings: {
+				accountSlug: 'jon-doe',
+				driveUrl: 'https://d/jon/',
+				userName: 'Jon Doe',
+			},
 		});
 		expect(render(host).status.desc).toBe('Connected as Jon Doe · jon-doe');
 	});
@@ -80,7 +84,11 @@ describe('the Factor.In settings section', () => {
 	] as const)('spells out %s access when the grants are in memory', (drive, line) => {
 		const { host } = createHost({
 			connection: bootstrap(),
-			moduleSettings: { accountSlug: 'jon-doe', driveUrl: 'https://d/jon/', userName: 'Jon Doe' },
+			moduleSettings: {
+				accountSlug: 'jon-doe',
+				driveUrl: 'https://d/jon/',
+				userName: 'Jon Doe',
+			},
 			permissions: { drive },
 		});
 		expect(render(host).status.desc).toBe(line);
@@ -139,7 +147,11 @@ describe('the Factor.In settings section', () => {
 		renderedSettings.length = 0;
 		const several = createHost({
 			connection: bootstrap(),
-			moduleSettings: { accountSlug: 'jon-doe', driveUrl: 'https://d/jon/', userName: 'Jon Doe' },
+			moduleSettings: {
+				accountSlug: 'jon-doe',
+				driveUrl: 'https://d/jon/',
+				userName: 'Jon Doe',
+			},
 		});
 		const { accountRow } = render(several.host);
 		expect(accountRow?.dropdown).toMatchObject({

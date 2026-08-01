@@ -89,8 +89,7 @@ export function registerPullOnlyDecider(ctx: FactorinPullOnlyContext, prettyName
 			 * module's registration across reloads.
 			 */
 			const wrapped = deciderRegistry.get(BIDIRECTIONAL_DECIDER);
-			if (!wrapped)
-				throw new Error(`Decider "${BIDIRECTIONAL_DECIDER}" is not installed!`);
+			if (!wrapped) throw new Error(`Decider "${BIDIRECTIONAL_DECIDER}" is not installed!`);
 			/*
 			 * The registry types `decider` as `unknown` (see FactorinDeciderEntry);
 			 * this cast restores the callable shape. Sound because the registry only

@@ -86,7 +86,7 @@ describe('the connect flow', () => {
 	test('connect() propagates API failures without touching any state', async () => {
 		const { ctx, module } = createModule();
 		replyWith({ status: 401 });
-		await expect(module.connect('fi_bad')).rejects.toThrow('Factor.In rejected the token');
+		expect(module.connect('fi_bad')).rejects.toThrow('Factor.In rejected the token');
 		expect(ctx.secrets.size).toBe(0);
 		expect(module.moduleSettings.driveUrl).toBe('');
 		expect(ctx.saves).toBe(0);
@@ -109,7 +109,7 @@ describe('the connect flow', () => {
 	test('selectAccount() rejects a slug the bootstrap never listed', async () => {
 		const { module } = createModule();
 		await module.connect('fi_x');
-		await expect(module.selectAccount('stranger')).rejects.toThrow(
+		return expect(module.selectAccount('stranger')).rejects.toThrow(
 			'Unknown Factor.In account: "stranger".',
 		);
 	});
@@ -118,7 +118,7 @@ describe('the connect flow', () => {
 		const { ctx, module } = createModule();
 		await module.connect('fi_x');
 		ctx.secrets.clear();
-		await expect(module.selectAccount('acme')).rejects.toThrow(
+		return expect(module.selectAccount('acme')).rejects.toThrow(
 			'Please connect your Factor.In account!',
 		);
 	});

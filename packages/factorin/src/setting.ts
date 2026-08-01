@@ -77,7 +77,9 @@ export default function factorinSetting(el: HTMLElement, host: FactorinSettingHo
 					// Rerender rather than patch: the status line, the account picker, and this button all depend on the new state.
 					host.rerender();
 				} catch (error) {
-					new Notice(translate('factorinConnectFailed', { message: errorMessage(error) }));
+					new Notice(
+						translate('factorinConnectFailed', { message: errorMessage(error) }),
+					);
 					button.setDisabled(false).setButtonText(translate('factorinConnect'));
 				}
 			});
@@ -95,7 +97,9 @@ export default function factorinSetting(el: HTMLElement, host: FactorinSettingHo
 					try {
 						await host.selectAccount(slug);
 					} catch (error) {
-						new Notice(translate('factorinConnectFailed', { message: errorMessage(error) }));
+						new Notice(
+							translate('factorinConnectFailed', { message: errorMessage(error) }),
+						);
 					}
 					host.rerender();
 				});
