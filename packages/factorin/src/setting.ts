@@ -1,6 +1,6 @@
+import { Notice, Setting } from 'obsidian';
 import type { FactorinBootstrap, FactorinPermissions } from './api/types';
 import type { FactorinTranslations } from './i18n';
-import { Notice, Setting } from 'obsidian';
 
 /**
  * The kernel's `Translate<Translations>` narrowed to this module's own keys.

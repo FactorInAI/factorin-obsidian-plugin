@@ -1,5 +1,5 @@
-import type { FactorinAccount, FactorinBootstrap, FactorinPermissions } from './types';
 import { requestUrl } from 'obsidian';
+import type { FactorinAccount, FactorinBootstrap, FactorinPermissions } from './types';
 
 /**
  * A thin client for the Factor.In REST API, built on Obsidian's `requestUrl`
