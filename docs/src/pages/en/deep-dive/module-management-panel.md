@@ -32,7 +32,7 @@ Clicking `Show installed only` toggles the flag, and becomes checked via `MenuIt
 
 ### Solid Reactive List
 
-A solid reactive island also accepts `context`, majorly consumes `Extensibility` module APIs. Parent Module Management UI augments the context to include three SynthKernel hook `onQuery`, `onShowInstalledOnlyChange`, and `onSourcesChange` during the reactive list instantiation.
+A solid reactive island also accepts `context`, majorly consumes `Extensibility` module APIs. Parent Module Management UI passes three SynthKernel hooks `onQuery`, `onShowInstalledOnlyChange`, and `onSourcesChange` during the reactive list instantiation.
 
 `onQuery` is fired each keystroke in the search bar carrying the user query. `onShowInstalledOnlyChange` fired each `Show installed only` toggle. `onSourcesChange` is fired each source edit save.
 
@@ -48,8 +48,8 @@ Action buttons use Obsidian `setIcon()` and `setTooltip()`, buttons have followi
 
 - Download button: module not installed, or module has a new version. Clicking on the button triggers `downloadModule()`.
 - Delete button: module installed. Clicking on it triggers `deleteModule()`.
-- Enable button: module installed but not loaded. Clicking on flips `Settings.modules.<name>` to true, and triggers `loadModule()`.
-- Enable button: module installed and loaded. Clicking on flips `Settings.modules.<name>` to false, and triggers `unloadModule()`.
+- Enable button: module installed but not loaded. Clicking on triggers `enableModule()`.
+- Disable button: module installed and loaded. Clicking on triggers `disableModule()`.
 
 The modules are sorted alphabetically by default, or sorted in match score if last `onQuery` payload is non-empty string. Query matching uses Obsidian API `prepareFuzzySearch()`. Currently, since the module set is small, so no optimization needed.
 

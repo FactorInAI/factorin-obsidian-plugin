@@ -4,8 +4,8 @@
 	"noUpdateNotifier": true,
 	"concurrency": "100%",
 	"tasks": {
-		"build": {
-			"dependsOn": ["^build"],
+		"compile": {
+			"dependsOn": ["^compile"],
 			"outputs": ["dist/**"],
 			"cache": true
 		},

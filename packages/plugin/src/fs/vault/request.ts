@@ -49,12 +49,11 @@ function getTrashOption(vault: Vault): 'local' | 'system' | undefined {
 }
 
 export default function createVaultRequest(app: App): VaultRequest {
-	const { vault, metadataCache } = app;
+	const { vault, workspace } = app;
 	const { adapter } = vault;
 
 	// Prevents vault scanning while Obsidian is indexing the vault
-	const canUseCache = () =>
-		(metadataCache as unknown as { inProgressTaskCount: number }).inProgressTaskCount === 0;
+	const canUseCache = () => workspace.layoutReady;
 
 	return async <T extends VaultRequestParam>(
 		params: T,

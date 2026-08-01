@@ -267,7 +267,7 @@ export default class ProgressModal extends Modal {
 				{ immediate: true },
 			),
 		);
-		this.modalCleanupCallbacks.subscribe(progress.dispose);
+		this.modalCleanupCallbacks.subscribe(() => progress.dispose());
 		this.opening = true;
 	}
 

@@ -1,6 +1,15 @@
+<script lang="ts" setup>
+import canvas from './encryption.canvas';
+import Canvas from '@/components/Canvas.vue';
+</script>
+
 # Client-side Encryption v2
 
-The plugin uploads encrypted files to remote, download and decrypt back to local.
+The plugin uploads encrypted files to remote, download and decrypt back to local. This document specifies the encryption algorithm implementation in the `Encryption` module.
+
+Encryption implementation in this module welcomes volunteer auditing.
+
+<Canvas :canvas />
 
 ## Terminology
 
@@ -14,20 +23,30 @@ The plugin uploads encrypted files to remote, download and decrypt back to local
 
 ### Threat Model & Constraints
 
-- This algorithm assumes client devices share the same password. So no asymmetric encryption or credential sharing needed.
-- This algorithm assumes zero trust on server and transmission layer, it should prevent:
-  - unauthorized access
-  - unauthorized modification
-- Only end clients are trusted.
-- No central server to store salts or nonce, no extra meta file creation.
-- Encrypted file names must be deterministic.
-- Impossible or huge-cost-little-gain to achieve in this context:
-  - prevent file rollback to a previous version
-  - prevent file unintended renaming or movement
-  - prevent file deletion by malicious server
-  - obfuscate file size or modification time
-  - obfuscate total file number
-  - obfuscate remote root directory name
+**The implementation trusts**:
+
+- Clients share password outside of the module. And the share channel is out of scope so the module doesn't need to implement its own key exchange.
+- The operating system or Obsidian runtime are not compromised.
+
+**The implementation does not trust**:
+
+- Backend server
+- Transmission layer
+
+**The implementation protects against**:
+
+- Unauthorized access
+- Unauthorized modification or file truncation
+- Encryption combined with [Asymmetric Storage](../asymmetric-storage) can yield better obfuscation since it flattens hierarchical structure and randomizes file basenames.
+
+**The implementation cannot**:
+
+- Prevent file rollback to a previous version
+- Prevent unintended renaming or movement
+- Prevent deletion at server side
+- Obfuscate file size or modification time
+- Obfuscate total file number
+- Obfuscate remote root directory name
 
 ### Algorithms
 
@@ -154,7 +173,7 @@ The implementation should only use:
 - `argon2id` export from `hash-wasm`
 - `gcmsiv` export from `@noble/ciphers/aes.js`
 
-The encryption function will be cleanly integrated inside the `encryption` package as a Sync Engine optional module, which ships a [`RemoteFsWrapper`](./file-system-wrappers.md):
+The encryption function will be cleanly integrated inside the `encryption` package as a Sync Engine optional module, which ships a [`RemoteFsWrapper`](../file-system-wrappers):
 
 Receives the memory database instance and _user password_ in the second argument.
 
@@ -172,7 +191,7 @@ Receives the memory database instance and _user password_ in the second argument
 
 `list()`: encrypt the key before relaying, decrypt the `key` in `Array<Stat>` when original returns.
 
-Path segments and derived keys are cached, persistent beyond sync runs. The cache is based on Uni-KV `memoryDB` obtained from context, similar to [Context Wrapper](./file-system-wrappers.md), the cache is reset only when signals changed:
+Path segments and derived keys are cached, persistent beyond sync runs. The cache is based on Uni-KV `memoryDB` obtained from context, similar to [Context Wrapper](../file-system-wrappers), the cache is reset only when signals changed:
 
 - Store meta: `EncryptionDBMeta`
 - Storage schema: `EncryptionDBSchema`

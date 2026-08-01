@@ -76,7 +76,8 @@
 	},
 	"env": {
 		"builtin": true,
-		"browser": true
+		"browser": true,
+		"vue": true
 	},
 	"globals": {
 		"activeDocument": "readonly",

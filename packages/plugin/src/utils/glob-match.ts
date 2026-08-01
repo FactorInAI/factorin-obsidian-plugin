@@ -228,16 +228,20 @@ export function prepareGlobMatch(
 
 	return (path) => {
 		const parsed = parsePath(path);
-		if (exclusions.some((rule) => matchesAncestor(rule, parsed))) return 'exclude';
 		if (parsed.segments.length === 0) return 'advance';
 
 		const included = inclusions.some((rule) => matchesRule(rule, parsed));
 		if (included) return parsed.directory ? 'advance' : 'include';
-		if (exclusions.some((rule) => matchesRule(rule, parsed))) return 'exclude';
-		if (!parsed.directory) return inclusions.length === 0 ? 'include' : 'exclude';
-		if (inclusions.length === 0) return 'advance';
-		return inclusions.some((rule) => canMatchAnyDescendant(rule, parsed))
-			? 'advance'
-			: 'exclude';
+
+		const excluded = exclusions.some(
+			(rule) => matchesRule(rule, parsed) || matchesAncestor(rule, parsed),
+		);
+		if (excluded) {
+			if (parsed.directory && inclusions.some((rule) => canMatchAnyDescendant(rule, parsed)))
+				return 'advance';
+			return 'exclude';
+		}
+
+		return parsed.directory ? 'advance' : 'include';
 	};
 }

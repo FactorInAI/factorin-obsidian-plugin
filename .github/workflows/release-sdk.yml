@@ -21,8 +21,5 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build SDK
-        run: bun run build -F @hesprs/sync-engine-sdk
-
       - name: Publish to npm
         run: cd packages/plugin && bunx npm@latest publish

@@ -163,13 +163,27 @@ export default class Bootstrap {
 		const getMinInterval = () => (minRequestInterval.enabled ? minRequestInterval.value : 0);
 
 		registerRemoteLister({
-			apply: ({ trigger }) => {
+			apply: ({ trigger, reporter }) => {
 				if (trigger === 'realtime' && this.settings.realtimeSyncFastMode) {
 					const entries = memoryDB
 						.getStore('remoteContext20000')
 						.entries()
 						.map(([, stat]) => stat);
-					if (entries.length) return entries;
+					if (!entries.length) return;
+					const filtered: Array<Stat> = [];
+					return Promise.all(
+						entries.map(async (stat, index) => {
+							if (
+								(await reporter({
+									completed: index + 1,
+									current: stat.key,
+									total: entries.length,
+								})) === 'exclude'
+							)
+								return;
+							filtered.push(stat);
+						}),
+					).then(() => filtered);
 				}
 			},
 			priority: 1000,

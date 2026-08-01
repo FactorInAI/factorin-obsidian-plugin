@@ -70,14 +70,16 @@ Sync Engine Monorepo
 
 **Commands**:
 
-| Command                           | Usage                                          |
-| --------------------------------- | ---------------------------------------------- |
-| `bun dev`                         | Build without clearing dist folder             |
-| `bun run build`                   | Don't run unless truly building for production |
-| `bun fix`                         | Format and fix fixable lint errors             |
-| `bun check`                       | Check types, lint and format                   |
-| `bun tests`                       | Run all tests                                  |
-| `bun <command> -F <package-name>` | Run command targeting one package              |
+| Command                           | Usage                                  |
+| --------------------------------- | -------------------------------------- |
+| `bun dev`                         | Build without clearing dist folder     |
+| `bun compile`                     | Build with clearing                    |
+| `bun dev:plugin`                  | Build the plugin without cleaning dist |
+| `bun build:plugin`                | Build the plugin with clearing         |
+| `bun fix`                         | Format and fix fixable lint errors     |
+| `bun check`                       | Check types, lint and format           |
+| `bun tests`                       | Run all tests                          |
+| `bun <command> -F <package-name>` | Run command targeting one package      |
 
 **CI/CD**:
 
@@ -108,8 +110,7 @@ If you want to contribute a new module, please make it a package under `packages
   "contributors": [
     {
       "name": "<the-name-to-call-you>",
-      "github": "<your-github-account-name>",
-      "email": "<optional-email>"
+      "github": "<your-github-account-name>"
     }
   ]
 }
@@ -121,9 +122,9 @@ Then modify `modules.json` at the repo root to include your module:
 [
   {
     "name": "Module Name",
-    "description": "[Official] Description for your module",
+    "description": "Description for your module",
     "version": "0.0.1",
-    "main": "https://sync.consensia.cc/modules/<URI-encoded-module-name>.js"
+    "main": "https://sync.consensia.cc/modules/module-name.js"
   }
 ]
 ```

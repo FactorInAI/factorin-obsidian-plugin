@@ -2,9 +2,8 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
 
 ## Context
 
-`blueprint/` at the project root contains the canonical spec of this project. Read this when touching sophisticated parts in plugin core.
-
-Study the structure of other modules and read documentation in `docs` when working on modules.
+- When exploring the repo, you must read related pages in `docs/src/pages/en/`, especially inside the `deep-dive/` folder: this is the fastest way to understand the engineering sophistication.
+- This repo is also an Obsidian vault. The config folder is at `.obsidian`, and plugin dist folder is symlinked to `.obsidian/plugins/sync-engine`. The folder also contains plugin settings `data.json` and module binaries.
 
 ## Techstack
 
@@ -51,3 +50,16 @@ Study the structure of other modules and read documentation in `docs` when worki
 - Excluding main plugin, shared utils and documentation site, all packages are Sync Engine modules, they use the SDK and follow unified module structure.
 - `null` forbidden, use `undefined` consistently.
 - Lint warnings must be cleared.
+
+## Documentation
+
+- The primary documentation locates in `docs/src/pages/en/` has three sections in three folders: `usage/`, `development/`, and `deep-dive/`:
+  - `usage/`: designed for non-technical users, avoid dev jargons
+  - `development/`: SDK API reference and practical module development setups only
+  - `deep-dive/`: Sync Engine internals
+- Prefer inter-page links when other pages have relevant content, duplication content cross-page is forbidden. Link to title anchors when possible.
+- Only add inter-links when the content is truly relevant, you must not link distant pages just for link count.
+- `usage/` and `deep-dive/` can interlink, `development/` can link to `usage/` and `deep-dive/`, but `usage/` and `deep-dive/` should avoid linking into `development/`.
+- Don't be overly verbose.
+- Official module specs should be self-contained in each page in `deep-dive/modules/`. They can link external pages but external pages should not link official modules, except in dedicated pages in `usage/`.
+- Documentation titles use title case.

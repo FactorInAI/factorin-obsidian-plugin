@@ -13,7 +13,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "MODE=dev tsdown",
-		"build": "tsdown",
+		"compile": "tsdown",
 		"fix": "oxlint --silent --fix && oxfmt",
 		"check": "tsc && oxlint && oxfmt --check"
 	},

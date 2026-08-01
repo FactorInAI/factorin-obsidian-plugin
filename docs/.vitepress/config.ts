@@ -3,6 +3,7 @@ import type { ThemeConfig } from 'vitepress-theme-trito';
 import { lstatSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import canvas from 'vite-plugin-json-canvas';
 import { defineConfig } from 'vitepress';
 import { configGenerator } from './i18n';
 
@@ -10,68 +11,138 @@ function p(path: string) {
 	return resolve(dirname(fileURLToPath(import.meta.url)), '..', path);
 }
 
+const srcDir = p('src/pages');
 const preserveMarkdownSymlinks = {
 	enforce: 'pre',
 	name: 'preserve-markdown-symlinks',
 	resolveId(id: string) {
+		const [requestPath, suffix = ''] = id.split(/(?<suffix>[?#].*)/, 2);
+		const path = requestPath.startsWith(srcDir)
+			? requestPath
+			: requestPath.startsWith('/')
+				? resolve(srcDir, `.${requestPath}`)
+				: requestPath;
 		try {
-			if (id.endsWith('.md') && lstatSync(id).isSymbolicLink()) return id;
+			if (path.endsWith('.md') && lstatSync(path).isSymbolicLink()) return `${path}${suffix}`;
 		} catch {}
 	},
 };
 
-const localeConfig = configGenerator<ThemeConfig>((t) => ({
-	description: t('sideDescription'),
-	label: t('nativeName'),
-	lang: t('code'),
-	themeConfig: {
-		footer: {
-			copyright: `${t('copyright')} © 2026 Hēsperus`,
-			message: t('licenseMessage'),
+const localeConfig = configGenerator<ThemeConfig>((t) => {
+	const usage = `${t('folder')}/usage`;
+	const development = `${t('folder')}/development`;
+	const deepDive = `${t('folder')}/deep-dive`;
+	return {
+		description: t('sideDescription'),
+		label: t('nativeName'),
+		lang: t('code'),
+		themeConfig: {
+			footer: {
+				copyright: `${t('copyright')} © 2026 Hēsperus`,
+				message: t('licenseMessage'),
+			},
+			nav: [
+				{ link: `${t('folder')}/`, text: t('home') },
+				{
+					activeMatch: `${usage}/.+`,
+					link: `${usage}/welcome`,
+					text: t('usage'),
+				},
+				{
+					activeMatch: `${development}/.+`,
+					link: `${development}/develop-a-module`,
+					text: t('development'),
+				},
+				{
+					activeMatch: `${deepDive}/.+`,
+					link: `${deepDive}/architecture`,
+					text: t('deepDive'),
+				},
+			],
+			sidebar: {
+				[`${usage}/`]: {
+					items: [
+						{ link: `${usage}/welcome`, text: t('welcome') },
+						{ link: `${usage}/why-sync-engine`, text: t('whySyncEngine') },
+						{ link: `${usage}/benchmark`, text: t('benchmark') },
+						{
+							items: [
+								{ link: `${usage}/settings`, text: t('settings') },
+								{ link: `${usage}/modules`, text: t('modules') },
+							],
+							text: t('usage'),
+						},
+						{
+							items: [
+								{ link: `${usage}/permissions`, text: t('permissions') },
+								{ link: `${usage}/security`, text: t('security') },
+							],
+							text: t('claims'),
+						},
+						{ link: `${usage}/contributing`, text: t('contributing') },
+					],
+					text: t('usageGuide'),
+				},
+				[`${development}/`]: {
+					items: [
+						{ link: `${development}/develop-a-module`, text: t('developAModule') },
+						{ link: `${development}/file-system`, text: t('fileSystem') },
+						{ link: `${development}/runtime-api`, text: t('runtimeApi') },
+						{ link: `${development}/devops`, text: t('devOps') },
+					],
+					text: t('development'),
+				},
+				[`${deepDive}/`]: {
+					items: [
+						{ link: `${deepDive}/architecture`, text: t('architecture') },
+						{ link: `${deepDive}/sync`, text: t('sync') },
+						{ link: `${deepDive}/extensibility`, text: t('extensibility') },
+						{
+							items: [
+								{ link: `${deepDive}/file-system`, text: t('fileSystem') },
+								{
+									link: `${deepDive}/file-system-wrappers`,
+									text: t('fileSystemWrappers'),
+								},
+								{
+									link: `${deepDive}/asymmetric-storage`,
+									text: t('asymmetricStorage'),
+								},
+								{ link: `${deepDive}/request`, text: t('request') },
+								{
+									link: `${deepDive}/request-middleware`,
+									text: t('requestMiddleware'),
+								},
+							],
+							text: t('abstractions'),
+						},
+						{
+							items: [
+								{ link: `${deepDive}/file-tree`, text: t('fileTree') },
+								{
+									link: `${deepDive}/module-management-panel`,
+									text: t('moduleManagementPanel'),
+								},
+							],
+							text: t('userInterface'),
+						},
+						{
+							collapsed: true,
+							items: [
+								{ link: `${deepDive}/modules/webdav`, text: t('webdav') },
+								{ link: `${deepDive}/modules/encryption`, text: t('encryption') },
+								{ lint: `${deepDive}/modules/smart-marge`, text: t('smartMerge') },
+							],
+							text: t('modules'),
+						},
+					],
+					text: t('deepDive'),
+				},
+			},
 		},
-		nav: [
-			{ link: `${t('folder')}/`, text: t('home') },
-			{
-				activeMatch: `${t('folder')}/usage/.+`,
-				link: `${t('folder')}/usage/whats-sync-engine`,
-				text: t('usage'),
-			},
-			{
-				activeMatch: `${t('folder')}/development/.+`,
-				link: `${t('folder')}/development/develop-a-module`,
-				text: t('development'),
-			},
-		],
-		sidebar: {
-			[`${t('folder')}/usage/`]: {
-				items: [
-					{ link: `${t('folder')}/usage/whats-sync-engine`, text: t('whatsSyncEngine') },
-					{ link: `${t('folder')}/usage/modules`, text: t('modules') },
-					{ link: `${t('folder')}/usage/benchmark`, text: t('benchmark') },
-					{
-						link: `${t('folder')}/usage/asymmetric-storage`,
-						text: t('asymmetricStorage'),
-					},
-				],
-				text: t('introduction'),
-			},
-			[`${t('folder')}/development/`]: {
-				items: [
-					{
-						link: `${t('folder')}/development/develop-a-module`,
-						text: t('developAModule'),
-					},
-					{ link: `${t('folder')}/development/file-system`, text: t('fileSystem') },
-					{ link: `${t('folder')}/development/runtime-api`, text: t('runtimeApi') },
-					{ link: `${t('folder')}/development/devops`, text: t('devOps') },
-					{ link: `${t('folder')}/development/contributing`, text: t('contributing') },
-				],
-				text: t('development'),
-			},
-		},
-	},
-	title: 'Sync Engine',
-}));
+		title: 'Sync Engine',
+	};
+});
 
 export default defineConfig<ThemeConfig>({
 	cleanUrls: true,
@@ -87,7 +158,7 @@ export default defineConfig<ThemeConfig>({
 	outDir: p('dist'),
 	rewrites: { 'en/:rest*': ':rest*' },
 	sitemap: { hostname: 'https://sync.consensia.cc' },
-	srcDir: p('src/pages/'),
+	srcDir,
 	themeConfig: {
 		aside: 'left',
 		editLink: 'https://github.com/hesprs/sync-engine/edit/main/docs/src/pages/:path',
@@ -101,7 +172,7 @@ export default defineConfig<ThemeConfig>({
 		],
 	},
 	vite: {
-		plugins: [preserveMarkdownSymlinks],
+		plugins: [preserveMarkdownSymlinks, canvas()],
 		publicDir: p('public'),
 		resolve: { alias: { '@': p('src') } },
 		ssr: { noExternal: ['vitepress-theme-trito'] },

@@ -193,9 +193,7 @@ export default class Sync {
 				(task) => task instanceof RemoveLocal,
 			);
 			if (
-				trigger !== 'manual' &&
-				trigger !== 'nonInteractiveManual' &&
-				trigger !== 'autoMigration' &&
+				(trigger === 'realtime' || trigger === 'startup' || trigger === 'scheduled') &&
 				this.settings.confirmDeleteInAutoSync &&
 				removeLocalTasks.length !== 0
 			) {

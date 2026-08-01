@@ -2,12 +2,12 @@
 layout: home
 hero:
   name: Sync Engine
-  text: Next-generation syncing plugin for Obsidian
+  text: An Obsidian syncing plugin that is also a platform
   tagline: Free · Performant · Extensible
   actions:
     - theme: brand
-      text: What's Sync Engine
-      link: /usage/whats-sync-engine
+      text: Welcome!
+      link: /usage/welcome
     - theme: alt
       text: Develop a Module
       link: /development/develop-a-module

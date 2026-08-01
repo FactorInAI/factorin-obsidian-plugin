@@ -7,16 +7,18 @@
 	"scripts": {
 		"dev:docs": "vitepress dev",
 		"build:docs": "vitepress build",
-		"lint": "oxlint --fix --silent && oxfmt",
+		"fix": "oxlint --fix --silent && oxfmt",
 		"check": "vue-tsc && oxlint && oxfmt --check"
 	},
 	"dependencies": {
+		"@json-canvas-viewer/vue": "^1.1.1",
 		"vitepress": "^2.0.0-alpha.17",
 		"vitepress-theme-trito": "^1.2.2",
 		"vue": "^3.5.39"
 	},
 	"devDependencies": {
 		"typescript": "^6.0.0",
+		"vite-plugin-json-canvas": "^1.0.1",
 		"vue-tsc": "^3.3.6"
 	}
 }

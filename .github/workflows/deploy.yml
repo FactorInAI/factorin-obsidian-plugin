@@ -37,7 +37,7 @@ jobs:
         run: bun install
 
       - name: Build modules
-        run: bun run build
+        run: bun compile
 
       - name: Sync modules
         run: bun scripts/deploy-modules.ts

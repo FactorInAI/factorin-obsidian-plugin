@@ -20,11 +20,11 @@
 	{
 		"id": "i18n-zh",
 		"name": "I18n 简体中文",
-		"version": "0.0.8",
+		"version": "0.0.9",
 		"description": "Simplified Chinese UI localization pack. / 简体中文 UI 本地化包。",
 		"icon": "languages",
 		"main": "https://sync.consensia.cc/modules/i18n-zh.js",
-		"minPluginVersion": "3.0.0-beta-17"
+		"minPluginVersion": "3.0.0-beta-18"
 	},
 	{
 		"id": "smart-merge",

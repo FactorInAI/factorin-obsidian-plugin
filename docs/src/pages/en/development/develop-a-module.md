@@ -2,12 +2,12 @@
 
 Modules lets you unlock infinite extension beyond Sync Engine base features. This documentation covers everything you need to write, build, test, and publish a module.
 
-| File                               | Contents                                         |
-| ---------------------------------- | ------------------------------------------------ |
-| [File System](file-system)         | `Fs` contract, wrapper chain, batch optimization |
-| [Runtime API](runtime-api.md)      | Full SDK type and function reference             |
-| [devops.md](devops.md)             | Build config, lint, test, deployment             |
-| [contributing.md](contributing.md) | Contribute to the Sync Engine monorepo           |
+| File                                        | Contents                                         |
+| ------------------------------------------- | ------------------------------------------------ |
+| [File System](./file-system)                | `Fs` contract, wrapper chain, batch optimization |
+| [Runtime API](./runtime-api.md)             | Full SDK type and function reference             |
+| [devops.md](./devops.md)                    | Build config, lint, test, deployment             |
+| [contributing.md](../usage/contributing.md) | Contribute to the Sync Engine monorepo           |
 
 ## Scaffolding a Module Project
 
