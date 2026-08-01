@@ -1,3 +1,5 @@
+import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
+import { defaultBaseDirectory, registerFactorinBackend } from './backend';
 import { en, zh } from './i18n';
 import { registerFactorinIcon } from './icon';
 
@@ -46,20 +48,28 @@ export type FactorinTranslationResource = Record<string, string>;
  * **Keep it that way as `start()` grows**: add members to this type, never
  * `Context` / `SelectFromContext` / `Settings` / `Translations`.
  */
-type FactorinContext = {
+type FactorinContext = FactorinBackendContext & {
 	registerI18n: (locale: FactorinLanguageCode, resource: FactorinTranslationResource) => void;
 };
 
 /**
- * Factor.In's own persisted state. Internal modules do not get the
- * `settings.modules[id]` path that downloaded modules do, so anything that must
- * survive a reload through the root store belongs in the `onload` settings
- * literal in `packages/plugin/src/index.ts`, prefixed `factorin`.
+ * Factor.In's own state — today, entirely the backend's configuration
+ * ({@link FactorinBackendSettings}: Drive URL, account slug, `secretStorage` key
+ * for the `fi_…` token, base directory).
  *
- * Empty for now — the API token key, Drive URL, account slug and base directory
- * land with the backend.
+ * **Not persisted yet.** Internal modules do not get the `settings.modules[id]`
+ * path that downloaded ones do — `Extensibility.loadModule` is what writes that,
+ * and it only ever sees modules it downloaded. So this object lives and dies with
+ * the plugin instance. Nothing is lost by that today: the fields are only
+ * populated by hand, for verification. The connect flow (Overview document §6.2)
+ * is what makes them worth keeping, and it is that task's job to mirror them into
+ * the root store through the `onload` settings literal in
+ * `packages/plugin/src/index.ts`, prefixed `factorin` (§5.1, §11).
+ *
+ * The token is never part of this shape in either case — only the key it is
+ * stored under.
  */
-export type FactorinSettings = Record<string, never>;
+export type FactorinSettings = FactorinBackendSettings;
 
 /**
  * The Factor.In module.
@@ -70,24 +80,39 @@ export type FactorinSettings = Record<string, never>;
  * registered **last** in `internalModules` so its `start()` sees every other
  * module's registrations.
  *
- * A shell at this point: it registers its i18n resources and the Factor.In icon.
- * The `factorin` remote FS and the settings section arrive in later milestones.
+ * It registers its i18n resources, the Factor.In icon, and the single
+ * first-party `factorin` remote FS (see `src/backend/`). The API-token settings
+ * section and the workflow UI arrive in later milestones.
  */
 export default class Factorin {
 	/** Unregister callbacks accumulated by `start()`, drained by `dispose()`. */
 	private readonly cleanup: Array<() => void> = [];
 
-	// `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
-	// `registerSetting`, `addCommand`, …) is made from `start()`, not the constructor.
+	/*
+	 * `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
+	 * `registerSetting`, `addCommand`, …) is made from `start()`, not the constructor.
+	 */
 	constructor(private readonly ctx: FactorinContext) {
+		/*
+		 * Upstream's WebDAV module seeds the same default from the same place, for the
+		 * same reason: an empty base directory normalizes to `/`, which the wrapper would
+		 * then join onto every key as a prefix.
+		 */
+		this.moduleSettings.baseDirectory ||= defaultBaseDirectory(ctx.app);
 		ctx.registerI18n('en', en);
 		ctx.registerI18n('zh', zh);
 	}
 
-	readonly moduleSettings: FactorinSettings = {};
+	readonly moduleSettings: FactorinSettings = {
+		accountSlug: '',
+		baseDirectory: '',
+		driveUrl: '',
+		tokenKey: '',
+	};
 
 	readonly start = () => {
 		registerFactorinIcon();
+		this.cleanup.push(...registerFactorinBackend(this.ctx, this.moduleSettings));
 	};
 
 	readonly dispose = () => this.cleanup.splice(0).forEach((fn) => fn());

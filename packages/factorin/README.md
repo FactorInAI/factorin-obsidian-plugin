@@ -25,10 +25,32 @@ downloaded at runtime. That is the whole point of the branded fork: no module
 catalog, no CDN, no integrity handshake, no auto-update. A Factor.In build never
 contacts `sync.consensia.cc`.
 
-Today it registers its i18n resources and the Factor.In icon, and carries the vendored
-WebDAV FS core under `src/backend/webdav/` (see `VENDORED.md` there). Wiring that FS
-into `registerRemoteFs('factorin', …)`, the API-token settings section, and the
-workflow UI land in later milestones.
+Today it registers its i18n resources, the Factor.In icon, and the single first-party
+`factorin` remote FS — the vendored WebDAV FS core under `src/backend/webdav/` (see
+`VENDORED.md` there), pointed at the account's Drive endpoint by `src/backend/index.ts`.
+The API-token settings section that _populates_ that configuration, and the workflow UI,
+land in later milestones.
+
+### The backend, in one paragraph
+
+`src/backend/index.ts` is `registerRemoteFs('factorin', …)` plus the base-directory
+`registerRemoteFsWrapper`, and nothing else. Credentials are resolved **lazily, on every
+instantiation**, from `moduleSettings` (`driveUrl`, `accountSlug`, `baseDirectory`) and
+`secretStorage` (`tokenKey` → the raw `fi_…` token, which _is_ the WebDAV Basic-auth
+password — see the Overview document §6.0). Nothing is cached at `start()`: the connect
+flow rewrites those fields whenever the user reconnects or switches account, and a
+captured config would both go stale and pin a secret in memory. Unconfigured, it throws
+`Please connect your Factor.In account!`, which the settings tab surfaces as-is.
+
+Because that is the _whole_ difference from upstream's `webdav` backend, every upstream
+decider, conflict resolver, scheduler and FS wrapper drives it with zero awareness of
+Factor.In.
+
+> **`moduleSettings` does not persist yet.** `Extensibility` writes `settings.modules[id]`
+> only for modules it downloaded, and Factor.In is internal. Mirroring these fields into
+> the root store — via the `onload` settings literal in `packages/plugin/src/index.ts`,
+> keys prefixed `factorin` — belongs to the connect-flow milestone (Overview §5.1, §6.2).
+> Until then, seed `moduleSettings` by hand to exercise the backend.
 
 ## How it reaches the plugin
 
@@ -95,8 +117,10 @@ packages/factorin/
 │   ├── i18n.ts        translation resources, registered via ctx.registerI18n
 │   ├── icon.ts        the Factor.In brandmark, inlined as an Obsidian icon
 │   └── backend/
+│       ├── index.ts   the `factorin` remote FS: registration + lazy credentials
 │       └── webdav/    vendored WebDAV FS core — READ VENDORED.md BEFORE EDITING
 └── test/
+    ├── backend-context.ts a recording stand-in for the kernel context slice
     ├── test-kit.ts        vendored copy of the SDK's test kit
     ├── fs-webdav.test.ts  ┐ vendored upstream WebDAV tests
     └── base-dir.test.ts   ┘

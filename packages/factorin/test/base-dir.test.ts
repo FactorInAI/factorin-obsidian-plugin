@@ -1,5 +1,7 @@
-// Vendored alongside the FS core it covers — see src/backend/webdav/VENDORED.md.
-// Local edits: these imports only.
+/*
+ * Vendored alongside the FS core it covers — see src/backend/webdav/VENDORED.md.
+ * Local edits: these imports only.
+ */
 import { test, expect } from 'bun:test';
 import baseDirWrapper from '@/backend/webdav/base-dir';
 import testKit from './test-kit';
