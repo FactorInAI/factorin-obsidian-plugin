@@ -148,8 +148,10 @@ export function registerFactorinBackend(
 	 */
 	const resolveConfig = () => {
 		const { accountSlug, baseDirectory, driveUrl, tokenKey } = settings;
-		// Read unconditionally, as upstream's WebDAV module does: before the connect flow
-		// Has run `tokenKey` is `''`, and an unset key is simply a miss.
+		/*
+		 * Read unconditionally, as upstream's WebDAV module does: before the connect flow
+		 * has run `tokenKey` is `''`, and an unset key is simply a miss.
+		 */
 		const token = app.secretStorage.getSecret(tokenKey);
 		if (token === null || !driveUrl) throw new Error('Please connect your Factor.In account!');
 		return { baseDirectory, endpoint: driveUrl, password: token, username: accountSlug };
@@ -157,9 +159,11 @@ export function registerFactorinBackend(
 
 	return [
 		registerRemoteFs(FACTORIN_REMOTE_FS, {
-			// Throwing here rather than resolving `{ success: false }` is deliberate and
-			// Matches upstream: the settings tab catches it and surfaces the message, so
-			// "not connected yet" reads as itself instead of as a failed handshake.
+			/*
+			 * Throwing here rather than resolving `{ success: false }` is deliberate and
+			 * matches upstream: the settings tab catches it and surfaces the message, so
+			 * "not connected yet" reads as itself instead of as a failed handshake.
+			 */
 			checkConnection: (request) => {
 				const { endpoint, password, username } = resolveConfig();
 				return checkConnection({ endpoint, password, username }, request);
@@ -171,10 +175,12 @@ export function registerFactorinBackend(
 			prettyName: FACTORIN_PRETTY_NAME,
 		}),
 		registerRemoteFsWrapper({
-			// The chain is global — every registered wrapper is offered every remote FS,
-			// Including other backends'. Identity-check first so this is a no-op for
-			// Anything that is not ours, and so `resolveConfig()` is only reached for an
-			// FS that was, by construction, instantiated from a resolvable config.
+			/*
+			 * The chain is global — every registered wrapper is offered every remote FS,
+			 * including other backends'. Identity-check first so this is a no-op for
+			 * anything that is not ours, and so `resolveConfig()` is only reached for an
+			 * FS that was, by construction, instantiated from a resolvable config.
+			 */
 			apply: (fs) => {
 				if (!(digOriginal(fs) instanceof WebdavFs)) return undefined;
 				return baseDirWrapper(fs, resolveConfig().baseDirectory);

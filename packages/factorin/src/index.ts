@@ -88,12 +88,16 @@ export default class Factorin {
 	/** Unregister callbacks accumulated by `start()`, drained by `dispose()`. */
 	private readonly cleanup: Array<() => void> = [];
 
-	// `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
-	// `registerSetting`, `addCommand`, …) is made from `start()`, not the constructor.
+	/*
+	 * `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
+	 * `registerSetting`, `addCommand`, …) is made from `start()`, not the constructor.
+	 */
 	constructor(private readonly ctx: FactorinContext) {
-		// Upstream's WebDAV module seeds the same default from the same place, for the
-		// Same reason: an empty base directory normalizes to `/`, which the wrapper would
-		// Then join onto every key as a prefix.
+		/*
+		 * Upstream's WebDAV module seeds the same default from the same place, for the
+		 * same reason: an empty base directory normalizes to `/`, which the wrapper would
+		 * then join onto every key as a prefix.
+		 */
 		this.moduleSettings.baseDirectory ||= defaultBaseDirectory(ctx.app);
 		ctx.registerI18n('en', en);
 		ctx.registerI18n('zh', zh);
