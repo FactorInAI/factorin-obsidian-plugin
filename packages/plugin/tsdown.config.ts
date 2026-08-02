@@ -35,6 +35,11 @@ const pluginConfig = defineConfig({
 	},
 	define: {
 		'Bun.env.VERSION': JSON.stringify(man.version),
+		// Factor.In — FORK EDIT. Build-time API host override for non-prod envs;
+		// unset → production. Drive host is not injected — it comes from /me.
+		'Bun.env.FACTORIN_API_BASE': JSON.stringify(
+			process.env.FACTORIN_API_BASE ?? 'https://api.factorin.com/api/v1',
+		),
 	},
 	dts: false,
 	entry: { main: 'src/index.ts' },

@@ -177,6 +177,9 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
   after a merge.
 - `packages/plugin/package.json` — one added devDependency, `"@factorin/module": "workspace:*"`. On
   conflict, take upstream's file and re-add the entry.
+- `packages/plugin/tsdown.config.ts` — one added `define` entry, `Bun.env.FACTORIN_API_BASE` (the
+  build-time API host override; see "Non-production builds"). Marked with a `// Factor.In — FORK EDIT`
+  comment. On conflict, take upstream's file and re-add the entry alongside the existing `Bun.env.VERSION`.
 
 > **Two invariants keep that edge legal — break either and `bun install` fails.**
 >
@@ -222,6 +225,20 @@ bun run build:plugin # → packages/plugin/dist-plugin/{main.js,manifest.json,st
 
 Bun (pinned to `1.3.13` by `packageManager`) is required; see `AGENTS.md` for the rest of the task
 runner commands.
+
+#### Non-production builds
+
+The Factor.In API host is baked in at build time from the `FACTORIN_API_BASE` env var (injected by
+tsdown's `define` in `packages/plugin/tsdown.config.ts`; consumed in `packages/factorin/src/api/client.ts`).
+Unset → production (`https://api.factorin.com/api/v1`). For a dev build:
+
+```sh
+FACTORIN_API_BASE=https://dev-api.factorin.com/api/v1 bun run build:plugin
+```
+
+The **Drive** host is not configured this way — it comes back per-account in the `/me` bootstrap, so it
+follows whichever API the base resolves to (a dev API returns `dev-drive.factorin.com` URLs). There is
+no runtime setting for either host; the environment is fixed per build artifact.
 
 ### Installing a build into a test vault
 

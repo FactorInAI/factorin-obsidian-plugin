@@ -7,8 +7,16 @@ import type { FactorinAccount, FactorinBootstrap, FactorinPermissions } from './
  * token authenticates as a Bearer token here and doubles as the WebDAV password
  * on the Drive side (§6.0); this client is how the plugin discovers what that
  * token unlocks.
+ *
+ * Overridable at build time via the `FACTORIN_API_BASE` env var, injected by
+ * tsdown's `define` (see `packages/plugin/tsdown.config.ts`) — a dev build sets
+ * `FACTORIN_API_BASE=https://dev-api.factorin.com/api/v1 bun run build:plugin`;
+ * unset falls back to production. The `?? …` also supplies the value on the
+ * non-bundled path (e.g. `bun test`, where `define` never runs). The Drive host
+ * is deliberately *not* configured here: it comes back per-account in the `/me`
+ * bootstrap, so it follows whichever API this base resolves to.
  */
-export const FACTORIN_API_BASE = 'https://api.factorin.com/api/v1';
+export const FACTORIN_API_BASE = Bun.env.FACTORIN_API_BASE ?? 'https://api.factorin.com/api/v1';
 
 /**
  * What the server actually sends for an account: snake_case `drive_url`
