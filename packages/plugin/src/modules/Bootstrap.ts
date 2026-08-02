@@ -202,8 +202,8 @@ export default class Bootstrap {
 			priority: 10_000,
 		});
 
-		registerLocalOptimizer({ apply: hierarchicalOptimizer, priority: 1000 });
-		registerRemoteOptimizer({ apply: hierarchicalOptimizer, priority: 1000 });
+		registerLocalOptimizer({ apply: hierarchicalOptimizer, priority: 10_000 });
+		registerRemoteOptimizer({ apply: hierarchicalOptimizer, priority: 10_000 });
 		registerLocalFsWrapper({
 			apply: (fs) =>
 				memoryControlWrapper(

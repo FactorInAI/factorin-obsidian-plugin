@@ -8,7 +8,6 @@ export default defineConfig({
 	dts: false,
 	entry: { 'i18n-zh': 'src/zh/index.ts' },
 	minify: true,
-	outDir: 'dist',
 	outExtensions: () => ({ js: '.js' }),
 	outputOptions: { codeSplitting: false },
 	plugins: [obsidianBridge()],

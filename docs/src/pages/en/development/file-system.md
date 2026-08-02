@@ -19,7 +19,7 @@ type FileStat = {
   key: string;
   mtime: number;
   size: number;
-  uid: string; // ETag or equivalent; equality means unchanged
+  uid: string;
 };
 type FolderStat = { isDir: true; key: string };
 type Stat = FileStat | FolderStat;
@@ -28,6 +28,8 @@ type StatsMap = Map<string, Stat>;
 type RecordStat = { isDir: false; local: string; remote: string } | { isDir: true };
 type RecordStatsMap = Map<string, RecordStat>;
 ```
+
+In `FileStat`, `uid` is often Etagm MD5 hash or equivalent, whose equality means the file content is unchanged. `mtime` is Unix timestamp in milliseconds.
 
 ## `RootFs`
 
@@ -150,6 +152,8 @@ See [registration](./registration#filesystem-wrappers).
 ## Batch Optimization
 
 The optimization wrapper (priority 2000) collects atomic FS operations and passes them to a `BatchOptimizer`. This allows backend-specific optimizations like S3 batch deletion or hierarchical operation reordering. For how the optimizer integrates with the wrapper chain, see [deep-dive: file system wrappers](../deep-dive/file-system-wrappers#optimization-wrapper).
+
+Sync Engine registers a default Hierarchical Optimizer at priority `10000` for both local and remote. This optimizer is designed to work in folder-file based file systems.
 
 ### Atom Types
 
