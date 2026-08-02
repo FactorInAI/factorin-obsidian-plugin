@@ -61,7 +61,7 @@ describe('factorin backend registration', () => {
 	test('registers under the id the plugin defaults `remoteFs` to', () => {
 		const { ctx, entry } = setup();
 		expect(ctx.remoteFs.size).toBe(1);
-		expect(entry.prettyName).toBe('Factor.In');
+		expect(entry.prettyName()).toBe('Factor.In');
 	});
 
 	/*

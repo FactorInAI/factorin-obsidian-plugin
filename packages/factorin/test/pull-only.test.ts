@@ -6,10 +6,10 @@ import { createModuleContext } from './module-context';
 /** Register the decider, seed a fake `bidirectional`, and return a way to run it. */
 function createHarness(tasks: Array<FactorinTask>) {
 	const ctx = createModuleContext();
-	const unregister = registerPullOnlyDecider(ctx, 'Factor.In (pull only)');
+	const unregister = registerPullOnlyDecider(ctx, () => 'Factor.In (pull only)');
 	ctx.deciderRegistry.set('bidirectional', {
 		decider: () => tasks,
-		prettyName: 'Bidirectional',
+		prettyName: () => 'Bidirectional',
 	});
 	const logs: Array<string> = [];
 	const run = () => {
@@ -24,7 +24,7 @@ function createHarness(tasks: Array<FactorinTask>) {
 describe('the pull-only decider', () => {
 	test('registers under its id and unregisters via the returned callback', () => {
 		const { ctx, unregister } = createHarness([]);
-		expect(ctx.deciderRegistry.get(FACTORIN_PULL_ONLY_DECIDER)?.prettyName).toBe(
+		expect(ctx.deciderRegistry.get(FACTORIN_PULL_ONLY_DECIDER)?.prettyName()).toBe(
 			'Factor.In (pull only)',
 		);
 		unregister();
@@ -78,7 +78,7 @@ describe('the pull-only decider', () => {
 		const { ctx, run } = createHarness([{ name: 'upload' }]);
 		ctx.deciderRegistry.set('bidirectional', {
 			decider: () => [{ name: 'download' }],
-			prettyName: 'Bidirectional',
+			prettyName: () => 'Bidirectional',
 		});
 		expect(run()).toEqual([{ name: 'download' }]);
 	});

@@ -73,27 +73,27 @@ class EncryptionFs implements WrappedFs {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		const encryptedContent = await this.original.read(encryptedKey, stat);
-		return decryptFileContent(rootFileKey, key, encryptedContent, encryptedContent.byteLength);
+		return decryptFileContent(rootFileKey, encryptedContent, encryptedContent.byteLength);
 	}
 
 	async readStream(key: string, stat: FileStat): Promise<ReadableStream<Binary>> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
 		const source = await this.original.readStream(encryptedKey, stat);
-		return createDecryptedReadableStream(source, rootFileKey, key, stat.size);
+		return createDecryptedReadableStream(source, rootFileKey, stat.size);
 	}
 
 	async write(key: string, value: Binary, stat: FileStat): Promise<string> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
-		const encryptedContent = await encryptFileContent(rootFileKey, key, value);
+		const encryptedContent = await encryptFileContent(rootFileKey, value);
 		return this.original.write(encryptedKey, encryptedContent, stat);
 	}
 
 	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): Promise<string> {
 		const encryptedKey = await this.encryptKey(key);
 		const { rootFileKey } = await this.getKeys();
-		const stream = await createEncryptedReadableStream(rootFileKey, key, value, stat.size);
+		const stream = await createEncryptedReadableStream(rootFileKey, value, stat.size);
 		return this.original.writeStream(encryptedKey, stream, {
 			...stat,
 			size: getEncryptedFileSize(stat.size),

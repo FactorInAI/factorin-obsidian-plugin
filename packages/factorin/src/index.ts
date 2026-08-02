@@ -15,7 +15,7 @@ import { FACTORIN_PULL_ONLY_DECIDER, registerPullOnlyDecider } from './sync/pull
  * A narrowing of the SDK's `ObsidianLanguageCode`, declared here rather than
  * imported. `@hesprs/sync-engine-sdk` *is* `packages/plugin`, and its types are
  * published from `packages/plugin/dist`, which turbo's `postinstall`
- * (`turbo run build -F @hesprs/sync-engine-sdk`) is in the middle of producing at
+ * (`turbo run compile -F @hesprs/sync-engine-sdk`) is in the middle of producing at
  * the moment this file first enters a compiler. Because `packages/plugin` bundles
  * Factor.In from source, importing the SDK from here means the SDK build has to
  * type a file that imports the SDK's own not-yet-emitted `dist/index.d.ts` — that
@@ -255,7 +255,7 @@ export default class Factorin {
 		/*
 		 * `ctx.translate` is the kernel's `Translate<any>` (its keys span every
 		 * module). Narrow to this module's keys once, here, for the two consumers
-		 * that need it: the decider's string `prettyName` and the settings host.
+		 * that need it: the decider's `prettyName` thunk and the settings host.
 		 * Sound because the kernel returns a string for every `factorin` key; see
 		 * `FactorinContextTranslate` in `./setting`.
 		 */
@@ -264,7 +264,7 @@ export default class Factorin {
 		this.hydrate();
 		this.cleanup.push(
 			...registerFactorinBackend(ctx, this.moduleSettings),
-			registerPullOnlyDecider(ctx, translate('factorinPullOnly')),
+			registerPullOnlyDecider(ctx, () => translate('factorinPullOnly')),
 			ctx.registerSetting({
 				/*
 				 * Rebuilt from live module state on every `display()`, so a connect,

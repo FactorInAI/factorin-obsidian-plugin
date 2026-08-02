@@ -10,7 +10,7 @@ const en: Translations = {
 		frag.appendText('Use ');
 		frag.createEl('a', {
 			attr: {
-				href: 'https://github.com/hesprs/sync-engine/blob/main/blueprint/asymmetric-storage.md',
+				href: 'https://sync.consensia.cc/deep-dive/asymmetric-storage',
 			},
 			text: 'asymmetric storage',
 		});
@@ -184,7 +184,7 @@ const en: Translations = {
 	moduleAutoUpdateDescription: 'Automatically update installed modules from module sources.',
 	moduleManagement: 'Module management',
 	moduleManagementDescription:
-		'Manage modules in a dedicated panel. You can install, uninstall, update, enable, disable modules, or edit module sources.',
+		'Manage modules in a dedicated panel. You can install, uninstall, update, enable, disable, edit modules, or edit module sources.',
 	moduleSourcePlaceholder: 'https://example.com/modules.json',
 	moveLocal: 'Move local',
 	moveRemote: 'Move remote',
@@ -220,6 +220,7 @@ const en: Translations = {
 		'Periodically trigger synchronizations over specified intervals. Alter the interval in the field.',
 	scheduledSyncPlaceholder: 'Enter interval (e.g. 10min, 0.5h)',
 	searchModules: 'Search modules',
+	selectAll: 'Select all',
 	showInstalledOnly: 'Show installed only',
 	showProgress: 'Show progress',
 	skip: 'Skip',

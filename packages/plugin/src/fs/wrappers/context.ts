@@ -8,10 +8,6 @@ type ContextOptions<S extends string, M extends string> = {
 	marker: NoInfer<M>;
 };
 
-function upsertFileStat(store: StoreSync<Stat>, key: string, uid: string, size: number) {
-	store.set(key, { isDir: false, key, mtime: Date.now(), size, uid });
-}
-
 function upsertFolderStat(store: StoreSync<Stat>, key: string) {
 	store.set(key, { isDir: true, key });
 }
@@ -65,13 +61,13 @@ class ContextFs<S extends string, M extends string> implements WrappedFs {
 
 	async write(key: string, value: Binary, stat: FileStat) {
 		const uid = await this.original.write(key, value, stat);
-		upsertFileStat(this.store, key, uid, stat.size);
+		this.store.set(key, { ...stat, uid });
 		return uid;
 	}
 
 	async writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat) {
 		const uid = await this.original.writeStream(key, value, stat);
-		upsertFileStat(this.store, key, uid, stat.size);
+		this.store.set(key, { ...stat, uid });
 		return uid;
 	}
 

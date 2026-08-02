@@ -85,7 +85,7 @@ export default class Webdav {
 					return checkConnection(config, request);
 				},
 				instantiate: (request) => new WebdavFs({ ...resolveConfig(), request }),
-				prettyName: translate('webdav'),
+				prettyName: () => translate('webdav'),
 			}),
 			registerRemoteFsWrapper({
 				apply: (fs) => {

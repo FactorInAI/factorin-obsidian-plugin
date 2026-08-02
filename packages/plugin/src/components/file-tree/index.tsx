@@ -5,7 +5,9 @@ import App from './App';
 import createFileTreeSelection from './selection';
 import createFileTreeData from './tree-data';
 
-export default function mount(el: Element, tasks: Array<BaseTask>) {
+export type FileTreeTranslations = { selectAll: string };
+
+export default function mount(el: Element, tasks: Array<BaseTask>, selectAll: string) {
 	const data = createFileTreeData(tasks);
 	const selection = createFileTreeSelection(data);
 	const initialSelectedById = Object.fromEntries(
@@ -20,6 +22,7 @@ export default function mount(el: Element, tasks: Array<BaseTask>) {
 			<App
 				data={data}
 				isSelected={(nodeId) => selectedById[nodeId] ?? false}
+				selectAll={selectAll}
 				toggle={(nodeId, nextSelected) => {
 					for (const changedNodeId of selection.toggle(nodeId, nextSelected))
 						setSelectedById(changedNodeId, selection.isSelected(changedNodeId));

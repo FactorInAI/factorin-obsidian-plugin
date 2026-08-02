@@ -10,7 +10,7 @@ const zh: Translations = {
 		frag.appendText('使用 ');
 		frag.createEl('a', {
 			attr: {
-				href: 'https://github.com/hesprs/sync-engine/blob/main/blueprint/asymmetric-storage.md',
+				href: 'https://sync.consensia.cc/deep-dive/asymmetric-storage',
 			},
 			text: '非对称存储',
 		});
@@ -165,7 +165,7 @@ const zh: Translations = {
 	moduleAutoUpdateDescription: '从模块源自动更新已安装的模块。',
 	moduleManagement: '模块管理',
 	moduleManagementDescription:
-		'在专属面板中管理模块。您可以安装、卸载、更新、启用、禁用模块，或编辑模块源。',
+		'在专用面板中管理模块。您可以安装、卸载、更新、启用、禁用、编辑模块，或编辑模块源。',
 	moduleSourcePlaceholder: 'https://example.com/modules.json',
 	moveLocal: '移动本地',
 	moveRemote: '移动远程',
@@ -200,6 +200,7 @@ const zh: Translations = {
 	scheduledSyncDescription: '按照指定的时间间隔定期触发同步。在输入框中修改间隔时间。',
 	scheduledSyncPlaceholder: '输入间隔（例如 10min, 0.5h）',
 	searchModules: '搜索模块',
+	selectAll: '全选',
 	showInstalledOnly: '仅显示已安装',
 	showProgress: '显示进度',
 	skip: '跳过',

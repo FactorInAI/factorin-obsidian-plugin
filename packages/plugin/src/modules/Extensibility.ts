@@ -391,7 +391,11 @@ function isValidMeta(meta: unknown): meta is ModuleMeta {
 		return requiredFields.every((field) => typeof (item as never)[field] === 'string');
 	};
 	if (!isMetaShape(meta)) return false;
-	return !/[<>:"/\\|?*]/.test(meta.id) && meta.integrity.length === 64;
+	return (
+		!/[<>:"/\\|?*]/.test(meta.id) &&
+		meta.integrity.length === 64 &&
+		/^[0-9a-f]*$/.test(meta.integrity)
+	);
 }
 
 // TODO: remove after August 12

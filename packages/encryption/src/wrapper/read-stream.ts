@@ -13,7 +13,6 @@ import {
 export default function createDecryptedReadableStream(
 	source: ReadableStream<Binary>,
 	rootFileKey: Binary,
-	key: string,
 	encryptedFileSize: number,
 ): ReadableStream<Binary> {
 	let pending = new Uint8Array(0);
@@ -40,7 +39,7 @@ export default function createDecryptedReadableStream(
 			const fileSalt = pending.slice(0, FILE_SALT_LENGTH);
 			pending = pending.slice(FILE_SALT_LENGTH);
 			fileKeyPromise = importAesGcmKey(
-				await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize, key),
+				await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize),
 			);
 		}
 

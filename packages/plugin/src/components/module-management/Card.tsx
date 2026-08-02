@@ -82,11 +82,11 @@ export default function Card(props: {
 								? props.ctx.translate('updateModule')
 								: props.ctx.translate('downloadModule')
 						}
-						onClick={() => {
+						onClick={() =>
 							props.runAction('download', () =>
 								props.ctx.downloadModule(props.module),
-							);
-						}}
+							)
+						}
 					/>
 				</Show>
 				<Show when={isInstalled()}>
@@ -95,41 +95,37 @@ export default function Card(props: {
 						icon="pencil"
 						pending={props.pendingAction === 'editInfo'}
 						tooltip={props.ctx.translate('editModuleInformation')}
-						onClick={() => {
+						onClick={() =>
 							new ModuleEditorModal(props.ctx, {
 								initial: props.module,
 								onSave: (newMeta) =>
 									props.runAction('editInfo', () =>
 										props.ctx.updateModuleMeta(newMeta),
 									),
-							}).open();
-						}}
+							}).open()
+						}
 					/>
 					<ActionButton
 						disabled={busy()}
 						icon="trash-2"
 						pending={props.pendingAction === 'delete'}
 						tooltip={props.ctx.translate('deleteModule')}
-						onClick={() => {
-							props.runAction('delete', () =>
-								props.ctx.deleteModule(props.module.id),
-							);
-						}}
+						onClick={() =>
+							props.runAction('delete', () => props.ctx.deleteModule(props.module.id))
+						}
 					/>
 					<EnableToggle
 						disabled={busy()}
 						enabled={props.isLoaded}
 						translate={props.ctx.translate}
-						onEnable={() => {
-							props.runAction('enable', () =>
-								props.ctx.enableModule(props.module.id),
-							);
-						}}
-						onDisable={() => {
+						onEnable={() =>
+							props.runAction('enable', () => props.ctx.enableModule(props.module.id))
+						}
+						onDisable={() =>
 							props.runAction('disable', () =>
 								props.ctx.disableModule(props.module.id),
-							);
-						}}
+							)
+						}
 					/>
 				</Show>
 			</div>
@@ -148,15 +144,12 @@ function EnableToggle(props: {
 	let toggle: ToggleComponent;
 
 	createEffect(() => {
-		if (toggle) {
-			if (toggle.getValue() !== props.enabled) toggle.setValue(props.enabled);
-			toggle.setDisabled(props.disabled);
-		}
-		if (toggleEl)
-			setTooltip(
-				toggleEl,
-				props.enabled ? props.translate('disableModule') : props.translate('enableModule'),
-			);
+		if (toggle.getValue() !== props.enabled) toggle.setValue(props.enabled);
+		toggle.setDisabled(props.disabled);
+		setTooltip(
+			toggleEl,
+			props.enabled ? props.translate('disableModule') : props.translate('enableModule'),
+		);
 	});
 
 	return (
@@ -186,6 +179,7 @@ function ActionButton(props: {
 	let button: HTMLButtonElement;
 
 	createEffect(() => {
+		button.onClickEvent(() => props.onClick());
 		setIcon(button, props.pending ? 'loader-circle' : props.icon);
 		button.ariaLabel = props.tooltip;
 		setTooltip(button, props.tooltip);
@@ -197,7 +191,6 @@ function ActionButton(props: {
 		<button
 			class="clickable-icon rounded-md p-1"
 			disabled={props.disabled}
-			onClick={() => props.onClick()}
 			ref={(ref) => (button = ref)}
 			style={{ opacity: props.disabled ? '0.45' : '1' }}
 			type="button"

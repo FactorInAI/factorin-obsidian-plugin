@@ -52,7 +52,10 @@ export function createModuleContext() {
 		i18nRegistrations: [] as Array<[FactorinLanguageCode, FactorinTranslationResource]>,
 		registerDecider: (
 			id: string,
-			entry: { decider: (input: FactorinDeciderInput) => Array<never>; prettyName: string },
+			entry: {
+				decider: (input: FactorinDeciderInput) => Array<never>;
+				prettyName: () => string;
+			},
 		) => {
 			deciderRegistry.set(id, entry);
 			return () => {

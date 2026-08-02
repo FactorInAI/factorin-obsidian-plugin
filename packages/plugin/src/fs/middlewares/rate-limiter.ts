@@ -1,13 +1,12 @@
-import type { Request } from '@/modules/Registrar';
+import type { General, MaybePromise } from '@/types';
 
 type RateLimiterOptions = { maxConcurrency: number; minInterval: number };
 
-export default function rateLimiterMiddleware(
-	request: Request,
-	options: RateLimiterOptions,
-): Request {
+export default function rateLimiterMiddleware<
+	T extends (...args: ReadonlyArray<General>) => Promise<General>,
+>(request: T, options: RateLimiterOptions): T {
 	const limiter = new ApiLimiter(options);
-	return limiter.wrap(request);
+	return limiter.wrap(request) as T;
 }
 
 /**
@@ -45,7 +44,7 @@ class ApiLimiter {
 	}
 
 	wrap<TArgs extends Array<unknown>, TResult>(
-		fn: (...args: TArgs) => TResult | Promise<TResult>,
+		fn: (...args: TArgs) => MaybePromise<TResult>,
 	): (...args: TArgs) => Promise<TResult> {
 		return (...args: TArgs) => this.schedule(() => fn(...args));
 	}

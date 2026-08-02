@@ -49,15 +49,11 @@ export async function deriveNameKey(masterKey: Binary): Promise<Binary> {
 	return deriveHkdfKey(masterKey, NAME_KEY_INFO);
 }
 
-export async function encryptFileContent(
-	rootFileKey: Binary,
-	key: string,
-	plaintext: Binary,
-): Promise<Binary> {
+export async function encryptFileContent(rootFileKey: Binary, plaintext: Binary): Promise<Binary> {
 	const encryptedFileSize = getEncryptedFileSize(plaintext.byteLength);
 	const fileSalt = crypto.getRandomValues(new Uint8Array(FILE_SALT_LENGTH));
 	const fileKey = await importAesGcmKey(
-		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize, key),
+		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize),
 	);
 	const encryptedChunks: Array<Binary> = [fileSalt];
 
@@ -85,7 +81,6 @@ export async function encryptContentChunk(
 
 export async function decryptFileContent(
 	rootFileKey: Binary,
-	key: string,
 	encryptedContent: Binary,
 	encryptedFileSize: number,
 ): Promise<Binary> {
@@ -97,7 +92,7 @@ export async function decryptFileContent(
 
 	const fileSalt = encryptedContent.subarray(0, FILE_SALT_LENGTH);
 	const fileKey = await importAesGcmKey(
-		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize, key),
+		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize),
 	);
 	const plaintextChunks: Array<Binary> = [];
 	let offset = FILE_SALT_LENGTH;

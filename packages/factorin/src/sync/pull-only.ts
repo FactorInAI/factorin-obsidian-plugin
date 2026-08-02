@@ -41,7 +41,7 @@ export type FactorinTask = { name: string };
  * — naming a parameter type would flip the variance and stop the real registry
  * from satisfying this shape. The call site casts it back.
  */
-export type FactorinDeciderEntry = { decider: unknown; prettyName: string };
+export type FactorinDeciderEntry = { decider: unknown; prettyName: () => string };
 
 export type FactorinPullOnlyContext = {
 	deciderRegistry: ReadonlyMap<string, FactorinDeciderEntry>;
@@ -54,7 +54,7 @@ export type FactorinPullOnlyContext = {
 		 * actually returned are the wrapped decider's own, so the type is honest at
 		 * runtime; the cast lives at the single `return` below.
 		 */
-		entry: { decider: (input: FactorinDeciderInput) => Array<never>; prettyName: string },
+		entry: { decider: (input: FactorinDeciderInput) => Array<never>; prettyName: () => string },
 	) => () => void;
 };
 
@@ -80,7 +80,7 @@ const REMOTE_MUTATING_TASKS = new Set([
  * the session that connected. Returns the unregister callback for the module's
  * `dispose()` queue.
  */
-export function registerPullOnlyDecider(ctx: FactorinPullOnlyContext, prettyName: string) {
+export function registerPullOnlyDecider(ctx: FactorinPullOnlyContext, prettyName: () => string) {
 	const { deciderRegistry, registerDecider } = ctx;
 	return registerDecider(FACTORIN_PULL_ONLY_DECIDER, {
 		decider: (input) => {

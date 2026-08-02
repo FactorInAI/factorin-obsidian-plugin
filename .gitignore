@@ -1,5 +1,10 @@
 plans
+test-files
 .ignore
+.obsidian
+.trash
+.obsidianignore
+Sync Engine Logs
 .vscode
 **/dist-plugin
 **/dist

@@ -11,14 +11,13 @@ import {
 
 export default async function createEncryptedReadableStream(
 	rootFileKey: Binary,
-	key: string,
 	source: ReadableStream<Binary>,
 	rawFileSize: number,
 ): Promise<ReadableStream<Binary>> {
 	const encryptedFileSize = getEncryptedFileSize(rawFileSize);
 	const fileSalt = crypto.getRandomValues(new Uint8Array(FILE_SALT_LENGTH));
 	const fileKey = await importAesGcmKey(
-		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize, key),
+		await deriveFileKey(rootFileKey, fileSalt, encryptedFileSize),
 	);
 
 	let pending = new Uint8Array(0);

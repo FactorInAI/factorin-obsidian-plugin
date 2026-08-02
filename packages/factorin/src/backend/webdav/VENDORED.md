@@ -27,8 +27,8 @@ lifecycle around it is ours.
 | ------------------- | ------------------------------------------------ |
 | Upstream repository | `https://github.com/hesprs/obsidian-webdav-sync` |
 | Branch              | `feat/fs`                                        |
-| Commit              | `30ba2e9`                                        |
-| Version             | `3.0.0-beta-15`                                  |
+| Commit              | `71ffb12`                                        |
+| Version             | `3.0.0-beta-18`                                  |
 | Source path         | `packages/webdav/src/`                           |
 
 That is the repository's recorded upstream base — `factorin.upstream` in the root
@@ -107,7 +107,7 @@ Vendored code never conflicts, so nothing tells you it went stale. Step 3 of
 
 ```sh
 # 1. What moved upstream since the pin?
-git diff 30ba2e9..HEAD -- packages/webdav/src/webdav packages/webdav/src/parse-xml.ts \
+git diff 71ffb12..HEAD -- packages/webdav/src/webdav packages/webdav/src/parse-xml.ts \
                           packages/webdav/src/base-dir.ts packages/webdav/test
 
 # 2. What does our copy already differ by? (expect only the two import rewrites above)

@@ -2,12 +2,20 @@
 # Requires `git config merge.ours.driver true` once per clone — see FACTOR.IN.md.
 
 # Branding & identity (Milestone 2)
-manifest.json                   merge=ours
-versions.json                   merge=ours
-package.json                    merge=ours
+# NOTE: a pattern with no slash matches that basename at EVERY directory level, so
+# these root branding files are leading-slash anchored to the repo root — otherwise
+# `package.json`/`README.md`/`manifest.json` would also own every packages/*/ copy.
+# Nested package.json/README.md merge from upstream normally (plugin's one fork-local
+# edit, the `@factorin/module` devDependency, is re-applied by hand on conflict; see
+# FACTOR.IN.md § "Known fork-local edits outside the owned list"). Nested paths we do
+# want owned are listed explicitly (packages/plugin/manifest.json) or by tree rule
+# (packages/factorin/** below, which covers its READMEs).
+/manifest.json                  merge=ours
+/versions.json                  merge=ours
+/package.json                   merge=ours
 packages/plugin/manifest.json   merge=ours
-README.md                       merge=ours
-README.zh.md                    merge=ours
+/README.md                      merge=ours
+/README.zh.md                   merge=ours
 
 # Fork documentation & the ownership list itself
 FACTOR.IN.md                    merge=ours

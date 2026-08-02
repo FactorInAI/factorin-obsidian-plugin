@@ -33,6 +33,14 @@ A feature request is a normal issue, but maintainers will move the request to a 
 
 We **strongly recommend** you writing your own Sync Engine module to achieve your requirement before opening a feature request, since Sync Engine is super extensible and most functions can be achieved by modules. Sync Engine also provides official SDK, documentation, and AI agent skill to assist module development. There are abundant module examples in the Sync Engine monorepo.
 
+## Fork Policy
+
+Sync Engine welcomes forks that contributes to the development of the Sync Engine monorepo.
+
+However, as stated in [Obsidian developer policies](https://docs.obsidian.md/Developer+policies#Forks), Sync Engine disallows any type if malicious forking that submits to Obsidian's official plugin directory as another standalone plugin, as long as Sync Engine repo remains active or maintainers haven't permitted. Maintainers will report as long as we find one.
+
+Instead of creating another syncing plugin, we highly recommend you to create a Sync Engine module. Sync Engine core is highly optimized and battle-tested, it provides convenient SDK that allows you to customize freely without reinventing the wheel.
+
 ## Contribute Code to the Monorepo
 
 ### How the Monorepo Works
@@ -70,14 +78,16 @@ Sync Engine Monorepo
 
 **Commands**:
 
-| Command                           | Usage                                          |
-| --------------------------------- | ---------------------------------------------- |
-| `bun dev`                         | Build without clearing dist folder             |
-| `bun run build`                   | Don't run unless truly building for production |
-| `bun fix`                         | Format and fix fixable lint errors             |
-| `bun check`                       | Check types, lint and format                   |
-| `bun tests`                       | Run all tests                                  |
-| `bun <command> -F <package-name>` | Run command targeting one package              |
+| Command                           | Usage                                  |
+| --------------------------------- | -------------------------------------- |
+| `bun dev`                         | Build without clearing dist folder     |
+| `bun compile`                     | Build with clearing                    |
+| `bun dev:plugin`                  | Build the plugin without cleaning dist |
+| `bun build:plugin`                | Build the plugin with clearing         |
+| `bun fix`                         | Format and fix fixable lint errors     |
+| `bun check`                       | Check types, lint and format           |
+| `bun tests`                       | Run all tests                          |
+| `bun <command> -F <package-name>` | Run command targeting one package      |
 
 **CI/CD**:
 
@@ -108,8 +118,7 @@ If you want to contribute a new module, please make it a package under `packages
   "contributors": [
     {
       "name": "<the-name-to-call-you>",
-      "github": "<your-github-account-name>",
-      "email": "<optional-email>"
+      "github": "<your-github-account-name>"
     }
   ]
 }
@@ -121,9 +130,9 @@ Then modify `modules.json` at the repo root to include your module:
 [
   {
     "name": "Module Name",
-    "description": "[Official] Description for your module",
+    "description": "Description for your module",
     "version": "0.0.1",
-    "main": "https://sync.consensia.cc/modules/<URI-encoded-module-name>.js"
+    "main": "https://sync.consensia.cc/modules/module-name.js"
   }
 ]
 ```

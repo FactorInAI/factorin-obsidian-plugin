@@ -91,7 +91,7 @@ class MemoryControlRemoteFs implements WrappedFs {
 	async readStream(key: string, stat: FileStat) {
 		await reserveMemory(this.state, STREAM_RESERVATION_SIZE);
 		try {
-			return this.original.readStream(key, stat);
+			return await this.original.readStream(key, stat);
 		} catch (error) {
 			releaseMemory(this.state, STREAM_RESERVATION_SIZE);
 			throw error;

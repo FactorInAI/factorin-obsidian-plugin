@@ -57,7 +57,7 @@ test('matches path separators, root anchoring, and directory suffixes', () => {
 	});
 });
 
-test('advances through inclusion prefixes and excludes unrelated directories', () => {
+test('includes unmatched files and advances through unmatched directories with inclusions', () => {
 	const match = prepareGlobMatch([rule('docs/**/*.md')]);
 	expect(
 		results(
@@ -78,8 +78,8 @@ test('advances through inclusion prefixes and excludes unrelated directories', (
 		'docs/components/': 'advance',
 		'docs/notes/': 'advance',
 		'docs/readme.md': 'include',
-		'docs/readme.txt': 'exclude',
-		'src/': 'exclude',
+		'docs/readme.txt': 'include',
+		'src/': 'advance',
 	});
 });
 
@@ -112,14 +112,21 @@ test('matches double-star patterns across directory levels', () => {
 	});
 });
 
-test('direct inclusion overrides direct exclusion but not excluded ancestors', () => {
+test('direct inclusion overrides direct and ancestor exclusion', () => {
 	const match = prepareGlobMatch(
 		[rule('important.log'), rule('build/keep.txt')],
 		[rule('*.log'), rule('build/')],
 	);
-	expect(results(['important.log', 'build/keep.txt', 'build/keep/more.txt'], match)).toEqual({
-		'build/keep.txt': 'exclude',
+	expect(
+		results(
+			['important.log', 'build/', 'build/keep.txt', 'build/keep/more.txt', 'build/other.txt'],
+			match,
+		),
+	).toEqual({
+		'build/': 'advance',
+		'build/keep.txt': 'include',
 		'build/keep/more.txt': 'exclude',
+		'build/other.txt': 'exclude',
 		'important.log': 'include',
 	});
 });

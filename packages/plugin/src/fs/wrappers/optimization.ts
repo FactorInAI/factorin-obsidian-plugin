@@ -13,15 +13,14 @@ import type {
 } from '../interface';
 
 type OptimizationOptions = {
-	thisPool: Array<string>;
 	thatPool: Array<string>;
 	batchOptimizer: BatchOptimizer;
 };
 
 type OmitResolve<T> = Omit<T, 'resolve'>;
 
-const executeAtom = (atom: OutputAtom) => {
-	const result = atom.execute();
+const executeAtom = ({ execute }: OutputAtom) => {
+	const result = execute();
 	if (result instanceof Promise) return result;
 	return Promise.resolve(result);
 };
@@ -54,12 +53,10 @@ class OptimizationFs implements WrappedFs {
 	}
 
 	read(key: string, stat: FileStat) {
-		this.options.thisPool.push(stat.key);
 		return this.original.read(key, stat);
 	}
 
 	readStream(key: string, stat: FileStat) {
-		this.options.thisPool.push(stat.key);
 		return this.original.readStream(key, stat);
 	}
 
@@ -157,6 +154,20 @@ class OptimizationFs implements WrappedFs {
 	}
 }
 
+export function optimizationCompanionWrapper(original: Fs, thisPool: Array<string>): Fs {
+	const read = original.read.bind(original);
+	const readStream = original.readStream.bind(original);
+	original.read = async (key: string, stat: FileStat) => {
+		thisPool.push(stat.key);
+		return read(key, stat);
+	};
+	original.readStream = async (key: string, stat: FileStat) => {
+		thisPool.push(stat.key);
+		return readStream(key, stat);
+	};
+	return original;
+}
+
 function createCachedPromise<T>(fn: () => MaybePromise<T>) {
 	// oxlint-disable-next-line unicorn/no-null
 	let promise: MaybePromise<T> | null = null;
@@ -182,9 +193,6 @@ function createCachedPromise<T>(fn: () => MaybePromise<T>) {
 	};
 }
 
-export default function remoteOptimizationWrapper(
-	original: Fs,
-	options: OptimizationOptions,
-): WrappedFs {
+export function optimizationWrapper(original: Fs, options: OptimizationOptions): WrappedFs {
 	return new OptimizationFs(original, options);
 }

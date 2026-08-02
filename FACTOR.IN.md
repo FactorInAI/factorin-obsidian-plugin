@@ -145,8 +145,21 @@ The owned files above resolve themselves. Then work through:
 3. **Vendored WebDAV core.** Diff upstream's WebDAV FS against the pinned copy under
    `packages/factorin/src/backend/webdav/` and port fixes deliberately. Vendored code never conflicts,
    so it goes stale silently if nobody looks.
-4. **Upstream base record.** Update `factorin.upstream.baseVersion` in `package.json`.
-5. **Branding sweep.** `grep -rin "sync engine\|sync-engine\|hesprs" -- . ':!node_modules'` and confirm
+4. **Module registration contracts (tsc will _not_ catch these).** `packages/factorin` types the SDK's
+   registration entries structurally with leaf types — never importing the SDK (see the invariant
+   below) — so when upstream changes the _shape_ of a registration entry, the module still compiles but
+   breaks at runtime. Diff `packages/plugin/src/modules/Registrar.ts` (the entry types) and
+   `packages/plugin/src/settings/head.ts` (how they are consumed), then confirm every factorin
+   registration still matches: `registerRemoteFs` / `registerRemoteFsWrapper` (`src/backend/index.ts`),
+   `registerDecider` (`src/sync/pull-only.ts`), `registerSetting` / `registerI18n` (`src/index.ts`).
+   > Concrete precedent: beta-18 changed every registry `prettyName` from `string` to `() => string`
+   > and started calling it (`head.ts`: `dropdown.addOption(key, prettyName())`). The module compiled
+   > clean but threw "prettyName is not a function" while building the backend dropdown, which aborted
+   > the whole settings render — empty backend dropdown, no connect section. The fix was making the
+   > factorin `prettyName`s lazy thunks. Run the "What a working build does" smoke test after every
+   > merge to catch this class.
+5. **Upstream base record.** Update `factorin.upstream.baseVersion` in `package.json`.
+6. **Branding sweep.** `grep -rin "sync engine\|sync-engine\|hesprs" -- . ':!node_modules'` and confirm
    every remaining hit is one of the allowed upstream-describing places listed under "Plugin identity".
 
 ### Known fork-local edits outside the owned list
@@ -221,3 +234,24 @@ cp packages/plugin/dist-plugin/{main.js,manifest.json,styles.css} "$dest"
 Restart Obsidian (or run **Reload app without saving**), then check **Settings → Community plugins**:
 the entry must read **Factor.In Obsidian** by **Factor.In**, at the manifest's version. The plugin
 folder name must match the manifest `id`, or Obsidian ignores the plugin.
+
+### What a working build does (smoke test)
+
+Enable the plugin, open its settings, and confirm all four — anything missing means the Factor.In
+module's `start()` registrations (`packages/factorin/src/index.ts`) did not all take effect:
+
+1. **Backend registered.** The **Storage backend** dropdown lists **Factor.In** and has it selected
+   (the `onload` default is `remoteFs: 'factorin'`). An _empty_ dropdown means `registerRemoteFs` never
+   landed — usually a registration-contract drift, see "Taking an upstream update" step 4.
+2. **Connect section present.** A **Factor.In** section (priority 749, between the head section and
+   features) with an API-token field and a **Connect** button. This is the only way to authenticate —
+   there is no WebDAV endpoint/username/password form; the fork replaced it (Overview §5.1).
+3. **Connect flow works.** Pasting a valid `fi_…` token and connecting fetches the account bootstrap,
+   mounts the default account, and persists — the section then shows the connected user's name and an
+   account picker. The token goes to `secretStorage`; only its key is persisted.
+4. **Connection check passes.** The backend's gear/connection check succeeds once connected (before
+   connecting it deliberately throws "Please connect your Factor.In account!").
+
+If the backend dropdown is empty and the connect section is absent, suspect a registration-contract
+drift from a recent merge (the module types the SDK contract structurally, so tsc will not catch it) —
+this is exactly what step 4 above guards against.

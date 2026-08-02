@@ -1,5 +1,6 @@
 import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
+import { ref } from 'synthkernel';
 import { cancellationWrapper } from '@/fs';
 import { syncCancelledError } from '@/sync';
 
@@ -7,22 +8,22 @@ const { bytes, deferred, file, flush, fs, stream } = testKit;
 
 test('cancellation wrapper rejects read before delegation', async () => {
 	const harness = fs();
-	const wrapper = cancellationWrapper(harness.fs, () => true);
+	const wrapper = cancellationWrapper(harness.fs, ref(true));
 
 	expect(wrapper.read('note.md', file('note.md'))).rejects.toBe(syncCancelledError);
 	expect(harness.calls.read).toStrictEqual([]);
 });
 
 test('cancellation wrapper rejects write after resolution when cancelled', async () => {
-	let cancelled = false;
+	const isCancelled = ref(false);
 	const writeDeferred = deferred<string>();
 	const harness = fs({ control: { write: async () => await writeDeferred.promise } });
-	const wrapper = cancellationWrapper(harness.fs, () => cancelled);
+	const wrapper = cancellationWrapper(harness.fs, isCancelled);
 	const noteStat = file('note.md');
 
 	const pending = wrapper.write('note.md', bytes('1234'), noteStat);
 	await flush();
-	cancelled = true;
+	isCancelled(true);
 	writeDeferred.resolve('write-uid');
 
 	expect(pending).rejects.toBe(syncCancelledError);
@@ -30,15 +31,15 @@ test('cancellation wrapper rejects write after resolution when cancelled', async
 });
 
 test('cancellation wrapper rejects writeStream after resolution when cancelled', async () => {
-	let cancelled = false;
+	const isCancelled = ref(false);
 	const writeDeferred = deferred<string>();
 	const harness = fs({ control: { writeStream: async () => await writeDeferred.promise } });
-	const wrapper = cancellationWrapper(harness.fs, () => cancelled);
+	const wrapper = cancellationWrapper(harness.fs, isCancelled);
 	const streamStat = file('stream.md');
 
 	const pending = wrapper.writeStream('stream.md', stream(['1234']), streamStat);
 	await flush();
-	cancelled = true;
+	isCancelled(true);
 	writeDeferred.resolve('stream-uid');
 
 	expect(pending).rejects.toBe(syncCancelledError);

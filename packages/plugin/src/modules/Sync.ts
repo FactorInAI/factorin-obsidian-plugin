@@ -1,4 +1,6 @@
 import type { Events, Translations } from '@';
+import type { Ref } from 'synthkernel';
+import { ref } from 'synthkernel';
 import type { Fs, ListReporter } from '@/fs';
 import type { ConflictResolver, Decider, TaskFactory, TaskNames, TaskOptionsMap } from '@/sync';
 import type { GlobMatchRule, Progress, Stat, StatsMap, TogglableValue } from '@/types';
@@ -50,7 +52,7 @@ export default class Sync {
 	}
 
 	declare readonly events: {
-		syncStarted: { isCancelled: () => boolean; trigger: string };
+		syncStarted: { isCancelled: Ref<boolean>; trigger: string };
 		remoteWalkProgress: Progress;
 		syncTerminated: SyncTerminateReason;
 		requestConfirmDelete: Array<RemoveLocal>;
@@ -111,12 +113,11 @@ export default class Sync {
 		});
 
 	private readonly executeSync = async (trigger: string) => {
-		let cancelled = false;
+		const isCancelled = ref(false);
 		let failedCount = 0;
 		let tasks: Array<BaseTask>;
 		let terminateReason!: SyncTerminateReason;
-		const isCancelled = () => cancelled;
-		const cleanup = this.on('syncCanceled', () => (cancelled = true));
+		const cleanup = this.on('syncCanceled', () => isCancelled(true));
 		try {
 			this.dispatch('syncStarted', { isCancelled, trigger });
 
@@ -136,7 +137,7 @@ export default class Sync {
 				localFs.list('/', ({ current }) => match(current)),
 				this.ctx.listRemote({ ...infras, reporter, trigger }),
 			]);
-			if (cancelled) throw syncCancelledError;
+			if (isCancelled()) throw syncCancelledError;
 			const records = new Map(await record.entries());
 			const localStats = this.postProcess(localList);
 			const remoteStats = this.postProcess(remoteList);
@@ -145,7 +146,7 @@ export default class Sync {
 				`Local ${localStats.size} item(s), remote ${remoteStats.size} item(s), record ${records.size} item(s).`,
 			);
 
-			if (cancelled) throw syncCancelledError;
+			if (isCancelled()) throw syncCancelledError;
 			const taskFactory = createTaskFactory({
 				baseOptions: infras,
 				resolver: this.ctx.getConflictResolver(),
@@ -192,9 +193,7 @@ export default class Sync {
 				(task) => task instanceof RemoveLocal,
 			);
 			if (
-				trigger !== 'manual' &&
-				trigger !== 'nonInteractiveManual' &&
-				trigger !== 'autoMigration' &&
+				(trigger === 'realtime' || trigger === 'startup' || trigger === 'scheduled') &&
 				this.settings.confirmDeleteInAutoSync &&
 				removeLocalTasks.length !== 0
 			) {
@@ -208,7 +207,7 @@ export default class Sync {
 
 			sortTasks(tasks);
 
-			if (cancelled) throw syncCancelledError;
+			if (isCancelled()) throw syncCancelledError;
 			this.dispatch('executionStarted', tasks);
 			await Promise.all(
 				tasks.map(async (task) => {
@@ -216,7 +215,7 @@ export default class Sync {
 						await task.exec();
 						this.dispatch('taskCompleted', toTaskInfo(task));
 					} catch (error) {
-						if (cancelled) return;
+						if (isCancelled()) return;
 						failedCount++;
 						this.dispatch('taskFailed', {
 							...toTaskInfo(task),
@@ -226,7 +225,7 @@ export default class Sync {
 				}),
 			);
 
-			terminateReason = cancelled
+			terminateReason = isCancelled()
 				? { result: 'cancelled' }
 				: failedCount
 					? {
@@ -235,7 +234,7 @@ export default class Sync {
 						}
 					: { result: 'completed' };
 		} catch (error) {
-			terminateReason = cancelled
+			terminateReason = isCancelled()
 				? { result: 'cancelled' }
 				: ({ error: toErrorMessage(error), result: 'failed' } as const);
 		} finally {
@@ -310,16 +309,18 @@ function toTaskInfo({ key, name, prettyName, local, remote }: BaseTask): TaskInf
 }
 
 function sortTasks(tasks: Array<BaseTask>) {
+	const region = (task: BaseTask) => {
+		const isFolder = task.local?.isDir === true || task.remote?.isDir === true;
+		if (task.name === 'removeLocal' || task.name === 'removeRemote') return isFolder ? 3 : 0;
+		if (task.name === 'createLocalDir' || task.name === 'createRemoteDir') return 1;
+		return task.name === 'moveLocal' || task.name === 'moveRemote' ? 2 : 4;
+	};
 	tasks.sort((a, b) => {
-		const aIsDeletion = a.name === 'removeLocal' || a.name === 'removeRemote';
-		const bIsDeletion = b.name === 'removeLocal' || b.name === 'removeRemote';
-		const aIsFolder = a.local?.isDir === true || a.remote?.isDir === true;
-		const bIsFolder = b.local?.isDir === true || b.remote?.isDir === true;
-		const aRegion = aIsDeletion ? 0 : aIsFolder ? 1 : 2;
-		const bRegion = bIsDeletion ? 0 : bIsFolder ? 1 : 2;
+		const aRegion = region(a);
+		const bRegion = region(b);
 		if (aRegion !== bRegion) return aRegion - bRegion;
-		if (aIsDeletion) return b.key.length - a.key.length;
-		if (aIsFolder) return a.key.length - b.key.length;
+		if (aRegion === 3) return b.key.length - a.key.length;
+		if (aRegion === 1 || aRegion === 2) return a.key.length - b.key.length;
 		return 0;
 	});
 }

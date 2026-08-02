@@ -73,7 +73,7 @@ export type FactorinBackendSettings = {
 export type FactorinRemoteFsEntry = {
 	checkConnection: (request: Request) => Promise<CheckConnectionResult>;
 	instantiate: (request: Request) => RootFs;
-	prettyName: string;
+	prettyName: () => string;
 };
 
 export type FactorinFsWrapperEntry = {
@@ -172,7 +172,7 @@ export function registerFactorinBackend(
 				const { endpoint, password, username } = resolveConfig();
 				return new WebdavFs({ endpoint, password, request, username });
 			},
-			prettyName: FACTORIN_PRETTY_NAME,
+			prettyName: () => FACTORIN_PRETTY_NAME,
 		}),
 		registerRemoteFsWrapper({
 			/*

@@ -2,16 +2,16 @@
 	{
 		"id": "webdav",
 		"name": "WebDAV",
-		"version": "0.1.4",
+		"version": "0.1.6",
 		"description": "WebDAV backend support.",
 		"icon": "server",
 		"main": "https://sync.consensia.cc/modules/webdav.js",
-		"minPluginVersion": "3.0.0-beta-14"
+		"minPluginVersion": "3.0.0-beta-19"
 	},
 	{
 		"id": "encryption",
 		"name": "Encryption",
-		"version": "0.0.6",
+		"version": "0.1.0",
 		"description": "Client-side encrypt vault files before uploading to backend.",
 		"icon": "key-round",
 		"main": "https://sync.consensia.cc/modules/encryption.js",
@@ -20,19 +20,19 @@
 	{
 		"id": "i18n-zh",
 		"name": "I18n 简体中文",
-		"version": "0.0.7",
+		"version": "0.0.9",
 		"description": "Simplified Chinese UI localization pack. / 简体中文 UI 本地化包。",
 		"icon": "languages",
 		"main": "https://sync.consensia.cc/modules/i18n-zh.js",
-		"minPluginVersion": "3.0.0-beta-14"
+		"minPluginVersion": "3.0.0-beta-18"
 	},
 	{
 		"id": "smart-merge",
 		"name": "Smart Merge",
-		"version": "0.0.4",
+		"version": "0.0.5",
 		"description": "Smart merge conflict resolution strategy that applies recursive three-way merge.",
 		"icon": "combine",
 		"main": "https://sync.consensia.cc/modules/smart-merge.js",
-		"minPluginVersion": "3.0.0-beta-12"
+		"minPluginVersion": "3.0.0-beta-19"
 	}
 ]

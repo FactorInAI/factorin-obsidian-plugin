@@ -1,9 +1,9 @@
-import type { Vault } from 'obsidian';
 import testKit from '$/test-kit';
 import { expect, test } from 'bun:test';
+import { App } from 'obsidian';
 import type { RootFs } from '@/fs';
 import type { MaybePromise } from '@/types';
-import { VaultFs } from '@/fs';
+import { createVaultRequest, VaultFs } from '@/fs';
 
 const { stream, bytes, file } = testKit;
 const textDecoder = new TextDecoder();
@@ -135,16 +135,21 @@ function createVaultStub(options: VaultHarnessOptions): VaultHarness {
 		},
 	};
 
-	const vault = {
-		adapter,
-		config: options.config,
-		getName: () => 'Vault Name',
-	} as unknown as Vault;
+	const app = {
+		metadataCache: {
+			inProgressTaskCount: 0,
+		},
+		vault: {
+			adapter,
+			config: options.config,
+			getAbstractFileByPath: () => {},
+		},
+	} as unknown as App;
 
 	return {
 		calls,
 		control,
-		fs: new VaultFs(vault),
+		fs: new VaultFs(createVaultRequest(app), 'Vault Name'),
 	};
 }
 

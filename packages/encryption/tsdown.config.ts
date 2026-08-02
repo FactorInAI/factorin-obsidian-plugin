@@ -15,10 +15,7 @@ export default defineConfig({
 		},
 	},
 	minify: true,
-	outDir: 'dist',
 	outExtensions: () => ({ js: '.js' }),
-	outputOptions: {
-		codeSplitting: false,
-	},
+	outputOptions: { codeSplitting: false },
 	plugins: [obsidianBridge()],
 });

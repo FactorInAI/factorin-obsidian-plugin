@@ -45,9 +45,9 @@ describe('Factor.In module', () => {
 		const { ctx, module } = createModule();
 
 		module.start();
-		expect(ctx.remoteFs.get(FACTORIN_REMOTE_FS)?.prettyName).toBe('Factor.In');
+		expect(ctx.remoteFs.get(FACTORIN_REMOTE_FS)?.prettyName()).toBe('Factor.In');
 		expect(ctx.wrappers.size).toBe(1);
-		expect(ctx.deciderRegistry.get(FACTORIN_PULL_ONLY_DECIDER)?.prettyName).toBe(
+		expect(ctx.deciderRegistry.get(FACTORIN_PULL_ONLY_DECIDER)?.prettyName()).toBe(
 			en.factorinPullOnly,
 		);
 		expect(ctx.settingEntries.map((entry) => entry.priority)).toEqual([

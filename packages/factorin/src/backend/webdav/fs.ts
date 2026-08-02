@@ -126,30 +126,36 @@ function toStat(endpoint: string, { propstat, href }: WebDAVResponseItem): Stat 
 	return { isDir: false, key, mtime, size, uid };
 }
 
-type PropfindOptions = {
-	depth: '0' | '1' | 'infinity';
-	key: string;
-};
+function extractNextLink(linkHeader: string): string | undefined {
+	const matches = /<(?<href>[^>]+)>;\s*rel="next"/.exec(linkHeader);
+	return matches?.groups?.href;
+}
 
-async function propfind(
-	request: Request,
-	auth: string,
-	endpoint: string,
-	propfindOptions: PropfindOptions,
-) {
+type PropfindPayload = {
+	depth?: '0' | '1' | 'infinity';
+	request: Request;
+	auth: string;
+} & ({ key: string; endpoint: string } | { url: string });
+
+async function propfind(args: PropfindPayload) {
+	const { request, depth = '0', auth } = args;
+	const url = 'url' in args ? args.url : buildUrl(args.endpoint, args.key);
 	const response = await request({
 		body: PROPFIND_BODY,
-		headers: {
-			Authorization: auth,
-			'Content-Type': 'application/xml',
-			Depth: propfindOptions.depth,
-		},
+		headers: { Authorization: auth, 'Content-Type': 'application/xml', Depth: depth },
 		method: 'PROPFIND',
-		url: buildUrl(endpoint, propfindOptions.key),
+		url,
 	});
-
 	const parsed = parseXML<WebDAVMultistatus>(response.text());
-	return asArray(parsed.multistatus.response);
+	const items = asArray(parsed.multistatus.response);
+
+	// Handle pagination
+	const linkHeader = response.headers.link || response.headers.Link;
+	if (!linkHeader) return items;
+	const nextLink = extractNextLink(linkHeader);
+	if (!nextLink) return items;
+	items.push(...(await propfind({ auth, depth, request, url: new URL(nextLink).toString() })));
+	return items;
 }
 
 function isTargetItem(key: string, endpoint: string, item: WebDAVResponseItem) {
@@ -299,21 +305,20 @@ export default class WebdavFs implements RootFs {
 	async stat(key: string): Promise<Stat> {
 		if (key === '/') return { isDir: true, key: '/' } satisfies FolderStat;
 
-		const items = await propfind(this.request, this.auth, this.endpoint, { depth: '0', key });
-		const item = items.find((candidate) => isTargetItem(key, this.endpoint, candidate));
+		const { auth, endpoint, request } = this;
+		const items = await propfind({ auth, endpoint, key, request });
+		const item = items.find((candidate) => isTargetItem(key, endpoint, candidate));
 		if (!item) throw new Error(`WebDAV stat not found for ${key}`);
 
-		const stat = toStat(this.endpoint, item);
+		const stat = toStat(endpoint, item);
 		if (!stat) throw new Error(`WebDAV stat not found for ${key}`);
 		return stat;
 	}
 
 	async exists(key: string): Promise<boolean> {
+		const { auth, endpoint, request } = this;
 		try {
-			const items = await propfind(this.request, this.auth, this.endpoint, {
-				depth: '0',
-				key,
-			});
+			const items = await propfind({ auth, endpoint, key, request });
 			const item = items.find((candidate) => isTargetItem(key, this.endpoint, candidate));
 			return Boolean(item);
 		} catch (error: unknown) {
@@ -322,18 +327,15 @@ export default class WebdavFs implements RootFs {
 		}
 	}
 
-	private async listShallow(key: string) {
-		const items = await propfind(this.request, this.auth, this.endpoint, { depth: '1', key });
+	private async listStats(key: string, depth: '1' | 'infinity' = '1') {
+		const { auth, endpoint, request } = this;
+		const items = await propfind({ auth, depth, endpoint, key, request });
 		return toDescendantStats(key, this.endpoint, items);
 	}
 
 	async list(key: string, reporter: ListReporter) {
 		if (this.options.depthInfinity) {
-			const items = await propfind(this.request, this.auth, this.endpoint, {
-				depth: 'infinity',
-				key,
-			});
-			const stats = toDescendantStats(key, this.endpoint, items);
+			const stats = await this.listStats(key, 'infinity');
 			const result: Array<Stat> = [];
 			await Promise.all(
 				stats.map(async (stat, index) => {
@@ -354,21 +356,16 @@ export default class WebdavFs implements RootFs {
 		let completed = 1;
 		let total = 1;
 		const visit = async (dir: string) => {
-			const items = await this.listShallow(dir);
+			const items = await this.listStats(dir);
 			completed++;
 			total += items.length;
 			await Promise.all(
 				items.map(async (item) => {
 					const report = await reporter({ completed, current: item.key, total });
-					if (report === 'exclude') {
-						completed++;
-						return;
-					}
+					if (report !== 'advance') completed++;
+					if (report === 'exclude') return;
 					result.push(item);
-					if (report === 'include') {
-						completed++;
-						return;
-					}
+					if (report === 'include') return;
 					if (item.isDir) await visit(item.key);
 				}),
 			);
