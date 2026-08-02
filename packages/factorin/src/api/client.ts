@@ -22,13 +22,14 @@ export const FACTORIN_API_BASE = Bun.env.FACTORIN_API_BASE ?? 'https://api.facto
 
 /**
  * What the server actually sends for an account: snake_case `drive_url`
- * (Rails/jbuilder), everything else as-is. Only `client.ts` ever sees this
- * shape; {@link normalizeBootstrap} turns it into {@link FactorinAccount}.
+ * (Rails/jbuilder), and the server-driven policy under `sync` (which
+ * {@link normalizeBootstrap} normalises into the internal `config` field);
+ * everything else as-is. Only `client.ts` ever sees this shape.
  */
 type WireAccount = Omit<FactorinAccount, 'driveUrl'> & { drive_url: string };
 type WireBootstrap = Omit<FactorinBootstrap, 'accounts' | 'config' | 'token'> & {
 	accounts?: Array<WireAccount>;
-	config?: unknown;
+	sync?: unknown;
 	token?: { permissions?: FactorinPermissions };
 };
 
@@ -71,7 +72,7 @@ function normalizeBootstrap(raw: WireBootstrap): FactorinBootstrap {
 		throw new Error('This token cannot reach any Factor.In account with a Drive.');
 	return {
 		accounts,
-		config: normalizeConfig(raw.config),
+		config: normalizeConfig(raw.sync),
 		email: raw.email,
 		id: raw.id,
 		name: raw.name,
@@ -80,10 +81,10 @@ function normalizeBootstrap(raw: WireBootstrap): FactorinBootstrap {
 }
 
 /**
- * Pick the well-formed server-driven settings out of the `/me` `config` block,
+ * Pick the well-formed server-driven settings out of the `/me` `sync` block,
  * keyed exactly as {@link FACTORIN_CONFIG_FALLBACKS}. Anything missing or malformed
  * is dropped rather than trusted — the caller falls back to the pinned default, so
- * an older deploy (no `config`) or a stray field can never write junk into settings.
+ * an older deploy (no `sync` block) or a stray field can never write junk into settings.
  */
 function normalizeConfig(raw: unknown): FactorinServerConfig {
 	if (!raw || typeof raw !== 'object') return {};

@@ -138,7 +138,7 @@ describe('the connect flow', () => {
 		replyWith({
 			json: {
 				...payload(),
-				config: {
+				sync: {
 					maxFileSize: { enabled: true, value: 999 },
 					realtimeSync: { enabled: true, value: 3000 },
 				},

@@ -7,7 +7,7 @@
  * Three kinds live here:
  *
  * 1. **Fallbacks for server-driven settings.** The connect flow overlays whatever
- *    the Factor.In API returns in the `/me` `config` block; anything the API omits
+ *    the Factor.In API returns in the `/me` `sync` block; anything the API omits
  *    (an older deploy, a field not shipped yet) falls back to these, so a setting is
  *    never left `undefined`. `applyServerConfig` in `./index` does the overlay, and
  *    the plugin's `onload` seeds the same values as the pre-connect state — see
@@ -32,16 +32,26 @@ type Toggle = { enabled: boolean; value: number };
 
 /**
  * Fallbacks for the settings the Factor.In API owns (account tier / server
- * capacity / cadence policy). The `/me` `config` block overlays these on connect;
+ * capacity / cadence policy). The `/me` `sync` block overlays these on connect;
  * omitted fields keep the fallback. Keys match the upstream `Settings` shape.
  */
 export const FACTORIN_CONFIG_FALLBACKS = {
 	maxFileSize: { enabled: false, value: 31_457_280 },
 	maxRequestConcurrency: { enabled: true, value: 50 },
 	minRequestInterval: { enabled: false, value: 0 },
-	realtimeSync: { enabled: false, value: 5000 },
+	/**
+	 * On by default: near-realtime is core to the product. 2000ms trailing debounce
+	 * coalesces edit bursts (Scheduler resets the timer on each change, fires after
+	 * the last). The server may retune `value`/`enabled` per account via `/me`.
+	 */
+	realtimeSync: { enabled: true, value: 2000 },
 	scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
-	startupSync: { enabled: false, value: 5000 },
+	/**
+	 * On by default: one sync ~2s after layout-ready so the vault opens to fresh
+	 * remote state (realtime only fires on vault changes, never on launch). Server
+	 * may retune via `/me`.
+	 */
+	startupSync: { enabled: true, value: 2000 },
 } satisfies Record<string, Toggle>;
 
 /** The server-driven config the `/me` bootstrap may carry — every field optional. */
