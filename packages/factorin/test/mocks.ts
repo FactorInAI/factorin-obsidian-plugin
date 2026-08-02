@@ -61,6 +61,7 @@ export class ButtonStub {
 	cta = false;
 	disabled = false;
 	text = '';
+	warning = false;
 
 	onClick(callback: () => unknown) {
 		this.click = callback;
@@ -79,6 +80,11 @@ export class ButtonStub {
 
 	setDisabled(disabled: boolean) {
 		this.disabled = disabled;
+		return this;
+	}
+
+	setWarning() {
+		this.warning = true;
 		return this;
 	}
 }

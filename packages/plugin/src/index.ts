@@ -1,7 +1,7 @@
 import './global.css';
 import type { Command, EventRef, App } from 'obsidian';
 import type { Context as KernelContext, MergeSingleKey } from 'synthkernel';
-import Factorin from '@factorin/module';
+import Factorin, { FACTORIN_CONFIG_FALLBACKS, FACTORIN_CONFLICT_RESOLVER } from '@factorin/module';
 import { Plugin } from 'obsidian';
 import { createContext } from 'synthkernel';
 import type { AddRibbonIcon } from './modules/Observability';
@@ -65,17 +65,24 @@ export default class SyncEngine extends Plugin {
 
 	async onload() {
 		const settings: Settings = {
-			// Factor.In — FORK EDIT (documents/overview.md §5.1). Upstream defaults this on:
-			// it flattens the remote into anchor-keyed files ("Anchored Asymmetric Storage",
-			// see blueprint/asymmetric-storage.md) because upstream users don't care about the
-			// remote shape. Factor.In's Drive is the opposite — a shared, hierarchical library
-			// the web app and every vault read by real path (/<slug>/Documents/Note.md), so the
-			// remote shape is load-bearing. Left on, the wrapper can't parse the Drive's real
-			// keys (they aren't `00000~name`) and drops every entry → sync sees an empty remote.
+			/*
+			 * Factor.In — FORK EDIT (documents/overview.md §5.1). Upstream defaults this on:
+			 * it flattens the remote into anchor-keyed files ("Anchored Asymmetric Storage",
+			 * see blueprint/asymmetric-storage.md) because upstream users don't care about the
+			 * remote shape. Factor.In's Drive is the opposite — a shared, hierarchical library
+			 * the web app and every vault read by real path (/<slug>/Documents/Note.md), so the
+			 * remote shape is load-bearing. Left on, the wrapper can't parse the Drive's real
+			 * keys (they aren't `00000~name`) and drops every entry → sync sees an empty remote.
+			 */
 			asymmetricStorage: false,
 			confirmDeleteInAutoSync: true,
 			confirmTasksInSync: true,
-			conflictResolver: 'renameAndKeepBoth',
+			/*
+			 * Factor.In — FORK EDIT (documents/overview.md §5.1). Pinned: a shared,
+			 * multi-vault library should converge on the latest edit, not accumulate
+			 * "(conflicted copy)" duplicates. Sourced from @factorin/module/config.
+			 */
+			conflictResolver: FACTORIN_CONFLICT_RESOLVER,
 			customHeaders: [],
 			decider: 'bidirectional',
 			exclusionRules: [
@@ -97,20 +104,28 @@ export default class SyncEngine extends Plugin {
 				'**/~$*.xlsx',
 				this.app.vault.configDir,
 			].map(createGlobMatchOptions),
-			// Factor.In — FORK EDIT (documents/overview.md §5.1, §6.2, §11).
-			// The connect flow's persisted state: internal modules don't get the
-			// settings.modules[id] path, so the Factorin module mirrors its
-			// moduleSettings into the root store under factorin-prefixed keys.
+			/*
+			 * Factor.In — FORK EDIT (documents/overview.md §5.1, §6.2, §11).
+			 * The connect flow's persisted state: internal modules don't get the
+			 * settings.modules[id] path, so the Factorin module mirrors its
+			 * moduleSettings into the root store under factorin-prefixed keys.
+			 */
 			factorinAccountSlug: '',
 			factorinBaseDirectory: '',
 			factorinDriveUrl: '',
 			factorinTokenKey: '',
 			factorinUserName: '',
 			inclusionRules: [],
-			maxFileSize: { enabled: false, value: 31_457_280 },
+			/*
+			 * Factor.In — FORK EDIT (documents/overview.md §5.1). Server-driven: the
+			 * connect flow overlays these from the /me `config` block; the values here
+			 * are the fallbacks (single source in @factorin/module/config) used until
+			 * the API provides them. maxMemoryConsumption stays a pinned device concern.
+			 */
+			maxFileSize: { ...FACTORIN_CONFIG_FALLBACKS.maxFileSize },
 			maxMemoryConsumption: { enabled: true, value: 100 * 1024 ** 2 },
-			maxRequestConcurrency: { enabled: true, value: 50 },
-			minRequestInterval: { enabled: false, value: 0 },
+			maxRequestConcurrency: { ...FACTORIN_CONFIG_FALLBACKS.maxRequestConcurrency },
+			minRequestInterval: { ...FACTORIN_CONFIG_FALLBACKS.minRequestInterval },
 			// Factor.In — FORK EDIT (documents/overview.md §2, §5.1). Infra insulation.
 			// An empty catalog list plus auto-update off keeps the plugin off sync.consensia.cc.
 			// It therefore never loads code it did not ship.
@@ -119,13 +134,13 @@ export default class SyncEngine extends Plugin {
 			moduleSources: [],
 			modules: {},
 			noticeStatusOnMobile: true,
-			realtimeSync: { enabled: false, value: 5000 },
+			realtimeSync: { ...FACTORIN_CONFIG_FALLBACKS.realtimeSync },
 			realtimeSyncFastMode: true,
 			// Factor.In — FORK EDIT (documents/overview.md §5.1).
 			// Default to the Factor.In backend rather than leaving the user to pick one.
 			remoteFs: 'factorin',
-			scheduledSync: { enabled: false, value: 15 * 60 * 1000 },
-			startupSync: { enabled: false, value: 5000 },
+			scheduledSync: { ...FACTORIN_CONFIG_FALLBACKS.scheduledSync },
+			startupSync: { ...FACTORIN_CONFIG_FALLBACKS.startupSync },
 		};
 		Object.assign(settings, await this.loadData());
 

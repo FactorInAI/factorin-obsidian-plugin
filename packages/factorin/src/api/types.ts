@@ -8,6 +8,8 @@
  * in `client.ts` and nowhere else.
  */
 
+import type { FactorinServerConfig } from '../config';
+
 /**
  * Access level a token scope carries. A scope the token lacks is omitted from
  * the payload entirely (equivalently "none") — never assume a scope is present.
@@ -47,6 +49,12 @@ export type FactorinAccount = {
  */
 export type FactorinBootstrap = {
 	accounts: Array<FactorinAccount>;
+	/**
+	 * Server-driven settings (max file size, sync cadence, rate limits) the connect
+	 * flow overlays onto the store. Every field optional — omitted ones fall back to
+	 * {@link FactorinServerConfig}'s home in `../config`. `{}` on an older deploy.
+	 */
+	config: FactorinServerConfig;
 	email?: string;
 	id: number;
 	name: string;

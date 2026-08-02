@@ -22,11 +22,16 @@ export type FactorinTranslations = {
 	factorinConnected: string;
 	factorinConnectedWithAccess: string;
 	factorinConnectFailed: string;
+	factorinDisconnect: string;
+	factorinDisconnectDescription: string;
+	factorinDisconnected: string;
 	factorinDriveRead: string;
 	factorinDriveWrite: string;
 	factorinNotConnected: string;
 	factorinPullOnly: string;
 	factorinStatus: string;
+	factorinSyncNow: string;
+	factorinSyncNowDescription: string;
 	factorinTokenMissing: string;
 };
 
@@ -45,11 +50,17 @@ export const en: FactorinTranslations = {
 	factorinConnectedWithAccess: 'Connected as {{name}} · {{slug}} ({{access}} access)',
 	factorinConnecting: 'Connecting…',
 	factorinDescription: 'Sync this vault with your Factor.In workspace.',
+	factorinDisconnect: 'Disconnect',
+	factorinDisconnectDescription:
+		'Forget this token and stop syncing. Files already in your vault stay.',
+	factorinDisconnected: 'Disconnected from Factor.In.',
 	factorinDriveRead: 'read',
 	factorinDriveWrite: 'write',
 	factorinNotConnected: 'Not connected',
 	factorinPullOnly: 'Factor.In (pull only)',
 	factorinStatus: 'Status',
+	factorinSyncNow: 'Sync now',
+	factorinSyncNowDescription: 'Sync this vault with Factor.In immediately.',
 	factorinTokenMissing: 'Paste your Factor.In API token first.',
 };
 
@@ -67,10 +78,15 @@ export const zh: FactorinTranslations = {
 	factorinConnectedWithAccess: '已连接为 {{name}} · {{slug}}（{{access}}权限）',
 	factorinConnecting: '连接中…',
 	factorinDescription: '将此 vault 与您的 Factor.In 工作区同步。',
+	factorinDisconnect: '断开连接',
+	factorinDisconnectDescription: '忘记此令牌并停止同步。vault 中已有的文件将保留。',
+	factorinDisconnected: '已断开与 Factor.In 的连接。',
 	factorinDriveRead: '只读',
 	factorinDriveWrite: '读写',
 	factorinNotConnected: '未连接',
 	factorinPullOnly: 'Factor.In（仅拉取）',
 	factorinStatus: '状态',
+	factorinSyncNow: '立即同步',
+	factorinSyncNowDescription: '立即将此 vault 与 Factor.In 同步。',
 	factorinTokenMissing: '请先粘贴您的 Factor.In API 令牌。',
 };

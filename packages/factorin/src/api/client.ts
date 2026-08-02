@@ -1,5 +1,7 @@
 import { requestUrl } from 'obsidian';
+import type { FactorinServerConfig } from '../config';
 import type { FactorinAccount, FactorinBootstrap, FactorinPermissions } from './types';
+import { FACTORIN_CONFIG_FALLBACKS } from '../config';
 
 /**
  * A thin client for the Factor.In REST API, built on Obsidian's `requestUrl`
@@ -24,8 +26,9 @@ export const FACTORIN_API_BASE = Bun.env.FACTORIN_API_BASE ?? 'https://api.facto
  * shape; {@link normalizeBootstrap} turns it into {@link FactorinAccount}.
  */
 type WireAccount = Omit<FactorinAccount, 'driveUrl'> & { drive_url: string };
-type WireBootstrap = Omit<FactorinBootstrap, 'accounts' | 'token'> & {
+type WireBootstrap = Omit<FactorinBootstrap, 'accounts' | 'config' | 'token'> & {
 	accounts?: Array<WireAccount>;
+	config?: unknown;
 	token?: { permissions?: FactorinPermissions };
 };
 
@@ -68,11 +71,40 @@ function normalizeBootstrap(raw: WireBootstrap): FactorinBootstrap {
 		throw new Error('This token cannot reach any Factor.In account with a Drive.');
 	return {
 		accounts,
+		config: normalizeConfig(raw.config),
 		email: raw.email,
 		id: raw.id,
 		name: raw.name,
 		token: { permissions: raw.token?.permissions ?? {} },
 	};
+}
+
+/**
+ * Pick the well-formed server-driven settings out of the `/me` `config` block,
+ * keyed exactly as {@link FACTORIN_CONFIG_FALLBACKS}. Anything missing or malformed
+ * is dropped rather than trusted — the caller falls back to the pinned default, so
+ * an older deploy (no `config`) or a stray field can never write junk into settings.
+ */
+function normalizeConfig(raw: unknown): FactorinServerConfig {
+	if (!raw || typeof raw !== 'object') return {};
+	const source = raw as Record<string, unknown>;
+	const result: FactorinServerConfig = {};
+	for (const key of Object.keys(FACTORIN_CONFIG_FALLBACKS) as Array<
+		keyof typeof FACTORIN_CONFIG_FALLBACKS
+	>) {
+		const value = source[key];
+		if (
+			value &&
+			typeof value === 'object' &&
+			typeof (value as { enabled?: unknown }).enabled === 'boolean' &&
+			typeof (value as { value?: unknown }).value === 'number'
+		)
+			result[key] = {
+				enabled: (value as { enabled: boolean }).enabled,
+				value: (value as { value: number }).value,
+			};
+	}
+	return result;
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { FactorinLanguageCode, FactorinTranslationResource } from '@/index';
 import type { FactorinSettingTranslate } from '@/setting';
 import type { FactorinDeciderEntry, FactorinDeciderInput } from '@/sync/pull-only';
+import { FACTORIN_CONFIG_FALLBACKS } from '@/config';
 import { en } from '@/i18n';
 import { createBackendContext } from './backend-context';
 
@@ -34,6 +35,13 @@ export function createStore() {
 		factorinDriveUrl: '',
 		factorinTokenKey: '',
 		factorinUserName: '',
+		// Server-driven keys the connect flow overlays; seeded from the fallbacks.
+		maxFileSize: { ...FACTORIN_CONFIG_FALLBACKS.maxFileSize },
+		maxRequestConcurrency: { ...FACTORIN_CONFIG_FALLBACKS.maxRequestConcurrency },
+		minRequestInterval: { ...FACTORIN_CONFIG_FALLBACKS.minRequestInterval },
+		realtimeSync: { ...FACTORIN_CONFIG_FALLBACKS.realtimeSync },
+		scheduledSync: { ...FACTORIN_CONFIG_FALLBACKS.scheduledSync },
+		startupSync: { ...FACTORIN_CONFIG_FALLBACKS.startupSync },
 	};
 }
 
@@ -72,6 +80,9 @@ export function createModuleContext() {
 				if (index !== -1) settingEntries.splice(index, 1);
 			};
 		},
+		requestSync: async (_trigger: string) => {
+			harness.syncs += 1;
+		},
 		rerenderSettingTab: () => {
 			harness.rerenders += 1;
 		},
@@ -81,6 +92,7 @@ export function createModuleContext() {
 		},
 		saves: 0,
 		settingEntries,
+		syncs: 0,
 		translate,
 	};
 	return harness;

@@ -57,12 +57,16 @@ export type FactorinSettingHost = {
 	connection: FactorinBootstrap | undefined;
 	/** Fetch the bootstrap for `token`, apply the default account, persist. */
 	connect: (token: string) => Promise<void>;
+	/** Forget the token and stop syncing; files already in the vault stay. */
+	disconnect: () => Promise<void>;
 	moduleSettings: { accountSlug: string; driveUrl: string; userName: string };
 	/** The connected token's grants — in-memory only (Overview §6.2). */
 	permissions: FactorinPermissions | undefined;
 	rerender: () => void;
 	/** Re-point the mount at another account the session's bootstrap listed. */
 	selectAccount: (slug: string) => Promise<void>;
+	/** Kick a manual sync — the "Sync now" button. */
+	syncNow: () => void;
 	translate: FactorinSettingTranslate;
 };
 
@@ -74,16 +78,54 @@ export type FactorinSettingHost = {
  * only credential, and everything else is derived from it.
  */
 export default function factorinSetting(el: HTMLElement, host: FactorinSettingHost) {
-	const { translate } = host;
+	const { moduleSettings, translate } = host;
 
 	new Setting(el).setName(translate('factorin')).setHeading();
 	new Setting(el).setName(translate('factorinStatus')).setDesc(statusText(host));
 
 	/*
-	 * The pasted token lives in this closure until Connect succeeds, at which
-	 * point it moves into `secretStorage` and the section is rebuilt. It is never
-	 * written to `moduleSettings`.
+	 * Connected iff a mount is persisted. This survives a reload even when the
+	 * in-memory bootstrap (account list, permissions) is gone — a reloaded vault
+	 * still offers Sync now / Disconnect against its last account, and shows the
+	 * token field only once actually disconnected.
 	 */
+	if (!moduleSettings.driveUrl) {
+		renderConnect(el, host);
+		return;
+	}
+
+	const accounts = host.connection?.accounts ?? [];
+	if (accounts.length > 1) renderAccountPicker(el, host, accounts);
+
+	new Setting(el)
+		.setName(translate('factorinSyncNow'))
+		.setDesc(translate('factorinSyncNowDescription'))
+		.addButton((button) =>
+			button.setButtonText(translate('factorinSyncNow')).setCta().onClick(host.syncNow),
+		);
+
+	new Setting(el)
+		.setName(translate('factorinDisconnect'))
+		.setDesc(translate('factorinDisconnectDescription'))
+		.addButton((button) =>
+			button
+				.setButtonText(translate('factorinDisconnect'))
+				.setWarning()
+				.onClick(async () => {
+					await host.disconnect();
+					new Notice(translate('factorinDisconnected'));
+					host.rerender();
+				}),
+		);
+}
+
+/**
+ * The token field + Connect button, shown until a mount is persisted. The pasted
+ * token lives in this closure until Connect succeeds, at which point it moves into
+ * `secretStorage` and the section is rebuilt; it is never written to `moduleSettings`.
+ */
+function renderConnect(el: HTMLElement, host: FactorinSettingHost) {
+	const { translate } = host;
 	let token = '';
 	new Setting(el)
 		.setName(translate('factorinApiToken'))
@@ -105,7 +147,7 @@ export default function factorinSetting(el: HTMLElement, host: FactorinSettingHo
 				button.setDisabled(true).setButtonText(translate('factorinConnecting'));
 				try {
 					await host.connect(trimmed);
-					// Rerender rather than patch: the status line, the account picker, and this button all depend on the new state.
+					// Rerender rather than patch: status, picker, and buttons all change.
 					host.rerender();
 				} catch (error) {
 					new Notice(
@@ -115,26 +157,32 @@ export default function factorinSetting(el: HTMLElement, host: FactorinSettingHo
 				}
 			});
 		});
+}
 
-	const accounts = host.connection?.accounts ?? [];
-	if (accounts.length > 1)
-		new Setting(el)
-			.setName(translate('factorinAccountChoice'))
-			.setDesc(translate('factorinAccountChoiceDescription'))
-			.addDropdown((dropdown) => {
-				for (const account of accounts)
-					dropdown.addOption(account.slug, `${account.name} · ${account.slug}`);
-				dropdown.setValue(host.moduleSettings.accountSlug).onChange(async (slug) => {
-					try {
-						await host.selectAccount(slug);
-					} catch (error) {
-						new Notice(
-							translate('factorinConnectFailed', { message: errorMessage(error) }),
-						);
-					}
-					host.rerender();
-				});
+/** The account picker — only when this session's bootstrap lists more than one. */
+function renderAccountPicker(
+	el: HTMLElement,
+	host: FactorinSettingHost,
+	accounts: FactorinBootstrap['accounts'],
+) {
+	const { translate } = host;
+	new Setting(el)
+		.setName(translate('factorinAccountChoice'))
+		.setDesc(translate('factorinAccountChoiceDescription'))
+		.addDropdown((dropdown) => {
+			for (const account of accounts)
+				dropdown.addOption(account.slug, `${account.name} · ${account.slug}`);
+			dropdown.setValue(host.moduleSettings.accountSlug).onChange(async (slug) => {
+				try {
+					await host.selectAccount(slug);
+				} catch (error) {
+					new Notice(
+						translate('factorinConnectFailed', { message: errorMessage(error) }),
+					);
+				}
+				host.rerender();
 			});
+		});
 }
 
 /**

@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { FACTORIN_REMOTE_FS } from '@/backend';
 import { en, zh } from '@/i18n';
 import { FACTORIN_ICON } from '@/icon';
-import Factorin, { FACTORIN_SETTING_PRIORITY } from '@/index';
+import Factorin, {
+	FACTORIN_SETTING_PRIORITY,
+	SUPPRESSED_UPSTREAM_SETTING_PRIORITIES,
+} from '@/index';
 import { FACTORIN_PULL_ONLY_DECIDER } from '@/sync/pull-only';
 import registeredIcons from './mocks';
 import { createModuleContext, createStore } from './module-context';
@@ -46,8 +49,10 @@ describe('Factor.In module', () => {
 		expect(ctx.deciderRegistry.get(FACTORIN_PULL_ONLY_DECIDER)?.prettyName()).toBe(
 			en.factorinPullOnly,
 		);
+		// The connect section, then one no-op per suppressed upstream section.
 		expect(ctx.settingEntries.map((entry) => entry.priority)).toEqual([
 			FACTORIN_SETTING_PRIORITY,
+			...SUPPRESSED_UPSTREAM_SETTING_PRIORITIES,
 		]);
 
 		module.dispose();
@@ -65,6 +70,7 @@ describe('Factor.In module', () => {
 	test('start() rebuilds moduleSettings from the persisted factorin* keys', () => {
 		const { module } = createModule();
 		module.settings = {
+			...createStore(),
 			decider: FACTORIN_PULL_ONLY_DECIDER,
 			factorinAccountSlug: 'acme',
 			factorinBaseDirectory: 'Elsewhere/',

@@ -69,6 +69,7 @@ describe('fetchBootstrap', () => {
 					slug: 'jon-doe',
 				},
 			],
+			config: {},
 			email: 'jon@junketholdings.com',
 			id: 1,
 			name: 'Jon Doe',

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import Factorin, { FACTORIN_TOKEN_KEY } from '@/index';
+import Factorin, { FACTORIN_CONFIG_FALLBACKS, FACTORIN_TOKEN_KEY } from '@/index';
 import { FACTORIN_PULL_ONLY_DECIDER } from '@/sync/pull-only';
 import { replyWith, requestUrlCalls } from './mocks';
 import { createModuleContext, createStore } from './module-context';
@@ -59,6 +59,8 @@ describe('the connect flow', () => {
 			factorinDriveUrl: 'https://drive.factorin.com/jon-doe/',
 			factorinTokenKey: FACTORIN_TOKEN_KEY,
 			factorinUserName: 'Jon Doe',
+			// No `config` in the payload → the connect overlay writes the fallbacks.
+			...FACTORIN_CONFIG_FALLBACKS,
 		});
 		expect(ctx.saves).toBe(1);
 	});
@@ -129,5 +131,42 @@ describe('the connect flow', () => {
 		module.dispose();
 		expect(module.permissions).toBeUndefined();
 		expect(module.moduleSettings.accountSlug).toBe('jon-doe');
+	});
+
+	test('connect() overlays the /me server config over the fallbacks', async () => {
+		const { module } = createModule();
+		replyWith({
+			json: {
+				...payload(),
+				config: {
+					maxFileSize: { enabled: true, value: 999 },
+					realtimeSync: { enabled: true, value: 3000 },
+				},
+			},
+			status: 200,
+		});
+		await module.connect('fi_x');
+		// Server-provided fields win…
+		expect(module.settings.maxFileSize).toEqual({ enabled: true, value: 999 });
+		expect(module.settings.realtimeSync).toEqual({ enabled: true, value: 3000 });
+		// …and fields the server omits fall back to the pinned default.
+		expect(module.settings.scheduledSync).toEqual(FACTORIN_CONFIG_FALLBACKS.scheduledSync);
+	});
+
+	test('disconnect() scrubs the token and clears the persisted mount', async () => {
+		const { ctx, module } = createModule();
+		await module.connect('fi_live_token');
+		expect(ctx.secrets.get(FACTORIN_TOKEN_KEY)).toBe('fi_live_token');
+
+		await module.disconnect();
+		// secretStorage has no delete, so the token is overwritten empty; the mount
+		// is cleared back to the fresh-install shape and the session bootstrap dropped.
+		expect(ctx.secrets.get(FACTORIN_TOKEN_KEY)).toBe('');
+		expect(module.moduleSettings.driveUrl).toBe('');
+		expect(module.moduleSettings.accountSlug).toBe('');
+		expect(module.moduleSettings.tokenKey).toBe('');
+		expect(module.settings.factorinDriveUrl).toBe('');
+		expect(module.settings.factorinTokenKey).toBe('');
+		expect(module.permissions).toBeUndefined();
 	});
 });

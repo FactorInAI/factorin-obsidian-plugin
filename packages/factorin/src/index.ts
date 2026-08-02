@@ -1,13 +1,25 @@
 import type { FactorinAccount, FactorinBootstrap } from './api/types';
 import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
+import type { FactorinServerConfig } from './config';
 import type { FactorinContextTranslate, FactorinSettingTranslate } from './setting';
 import type { FactorinPullOnlyContext } from './sync/pull-only';
 import { fetchBootstrap, pickDefaultAccount } from './api/client';
 import { registerFactorinBackend } from './backend';
+import { FACTORIN_CONFIG_FALLBACKS, SUPPRESSED_UPSTREAM_SETTING_PRIORITIES } from './config';
 import { en, zh } from './i18n';
 import { registerFactorinIcon } from './icon';
 import factorinSetting from './setting';
 import { FACTORIN_PULL_ONLY_DECIDER, registerPullOnlyDecider } from './sync/pull-only';
+
+/*
+ * Re-exported so the plugin's onload (packages/plugin/src/index.ts) can seed its
+ * settings literal from the same single source of truth — see ./config.
+ */
+export {
+	FACTORIN_CONFIG_FALLBACKS,
+	FACTORIN_CONFLICT_RESOLVER,
+	SUPPRESSED_UPSTREAM_SETTING_PRIORITIES,
+} from './config';
 
 /**
  * The locales Factor.In ships translations for.
@@ -61,6 +73,8 @@ type FactorinContext = FactorinBackendContext &
 			apply: (el: HTMLElement) => void;
 			priority: number;
 		}) => () => void;
+		/** Kick a sync — the "Sync now" button; same entry point the ribbon uses. */
+		requestSync: (trigger: string) => Promise<unknown>;
 		rerenderSettingTab: () => void;
 		saveSettings: () => Promise<void>;
 		translate: FactorinContextTranslate;
@@ -176,6 +190,17 @@ export default class Factorin {
 		factorinDriveUrl: string;
 		factorinTokenKey: string;
 		factorinUserName: string;
+		/*
+		 * Server-driven settings the connect flow overlays from the `/me` config
+		 * block (see `applyServerConfig` and `./config`). Upstream's own keys, declared
+		 * structurally here with leaf types so this module can write them (§4.1).
+		 */
+		maxFileSize: { enabled: boolean; value: number };
+		maxRequestConcurrency: { enabled: boolean; value: number };
+		minRequestInterval: { enabled: boolean; value: number };
+		realtimeSync: { enabled: boolean; value: number };
+		scheduledSync: { enabled: boolean; value: number };
+		startupSync: { enabled: boolean; value: number };
 	};
 
 	/**
@@ -236,6 +261,45 @@ export default class Factorin {
 		settings.factorinUserName = moduleSettings.userName;
 		settings.decider =
 			this.permissions?.drive === 'write' ? 'bidirectional' : FACTORIN_PULL_ONLY_DECIDER;
+		this.applyServerConfig(this.connection?.config ?? {});
+		await saveSettings();
+	};
+
+	/**
+	 * Overlay the server-driven settings from this session's bootstrap onto the
+	 * store: for each key the Factor.In API owns, take its value or fall back to
+	 * {@link FACTORIN_CONFIG_FALLBACKS}. Called inside `mount`, so its single
+	 * `saveSettings()` persists the result. The server is authoritative per connect —
+	 * an omitted field resets to the fallback rather than keeping a stale value.
+	 */
+	private readonly applyServerConfig = (config: FactorinServerConfig) => {
+		const { settings } = this;
+		for (const key of Object.keys(FACTORIN_CONFIG_FALLBACKS) as Array<
+			keyof typeof FACTORIN_CONFIG_FALLBACKS
+		>)
+			settings[key] = { ...(config[key] ?? FACTORIN_CONFIG_FALLBACKS[key]) };
+	};
+
+	/**
+	 * Forget the connection (the settings tab's Disconnect). `secretStorage` has no
+	 * delete, so the token is overwritten empty; the persisted mount is cleared and
+	 * this session's bootstrap dropped. Files already synced stay in the vault. The
+	 * next `resolveConfig` then reads an empty `tokenKey`/`driveUrl` and reports "not
+	 * connected", exactly as a fresh install does.
+	 */
+	readonly disconnect = async () => {
+		const { app, saveSettings } = this.ctx;
+		app.secretStorage.setSecret(FACTORIN_TOKEN_KEY, '');
+		const { moduleSettings, settings } = this;
+		moduleSettings.accountSlug = '';
+		moduleSettings.driveUrl = '';
+		moduleSettings.tokenKey = '';
+		moduleSettings.userName = '';
+		settings.factorinAccountSlug = '';
+		settings.factorinDriveUrl = '';
+		settings.factorinTokenKey = '';
+		settings.factorinUserName = '';
+		this.connection = undefined;
 		await saveSettings();
 	};
 
@@ -283,14 +347,26 @@ export default class Factorin {
 					factorinSetting(el, {
 						connect: this.connect,
 						connection: this.connection,
+						disconnect: this.disconnect,
 						moduleSettings: this.moduleSettings,
 						permissions: this.permissions,
 						rerender: ctx.rerenderSettingTab,
 						selectAccount: this.selectAccount,
+						syncNow: () => void ctx.requestSync('manual'),
 						translate,
 					}),
 				priority: FACTORIN_SETTING_PRIORITY,
 			}),
+			/*
+			 * Minimize the settings tab to the Factor.In section alone: blank every
+			 * upstream section by registering a no-op at its priority. `SettingTab`
+			 * keeps one `apply` per priority and this module starts last, so the no-op
+			 * wins the slot. See SUPPRESSED_UPSTREAM_SETTING_PRIORITIES in ./config —
+			 * re-check it against Bootstrap on every upstream merge.
+			 */
+			...SUPPRESSED_UPSTREAM_SETTING_PRIORITIES.map((priority) =>
+				ctx.registerSetting({ apply: () => {}, priority }),
+			),
 		);
 	};
 
