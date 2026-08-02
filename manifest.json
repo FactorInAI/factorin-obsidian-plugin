@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"minAppVersion": "1.12.3",
 	"authorUrl": "https://factor.in",
-	"description": "Sync your Factor.In library into your vault and run Factor.In AI workflows on your notes, without leaving Obsidian.",
+	"description": "Sync your Factor.In library to your vault and run AI workflows on your notes, without leaving Obsidian.",
 	"author": "Factor.In",
 	"isDesktopOnly": false
 }
