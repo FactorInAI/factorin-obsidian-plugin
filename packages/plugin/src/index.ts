@@ -65,7 +65,14 @@ export default class SyncEngine extends Plugin {
 
 	async onload() {
 		const settings: Settings = {
-			asymmetricStorage: true,
+			// Factor.In — FORK EDIT (documents/overview.md §5.1). Upstream defaults this on:
+			// it flattens the remote into anchor-keyed files ("Anchored Asymmetric Storage",
+			// see blueprint/asymmetric-storage.md) because upstream users don't care about the
+			// remote shape. Factor.In's Drive is the opposite — a shared, hierarchical library
+			// the web app and every vault read by real path (/<slug>/Documents/Note.md), so the
+			// remote shape is load-bearing. Left on, the wrapper can't parse the Drive's real
+			// keys (they aren't `00000~name`) and drops every entry → sync sees an empty remote.
+			asymmetricStorage: false,
 			confirmDeleteInAutoSync: true,
 			confirmTasksInSync: true,
 			conflictResolver: 'renameAndKeepBoth',

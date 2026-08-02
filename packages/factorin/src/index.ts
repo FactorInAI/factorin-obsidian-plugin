@@ -3,7 +3,7 @@ import type { FactorinBackendContext, FactorinBackendSettings } from './backend'
 import type { FactorinContextTranslate, FactorinSettingTranslate } from './setting';
 import type { FactorinPullOnlyContext } from './sync/pull-only';
 import { fetchBootstrap, pickDefaultAccount } from './api/client';
-import { defaultBaseDirectory, registerFactorinBackend } from './backend';
+import { registerFactorinBackend } from './backend';
 import { en, zh } from './i18n';
 import { registerFactorinIcon } from './icon';
 import factorinSetting from './setting';
@@ -93,8 +93,12 @@ export type FactorinSettings = FactorinBackendSettings & {
  * rather than something generated: there is exactly one Factor.In token per
  * vault, and a stable key is what lets a reconnect overwrite the old secret
  * instead of stranding it.
+ *
+ * Obsidian validates this ID: **lowercase alphanumeric with optional dashes,
+ * ≤64 chars** (`SecretStorage.setSecret`, `@throws` on a bad ID) — so no
+ * camelCase and no underscores. Keep it dash-cased.
  */
-export const FACTORIN_TOKEN_KEY = 'factorinApiToken';
+export const FACTORIN_TOKEN_KEY = 'factorin-api-token';
 
 /**
  * Where the Factor.In section sorts in the settings tab. Deliberately the slot
@@ -136,11 +140,12 @@ export default class Factorin {
 	 */
 	constructor(private readonly ctx: FactorinContext) {
 		/*
-		 * Upstream's WebDAV module seeds the same default from the same place, for the
-		 * same reason: an empty base directory normalizes to `/`, which the wrapper would
-		 * then join onto every key as a prefix.
+		 * `baseDirectory` is left empty: Factor.In is one-account-one-library, so every
+		 * vault syncs the account's Drive root (`/<slug>/`) and they all converge on the
+		 * same tree. A non-empty prefix would namespace each vault into its own subfolder
+		 * and fragment that shared library. The backend skips the base-dir wrapper when
+		 * this is empty (see `registerRemoteFsWrapper` in `./backend`).
 		 */
-		this.moduleSettings.baseDirectory ||= defaultBaseDirectory(ctx.app);
 		ctx.registerI18n('en', en);
 		ctx.registerI18n('zh', zh);
 	}
@@ -239,6 +244,11 @@ export default class Factorin {
 	 * `start()` — after the kernel has injected `settings` — so a connection made
 	 * in an earlier session survives the reload. Empty persisted fields (a fresh
 	 * install) leave the constructor's defaults in place.
+	 *
+	 * `baseDirectory` is deliberately *not* restored: Factor.In always syncs the
+	 * account root, so it stays `''`. Ignoring the persisted value is also what
+	 * migrates a vault connected by an older build that seeded a per-vault
+	 * subfolder — the stale prefix is dropped on the next reload.
 	 */
 	private readonly hydrate = () => {
 		const { moduleSettings, settings } = this;
@@ -246,8 +256,6 @@ export default class Factorin {
 		moduleSettings.driveUrl = settings.factorinDriveUrl;
 		moduleSettings.tokenKey = settings.factorinTokenKey;
 		moduleSettings.userName = settings.factorinUserName;
-		if (settings.factorinBaseDirectory)
-			moduleSettings.baseDirectory = settings.factorinBaseDirectory;
 	};
 
 	readonly start = () => {

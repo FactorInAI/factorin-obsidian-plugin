@@ -49,7 +49,13 @@ export const BASE_DIR_WRAPPER_PRIORITY = 6318;
 export type FactorinBackendSettings = {
 	/** Account slug — the WebDAV Basic-auth username (decorative; §6.0). */
 	accountSlug: string;
-	/** Path prefix inside the Drive, e.g. `MyVault/`. Never empty — see {@link defaultBaseDirectory}. */
+	/**
+	 * Path prefix inside the Drive. Empty (the default) syncs the account root
+	 * `/<slug>/`, where any number of directories live — Factor.In is
+	 * one-account-one-library, so every vault shares that whole tree. A non-empty
+	 * value would scope sync to a subfolder; the backend only applies the base-dir
+	 * wrapper when this is non-empty.
+	 */
 	baseDirectory: string;
 	/** The chosen account's Drive URL, e.g. `https://drive.factorin.com/acme/`. */
 	driveUrl: string;
@@ -99,23 +105,6 @@ function digOriginal(wrapped: Fs) {
 	let original = wrapped;
 	while ('original' in original) original = original.original;
 	return original;
-}
-
-/**
- * The base directory a fresh install syncs under, mirroring upstream WebDAV's
- * default so an unconfigured Factor.In behaves the way an unconfigured WebDAV
- * does.
- *
- * It must never be empty: `normalizeBaseDir('')` is `'/'`, and the wrapper joins
- * that onto keys as a *prefix* (`/note.md`), which is not a key the sync engine's
- * path grammar accepts.
- *
- * The Overview document §7 will replace this with Factor.In's own `Documents/`
- * layout; that is a business rule with a first-connect side effect, so it lands
- * with the connect flow rather than here.
- */
-export function defaultBaseDirectory(app: App) {
-	return `${app.vault.getName()}/`;
 }
 
 /**
@@ -183,7 +172,15 @@ export function registerFactorinBackend(
 			 */
 			apply: (fs) => {
 				if (!(digOriginal(fs) instanceof WebdavFs)) return undefined;
-				return baseDirWrapper(fs, resolveConfig().baseDirectory);
+				/*
+				 * Empty base directory = sync at the account root. The wrapper exists to
+				 * prepend a prefix and strip it back off returned keys; with no prefix it
+				 * would normalize to `/` and throw the WebDAV FS's leading-slash-free keys
+				 * out of scope (`stripBaseDir`). Skip it and point the FS straight at the
+				 * mount root instead.
+				 */
+				const { baseDirectory } = resolveConfig();
+				return baseDirectory ? baseDirWrapper(fs, baseDirectory) : undefined;
 			},
 			priority: BASE_DIR_WRAPPER_PRIORITY,
 		}),

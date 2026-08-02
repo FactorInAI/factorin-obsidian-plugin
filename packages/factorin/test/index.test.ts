@@ -4,7 +4,6 @@ import { en, zh } from '@/i18n';
 import { FACTORIN_ICON } from '@/icon';
 import Factorin, { FACTORIN_SETTING_PRIORITY } from '@/index';
 import { FACTORIN_PULL_ONLY_DECIDER } from '@/sync/pull-only';
-import { VAULT_NAME } from './backend-context';
 import registeredIcons from './mocks';
 import { createModuleContext, createStore } from './module-context';
 
@@ -30,11 +29,8 @@ describe('Factor.In module', () => {
 	test('exposes a moduleSettings object for the kernel, unconnected but usable', () => {
 		expect(createModule().module.moduleSettings).toEqual({
 			accountSlug: '',
-			/*
-			 * Seeded from the vault, exactly as upstream WebDAV seeds its own: an empty
-			 * base directory normalizes to `/`, which is not a usable key prefix.
-			 */
-			baseDirectory: `${VAULT_NAME}/`,
+			// Empty = sync the account root; Factor.In is one-account-one-library.
+			baseDirectory: '',
 			driveUrl: '',
 			tokenKey: '',
 			userName: '',
@@ -73,23 +69,24 @@ describe('Factor.In module', () => {
 			factorinAccountSlug: 'acme',
 			factorinBaseDirectory: 'Elsewhere/',
 			factorinDriveUrl: 'https://drive.factorin.com/acme/',
-			factorinTokenKey: 'factorinApiToken',
+			factorinTokenKey: 'factorin-api-token',
 			factorinUserName: 'Jon Doe',
 		};
 		module.start();
 		expect(module.moduleSettings).toEqual({
 			accountSlug: 'acme',
-			baseDirectory: 'Elsewhere/',
+			// A persisted subfolder from an older build is ignored — always the account root.
+			baseDirectory: '',
 			driveUrl: 'https://drive.factorin.com/acme/',
-			tokenKey: 'factorinApiToken',
+			tokenKey: 'factorin-api-token',
 			userName: 'Jon Doe',
 		});
 	});
 
-	test('an empty persisted base directory keeps the vault-derived default', () => {
+	test('an empty persisted base directory stays at the account root', () => {
 		const { module } = createModule();
 		module.start();
-		expect(module.moduleSettings.baseDirectory).toBe(`${VAULT_NAME}/`);
+		expect(module.moduleSettings.baseDirectory).toBe('');
 	});
 
 	test('dispose() is safe before start() and idempotent after it', () => {

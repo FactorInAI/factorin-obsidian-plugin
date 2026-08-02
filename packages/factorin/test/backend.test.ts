@@ -33,7 +33,7 @@ function createRequest(status = 207) {
 function connectedSettings() {
 	return {
 		accountSlug: SLUG,
-		baseDirectory: 'Documents/',
+		baseDirectory: 'sub/',
 		driveUrl: DRIVE_URL,
 		tokenKey: TOKEN_KEY,
 	};
@@ -158,7 +158,22 @@ describe('factorin base-directory wrapper', () => {
 		const wrapped = wrapper.apply(entry.instantiate(request));
 		expect(wrapped).toBeDefined();
 		await wrapped?.read('note.md', noteStat);
-		expect(calls[0].url).toBe(`${DRIVE_URL}/Documents/note.md`);
+		expect(calls[0].url).toBe(`${DRIVE_URL}/sub/note.md`);
+	});
+
+	/*
+	 * Factor.In is one-account-one-library: an empty base directory syncs the account
+	 * root, so the wrapper must be skipped rather than prepend `/` (which would throw
+	 * the WebDAV FS's leading-slash-free keys out of scope).
+	 */
+	test('skips the wrapper for a root (empty) base directory', async () => {
+		const { entry, wrapper } = setup({ ...connectedSettings(), baseDirectory: '' });
+		const { calls, request } = createRequest();
+
+		expect(wrapper.apply(entry.instantiate(request))).toBeUndefined();
+		// Unwrapped FS drives the account root directly, no prefix.
+		await entry.instantiate(request).read('note.md', noteStat);
+		expect(calls[0].url).toBe(`${DRIVE_URL}/note.md`);
 	});
 
 	test('sees through an already-wrapped FS to the original', () => {

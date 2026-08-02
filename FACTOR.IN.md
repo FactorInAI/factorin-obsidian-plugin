@@ -171,10 +171,12 @@ flowing. Expect to re-apply them by hand when a merge conflicts:
   longer exists here). On conflict, take upstream's file and re-apply both.
 - `scripts/version-bump.ts` — rewired to our versioning scheme (see "Versioning"). On conflict, take
   upstream's file and re-apply the same redirection.
-- `packages/plugin/src/index.ts` — the two Overview §5.1 touch points: `Factorin` last in
-  `internalModules`, and `remoteFs: 'factorin'` / `moduleSources: []` / `moduleAutoUpdate: false` in the
-  `onload` defaults. Each is marked with a `// Factor.In — FORK EDIT` comment; grep for that string
-  after a merge.
+- `packages/plugin/src/index.ts` — the Overview §5.1 touch points in the `onload` defaults: `Factorin`
+  last in `internalModules`; `remoteFs: 'factorin'` / `moduleSources: []` / `moduleAutoUpdate: false`;
+  and `asymmetricStorage: false` (upstream defaults it `true`, which flattens the remote into
+  anchor-keyed files — incompatible with Factor.In's hierarchical Drive; leaving it on makes sync see an
+  empty remote). Each is marked with a `// Factor.In — FORK EDIT` comment; grep for that string after a
+  merge.
 - `packages/plugin/package.json` — one added devDependency, `"@factorin/module": "workspace:*"`. On
   conflict, take upstream's file and re-add the entry.
 - `packages/plugin/tsdown.config.ts` — one added `define` entry, `Bun.env.FACTORIN_API_BASE` (the

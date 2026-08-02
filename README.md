@@ -18,9 +18,9 @@ note you are looking at.
 
 Two things, one plugin:
 
-- **Library sync** — paste a Factor.In API token and your library syncs into the vault under
-  `Documents/`. Edits made in Obsidian flow back. No WebDAV URLs, no passwords, no manual
-  backend setup.
+- **Library sync** — paste a Factor.In API token and your library syncs into the vault: the
+  folders and files at your account's Drive root map straight into the vault root. Edits made in
+  Obsidian flow back. No WebDAV URLs, no passwords, no manual backend setup.
 - **AI workflows** — "Write with AI" and "Run Task with AI" hand a content item to Factor.In,
   which runs it off-device and writes the result back into your library. The output arrives in
   your vault on the next sync.
@@ -49,8 +49,6 @@ To build from source instead, see [FACTOR.IN.md](./FACTOR.IN.md).
 The plugin asks Factor.In which account and drive the token unlocks, then mounts it. Your token
 is stored in Obsidian's secret storage — it is never written into the plugin's settings file.
 A token with read-only Drive access syncs one way; a token with write access syncs both ways.
-
-On the first successful connect, `Documents/Welcome.md` is created and opened.
 
 ## Sync behaviour
 
