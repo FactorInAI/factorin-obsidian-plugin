@@ -69,8 +69,10 @@ The module-lifecycle half of `packages/webdav`. Factor.In supplies its own:
 
 ## Local edits
 
-Two, both mechanical, both confined to import specifiers. **The bodies are byte-identical
-to upstream** — that is the property that makes the refresh a clean diff, so keep it.
+Three. The first two are mechanical, confined to import specifiers; the third is a
+deliberate behavioural divergence in `fs.ts`. **Every other body is byte-identical to
+upstream** — that is the property that makes the refresh a clean diff, so keep it, and keep
+edit 3 as the sole exception.
 
 1. **`@hesprs/sync-engine-sdk` → `./types`.** This package must not depend on the SDK in
    any form. The SDK _is_ `packages/plugin`, and `packages/plugin` already depends on
@@ -82,6 +84,20 @@ modules/Registrar}.ts`; its doc comment carries the full table and rationale.
 2. **`@/parse-xml` → `./parse-xml`** in `fs.ts`. Upstream's `parse-xml.ts` sits one level
    up from its `webdav/` directory and is reached through that package's `@/*` alias; here
    everything is in one directory.
+
+3. **Redirect-following `read`/`readStream`** in `fs.ts` (the `getFollowingRedirects`
+   helper). Upstream issues a single `GET` and returns `response.bytes()` unconditionally,
+   relying on the HTTP client to resolve redirects. Obsidian's `requestUrl` does **not**
+   follow 3xx — it returns the redirect response as-is — so against Factor.In's Drive, which
+   answers a file `GET` with a `302` to a signed S3 blob URL for git-LFS objects, the
+   upstream code handed the 302 body back as file content and sync failed. The helper
+   follows the `Location` itself (up to `MAX_REDIRECTS`), issues each hop with `throw: false`
+   so it can inspect status, preserves `Range`, and **drops the `Authorization` header once
+   the host changes** — the signed S3 URL self-authenticates via its query string, and
+   forwarding our Basic credential both leaks it cross-host and is rejected by S3 as a
+   conflicting auth mechanism. This is the one body that will **not** match upstream
+   line-for-line; when upstream rewrites `read`/`readStream`, port their change and re-apply
+   this wrapper on top.
 
 Both rewrites move an import between oxfmt's sort groups, so **the import _block_ will not
 match upstream's line-for-line even though the bodies do** — `./types` and `./parse-xml`
@@ -110,7 +126,8 @@ Vendored code never conflicts, so nothing tells you it went stale. Step 3 of
 git diff 71ffb12..HEAD -- packages/webdav/src/webdav packages/webdav/src/parse-xml.ts \
                           packages/webdav/src/base-dir.ts packages/webdav/test
 
-# 2. What does our copy already differ by? (expect only the two import rewrites above)
+# 2. What does our copy already differ by? (expect only the three local edits above:
+#    the two import rewrites everywhere, plus getFollowingRedirects in fs.ts)
 for f in fs chunked-upload read-stream check-connection utils; do
   git diff --no-index packages/webdav/src/webdav/$f.ts \
                       packages/factorin/src/backend/webdav/$f.ts

@@ -60,6 +60,7 @@ const PROPFIND_BODY = `<?xml version="1.0" encoding="utf-8"?>
 </propfind>`;
 const READ_CHUNK_SIZE = 2 * 1024 * 1024;
 const READ_MAX_CONCURRENT = 8;
+const MAX_REDIRECTS = 5;
 
 function getDavText(value: WebDAVPropValue) {
 	if (typeof value === 'string') return value;
@@ -200,12 +201,53 @@ export default class WebdavFs implements RootFs {
 		return `webdav~${this.endpoint}~${this.options.username}`;
 	}
 
+	/**
+	 * GET that follows redirects itself instead of relying on `requestUrl`, which
+	 * does not follow 3xx and simply returns the redirect response. Our backend can
+	 * answer a GET with a 302 to a signed blob URL on another host (e.g. git-LFS
+	 * objects served from S3); the signed URL authenticates via its query string, so
+	 * we drop our `Authorization` header once the host changes — forwarding Basic
+	 * credentials cross-host both leaks them and is rejected by S3 as a conflicting
+	 * auth mechanism. `Range` and any other caller headers are preserved across hops.
+	 */
+	private async getFollowingRedirects(url: string, extraHeaders: Record<string, string> = {}) {
+		let target = url;
+		let authorized = true;
+
+		for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
+			const headers: Record<string, string> = { ...extraHeaders };
+			if (authorized) headers.Authorization = this.auth;
+
+			const response = await this.request({
+				headers,
+				method: 'GET',
+				throw: false,
+				url: target,
+			});
+
+			if (response.status >= 300 && response.status < 400) {
+				const location = getHeader(response.headers, 'location');
+				if (!location)
+					throw new Error(
+						`WebDAV GET ${url} returned ${response.status} without a Location header.`,
+					);
+				const next = new URL(location, target);
+				authorized &&= next.host === new URL(target).host;
+				target = next.toString();
+				continue;
+			}
+
+			if (response.status >= 400)
+				throw new Error(`WebDAV GET ${url} failed with status ${response.status}.`);
+
+			return response;
+		}
+
+		throw new Error(`WebDAV GET ${url} exceeded ${MAX_REDIRECTS} redirects.`);
+	}
+
 	async read(key: string) {
-		const response = await this.request({
-			headers: { Authorization: this.auth },
-			method: 'GET',
-			url: buildUrl(this.endpoint, key),
-		});
+		const response = await this.getFollowingRedirects(buildUrl(this.endpoint, key));
 
 		return response.bytes();
 	}
@@ -215,13 +257,8 @@ export default class WebdavFs implements RootFs {
 			chunkSize: READ_CHUNK_SIZE,
 			maxConcurrent: READ_MAX_CONCURRENT,
 			requestRange: async (start, endInclusive) => {
-				const response = await this.request({
-					headers: {
-						Authorization: this.auth,
-						Range: `bytes=${start}-${endInclusive}`,
-					},
-					method: 'GET',
-					url: buildUrl(this.endpoint, key),
+				const response = await this.getFollowingRedirects(buildUrl(this.endpoint, key), {
+					Range: `bytes=${start}-${endInclusive}`,
 				});
 
 				return response.bytes();

@@ -145,6 +145,15 @@ The owned files above resolve themselves. Then work through:
 3. **Vendored WebDAV core.** Diff upstream's WebDAV FS against the pinned copy under
    `packages/factorin/src/backend/webdav/` and port fixes deliberately. Vendored code never conflicts,
    so it goes stale silently if nobody looks.
+   > **One body now diverges from upstream, on purpose.** `fs.ts`'s `read`/`readStream` follow HTTP
+   > redirects themselves (`getFollowingRedirects`) instead of relying on `requestUrl`, which does **not**
+   > follow 3xx — it returns the redirect response as-is, so the old code handed a 302 body back as file
+   > content. Factor.In's Drive answers a file `GET` with a `302` to a signed S3 blob URL for git-LFS
+   > objects; that URL self-authenticates via its query string, so the helper **drops the `Authorization`
+   > header once the redirect host changes** (S3 rejects a forwarded Basic credential as a conflicting
+   > auth mechanism, and it would leak the token cross-host). This is the _only_ non-mechanical local edit
+   > in the vendored FS — VENDORED.md § "Local edits" carries the full entry, and its refresh checklist
+   > expects it. On an upstream refresh, re-apply it if upstream rewrites those methods.
 4. **Module registration contracts (tsc will _not_ catch these).** `packages/factorin` types the SDK's
    registration entries structurally with leaf types — never importing the SDK (see the invariant
    below) — so when upstream changes the _shape_ of a registration entry, the module still compiles but
