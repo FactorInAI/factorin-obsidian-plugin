@@ -139,6 +139,12 @@ function createVaultStub(options: VaultHarnessOptions): VaultHarness {
 		metadataCache: {
 			inProgressTaskCount: 0,
 		},
+		// Factor.In — FORK EDIT: upstream's fs-vault harness omits `workspace`, but the
+		// Obsidian-1.13 `canUseCache` in vault/request.ts reads `workspace.layoutReady`
+		// unguarded, so every VaultFs op throws here. Report upstream; drop on their fix.
+		workspace: {
+			layoutReady: true,
+		},
 		vault: {
 			adapter,
 			config: options.config,
