@@ -73,3 +73,13 @@ It is simple to start using Sync Engine:
 4. Start your first sync from command palette or ribbon button.
 5. Review the sync tasks that will be performed.
 6. Click "Confirm", and your files will arrive the configured backend at the speed of light.
+
+## Development
+
+If you think Sync Engine basic features cannot satisfy what you need and want to customize, here's why we recommend you to create a Sync Engine module instead of creating your own plugin:
+
+1. Sync Engine is highly optimized and battle-tested, develop upon Sync Engine will save you enormous time on testing and debugging.
+2. Sync Engine provides official SDK and clear documentations, its core already has mature syncing abstractions, you don't need to reinvent the wheel.
+3. Sync Engine's module ecosystem has multiplication effect, you can implement you own features while using functions from other modules. Instead of write all those features in a huge monolithic plugin.
+
+About how to develop a module, refer to [development documentation](../development/develop-a-module). See [contributing standards](./contributing) if you want to contribute to the official repo.

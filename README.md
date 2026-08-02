@@ -19,7 +19,9 @@
     </a>
     <img src="https://img.shields.io/badge/Types-Strict-333333?logo=typescript&labelColor=blue&logoColor=white" alt="TypeScript">
     <img src="https://img.shields.io/badge/%F0%9F%96%90%EF%B8%8F%20Made%20by-Humans-333333?labelColor=15C2C0" alt="Made by Humans">
+    <img src="https://img.shields.io/github/stars/hesprs/obsidian-webdav-sync" alt="GitHub stars">
 </p>
+
 
 <p align="center">
     <a href="https://github.com/hesprs/synthkernel">

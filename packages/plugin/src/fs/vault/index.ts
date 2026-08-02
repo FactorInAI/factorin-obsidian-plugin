@@ -1,5 +1,5 @@
 import type { Stat, Binary } from '@/types';
-import type { Fs, ListReporter, RootFs } from '../interface';
+import type { ListReporter, RootFs } from '../interface';
 import type { VaultRequest } from './request';
 
 const TEMP_FOLDER = '.trash';
@@ -8,8 +8,9 @@ async function removeIfExists(fs: VaultFs, key: string, permanent?: boolean): Pr
 	if (await fs.exists(key)) await fs.delete(key, permanent);
 }
 
-async function getFileUid(fs: Fs, key: string): Promise<string> {
-	const stat = await fs.stat(key);
+async function getFileUid(fs: VaultFs, key: string): Promise<string> {
+	// Vault cache might be stale after a fresh write
+	const stat = await fs.stat(key, true);
 	if (stat.isDir) throw new Error(`File ${key} not found!`);
 	return stat.uid;
 }
@@ -75,12 +76,16 @@ export default class VaultFs implements RootFs {
 		return this.request({ key, method: 'EXISTS' });
 	}
 
-	async list(key: string, reporter: ListReporter): Promise<Array<Stat>> {
+	async list(key: string, reporter: ListReporter, noCache = false): Promise<Array<Stat>> {
 		const result: Array<Stat> = [];
 		let completed = 1;
 		let total = 1;
 		const visit = async (dir: string) => {
-			const { files, folders } = await this.request({ key: dir, method: 'LIST' });
+			const { files, folders } = await this.request({
+				headers: { noCache },
+				key: dir,
+				method: 'LIST',
+			});
 			completed++;
 			total += files.length + folders.length;
 			await Promise.all([
@@ -106,8 +111,12 @@ export default class VaultFs implements RootFs {
 		return result;
 	}
 
-	async stat(key: string): Promise<Stat> {
-		const { type, mtime, size } = await this.request({ key, method: 'STAT' });
+	async stat(key: string, noCache = false): Promise<Stat> {
+		const { type, mtime, size } = await this.request({
+			headers: { noCache },
+			key,
+			method: 'STAT',
+		});
 		return type === 'file'
 			? { isDir: false, key, mtime, size, uid: `${mtime}~${size}` }
 			: { isDir: true, key };

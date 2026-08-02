@@ -20,12 +20,12 @@ export type FsWrapperEntry = OrderedWrapperEntry<Fs>;
 export type CheckConnectionResult = { success: true } | { success: false; reason: string };
 export type RemoteFsEntry = {
 	instantiate: (request: Request) => RootFs;
-	prettyName: string;
+	prettyName: () => string;
 	checkConnection: (request: Request) => MaybePromise<CheckConnectionResult>;
 };
-export type DeciderEntry = { decider: Decider; prettyName: string };
+export type DeciderEntry = { decider: Decider; prettyName: () => string };
 export type ConflictResolverEntry = {
-	prettyName: string;
+	prettyName: () => string;
 	resolver: ConflictResolver;
 };
 

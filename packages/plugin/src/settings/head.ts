@@ -133,7 +133,7 @@ export default function headSettings(
 		})
 		.addDropdown((dropdown) => {
 			for (const [key, { prettyName }] of remoteFsRegistry)
-				dropdown.addOption(key, prettyName);
+				dropdown.addOption(key, prettyName());
 			dropdown.setValue(settings.remoteFs).onChange((value) => {
 				settings.remoteFs = value;
 				void checkConnection();
@@ -164,7 +164,7 @@ export default function headSettings(
 		.setDesc(translate('syncStrategyDescription'))
 		.addDropdown((dropdown) => {
 			for (const [key, { prettyName }] of deciderRegistry)
-				dropdown.addOption(key, prettyName);
+				dropdown.addOption(key, prettyName());
 			dropdown.setValue(settings.decider).onChange((value) => {
 				settings.decider = value;
 				void saveSettings();
@@ -176,7 +176,7 @@ export default function headSettings(
 		.setDesc(translate('conflictResolveStrategyDescription'))
 		.addDropdown((dropdown) => {
 			for (const [key, { prettyName }] of conflictResolverRegistry)
-				dropdown.addOption(key, prettyName);
+				dropdown.addOption(key, prettyName());
 			dropdown.setValue(settings.conflictResolver).onChange((value) => {
 				settings.conflictResolver = value;
 				void saveSettings();

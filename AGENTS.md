@@ -57,9 +57,11 @@ This is the monorepo for an extensible Obsidian syncing plugin to sync vault fil
   - `usage/`: designed for non-technical users, avoid dev jargons
   - `development/`: SDK API reference and practical module development setups only
   - `deep-dive/`: Sync Engine internals
-- Prefer inter-page links when other pages have relevant content, duplication content cross-page is forbidden. Link to title anchors when possible.
+- Prefer inter-page links when other pages have relevant content, duplication content cross-page is forbidden.
+- Link format: Link to title anchors when possible, strict relative links, no `.md` extension.
 - Only add inter-links when the content is truly relevant, you must not link distant pages just for link count.
 - `usage/` and `deep-dive/` can interlink, `development/` can link to `usage/` and `deep-dive/`, but `usage/` and `deep-dive/` should avoid linking into `development/`.
 - Don't be overly verbose.
 - Official module specs should be self-contained in each page in `deep-dive/modules/`. They can link external pages but external pages should not link official modules, except in dedicated pages in `usage/`.
+- Avoid large blocks of code in `usage/` and `deep-dive/`, code should be the major content in `development/`
 - Documentation titles use title case.

@@ -333,27 +333,27 @@ export default class Bootstrap {
 
 		registerDecider('bidirectional', {
 			decider: bidirectionalDecider,
-			prettyName: t('bidirectional'),
+			prettyName: () => t('bidirectional'),
 		});
 
 		registerConflictResolver('renameAndKeepBoth', {
-			prettyName: t('renameAndKeepBoth'),
+			prettyName: () => t('renameAndKeepBoth'),
 			resolver: renameAndKeepBothResolver,
 		});
 		registerConflictResolver('latestSurvive', {
-			prettyName: t('latestSurvive'),
+			prettyName: () => t('latestSurvive'),
 			resolver: latestSurviveResolver,
 		});
 		registerConflictResolver('keepLocal', {
-			prettyName: t('keepLocal'),
+			prettyName: () => t('keepLocal'),
 			resolver: keepLocalResolver,
 		});
 		registerConflictResolver('keepRemote', {
-			prettyName: t('keepRemote'),
+			prettyName: () => t('keepRemote'),
 			resolver: keepRemoteResolver,
 		});
 		registerConflictResolver('skip', {
-			prettyName: t('skip'),
+			prettyName: () => t('skip'),
 			resolver: () => {},
 		});
 

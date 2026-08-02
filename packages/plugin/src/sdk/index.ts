@@ -17,7 +17,7 @@ export type {
 } from '@/modules/I18n';
 export type { Dispatch, On } from '@/modules/EventBus';
 export type { Context, Settings, Events, Translations } from '@';
-export type { StoreAsync, StoreSync, DatabaseAsync, DatabaseSync } from 'uni-kv';
+export type { StoreAsync, StoreSync, DatabaseAsync, DatabaseSync, StoreOperations } from 'uni-kv';
 export type {
 	RecordStat,
 	RecordStatsMap,

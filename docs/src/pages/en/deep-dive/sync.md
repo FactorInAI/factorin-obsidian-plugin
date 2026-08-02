@@ -4,9 +4,9 @@ The core sync routine is implemented by `Sync` in `packages/plugin/src/modules/S
 
 ## Sync Trigger
 
-The scheduler accepts requests from manual controls, [realtime sync](../usage/settings.md#realtime-sync), [startup sync](../usage/settings.md#startup-sync), [scheduled sync](../usage/settings.md#scheduled-sync), and migration. Trigger names are `manual`, `nonInteractiveManual`, `realtime`, `startup`, `interval`, and `migration`.
+The scheduler accepts requests from manual controls, [realtime sync](../usage/settings#realtime-sync), [startup sync](../usage/settings#startup-sync), [scheduled sync](../usage/settings#scheduled-sync), and migration. Trigger names are `manual`, `nonInteractiveManual`, `realtime`, `startup`, `interval`, and `migration`.
 
-Realtime events are debounced and filtered before they schedule a request. Changes made while a sync is executing are ignored. A rename schedules a request when either its old or new path is in scope; see [inclusion and exclusion rules](../usage/settings.md#inclusion-and-exclusion-rules) for the rule configuration.
+Realtime events are debounced and filtered before they schedule a request. Changes made while a sync is executing are ignored. A rename schedules a request when either its old or new path is in scope; see [inclusion and exclusion rules](../usage/settings#inclusion-and-exclusion-rules) for the rule configuration.
 
 Pending requests wait until the plugin is idle, then flush as one sync. The last request supplies the trigger, and every request in the batch receives the same result. The non-interactive manual command uses a separate trigger so it can skip manual task confirmation.
 
@@ -20,21 +20,21 @@ Cancellation does not roll back completed operations. Task errors raised after c
 
 The routine compiles the configured matcher once, then starts local and remote discovery concurrently. Local traversal calls `localFs.list('/')` with the matcher. Full remote traversal receives a reporter that forwards progress and applies the matcher to each reported path.
 
-The matcher returns `include`, `exclude`, or `advance`. Files are included or excluded; `advance` continues through a directory without including the directory itself. An excluded directory is advanced only when an inclusion rule could match a descendant. Rule syntax and matching precedence are documented in [Inclusion and Exclusion Rules](../usage/settings.md#inclusion-and-exclusion-rules).
+The matcher returns `include`, `exclude`, or `advance`. Files are included or excluded; `advance` continues through a directory without including the directory itself. An excluded directory is advanced only when an inclusion rule could match a descendant. Rule syntax and matching precedence are documented in [Inclusion and Exclusion Rules](../usage/settings#inclusion-and-exclusion-rules).
 
-After discovery, `postTraversal` removes entries over the configured [maximum file size](../usage/settings.md#max-file-size) and converts the lists into stats maps.
+After discovery, `postTraversal` removes entries over the configured [maximum file size](../usage/settings#max-file-size) and converts the lists into stats maps.
 
 ## Remote Lister
 
 Remote listing is an extension point. The registrar selects the first registered `RemoteLister` by priority. It receives the local and remote file systems, record store, trigger, and traversal reporter.
 
-The built-in realtime fast lister uses cached `remoteContext20000` stats when [realtime sync fast mode](../usage/settings.md#realtime-sync-fast-mode) is enabled and the cache has entries. It applies the traversal reporter to cached entries but skips a fresh remote walk. Otherwise, the full lister calls `remoteFs.list('/')`.
+The built-in realtime fast lister uses cached `remoteContext20000` stats when [realtime sync fast mode](../usage/settings#realtime-sync-fast-mode) is enabled and the cache has entries. It applies the traversal reporter to cached entries but skips a fresh remote walk. Otherwise, the full lister calls `remoteFs.list('/')`.
 
 If the remote root does not exist, the full lister recreates it, clears records for the local/remote pair, and returns an empty list.
 
 ## Decider
 
-The selected decider receives filtered local stats, filtered remote stats, persistent records, a task factory, and a logger. The built-in bidirectional decider unions all keys found in either side or in the records. The selected [sync strategy](../usage/settings.md#sync-strategy) can be supplied by a module.
+The selected decider receives filtered local stats, filtered remote stats, persistent records, a task factory, and a logger. The built-in bidirectional decider unions all keys found in either side or in the records. The selected [sync strategy](../usage/settings#sync-strategy) can be supplied by a module.
 
 For files, it compares current stats with recorded local and remote UIDs. It creates upload, download, local removal, remote removal, record, or conflict tasks according to which side exists and changed. When both sides exist without a record, equal-size files only create a record; unequal-size files become conflicts. Missing entries on both sides produce record-removal tasks.
 
@@ -48,18 +48,12 @@ It repeatedly looks for folder delete/create pairs. A folder pair is converted o
 
 ## Confirmations
 
-Two confirmation gates run after move detection and before task execution. Manual task confirmation applies only to the `manual` trigger when [Confirm Operations in Manual Sync](../usage/settings.md#confirm-operations-in-manual-sync) is enabled. Add-record and remove-record tasks are omitted from the displayed list; canceling the dialog cancels the run.
+Two confirmation gates run after move detection and before task execution. Manual task confirmation applies only to the `manual` trigger when [Confirm Operations in Manual Sync](../usage/settings#confirm-operations-in-manual-sync) is enabled. Add-record and remove-record tasks are omitted from the displayed list; canceling the dialog cancels the run.
 
-Automatic local-delete confirmation applies when [Confirm Deletions During Auto-Sync](../usage/settings.md#confirm-deletions-during-auto-sync) is enabled and the trigger is `scheduled`, `startup`, or `realtime`. The dialog contains `removeLocal` tasks. Re-upload choices become upload or remote-directory creation tasks.
+Automatic local-delete confirmation applies when [Confirm Deletions During Auto-Sync](../usage/settings#confirm-deletions-during-auto-sync) is enabled and the trigger is `scheduled`, `startup`, or `realtime`. The dialog contains `removeLocal` tasks. Re-upload choices become upload or remote-directory creation tasks.
 
 Both confirmation mounts a [file tree](./file-tree) component in the progress modal.
 
-## Optimizer
-
-During execution, local and remote file systems use optimization wrappers. They batch mutation calls and invoke the first registered optimizer; batching, companion reads, and dependency handling are documented in the [optimization wrapper](./file-system-wrappers#optimization-wrapper).
-
-The routine sorts tasks into file removals, directory creation, moves, directory removals, and remaining operations. It then executes the optimized task list concurrently. The run reports `completed`, `failed`, `cancelled`, or `noop`.
-
 ## Conflict Resolver
 
-Conflict tasks pass `key`, local and remote file stats, both file systems, and the record store to the selected resolver. Resolvers are registered by modules and selected by [Conflict Resolve Strategy](../usage/settings.md#conflict-resolve-strategy). Built-in strategies and their user-facing behavior are documented there.
+Conflict tasks pass `key`, local and remote file stats, both file systems, and the record store to the selected resolver. Resolvers are registered by modules and selected by [Conflict Resolve Strategy](../usage/settings#conflict-resolve-strategy). Built-in strategies and their user-facing behavior are documented there.

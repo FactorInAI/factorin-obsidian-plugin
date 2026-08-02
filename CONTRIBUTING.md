@@ -33,6 +33,14 @@ A feature request is a normal issue, but maintainers will move the request to a 
 
 We **strongly recommend** you writing your own Sync Engine module to achieve your requirement before opening a feature request, since Sync Engine is super extensible and most functions can be achieved by modules. Sync Engine also provides official SDK, documentation, and AI agent skill to assist module development. There are abundant module examples in the Sync Engine monorepo.
 
+## Fork Policy
+
+Sync Engine welcomes forks that contributes to the development of the Sync Engine monorepo.
+
+However, as stated in [Obsidian developer policies](https://docs.obsidian.md/Developer+policies#Forks), Sync Engine disallows any type if malicious forking that submits to Obsidian's official plugin directory as another standalone plugin, as long as Sync Engine repo remains active or maintainers haven't permitted. Maintainers will report as long as we find one.
+
+Instead of creating another syncing plugin, we highly recommend you to create a Sync Engine module. Sync Engine core is highly optimized and battle-tested, it provides convenient SDK that allows you to customize freely without reinventing the wheel.
+
 ## Contribute Code to the Monorepo
 
 ### How the Monorepo Works

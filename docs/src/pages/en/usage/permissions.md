@@ -8,7 +8,7 @@ Dynamic JavaScript module evaluation is a type of _dynamic code execution_, whic
 
 Sync Engine only evaluates JavaScript ESM modules explicitly downloaded or approved by the user, and only when the plugin starts, a module auto-updates, or the user explicitly toggles.
 
-Sync Engine implements a series of mechanisms to minimize the attack surface brought by module evaluation. Refer to [Security](./security.md) for more detail.
+Sync Engine implements a series of mechanisms to minimize the attack surface brought by module evaluation. Refer to [Security](./security) for more detail.
 
 ## Access and Modify Vault Files
 

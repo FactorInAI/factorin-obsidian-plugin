@@ -8,11 +8,11 @@ Some settings are registered by modules, their usage are documented in module sp
 
 ### Storage Backend
 
-Choose the installed module that connects Sync Engine to your storage service. The connection icon beside the selector checks whether the selected service can be reached, automatically refreshed every 10 seconds, you can also manually trigger a connectivity check by clicking it. Configure the selected service in its module settings when needed. See the [available modules](./modules.md) for supported backends.
+Choose the installed module that connects Sync Engine to your storage service. The connection icon beside the selector checks whether the selected service can be reached, automatically refreshed every 10 seconds, you can also manually trigger a connectivity check by clicking it. Configure the selected service in its module settings when needed. See the [available modules](./modules) for supported backends.
 
 ### Module Management
 
-Open the module management panel. From there, you can install, update, enable, disable, remove, or edit modules, and manage their update sources. Modules provide storage backends and extra sync strategies. Review [Security](./security.md) before installing modules from sources you do not control.
+Open the module management panel. From there, you can install, update, enable, disable, remove, or edit modules, and manage their update sources. Modules provide storage backends and extra sync strategies. Review [Security](./security) before installing modules from sources you do not control.
 
 The [module management panel](../deep-dive/module-management-panel) consists of a top bar and the module card list. You can select to show installed only and edit module sources at the hamburger button beside the search bar.
 
@@ -34,7 +34,7 @@ Choose what happens when the same file changed locally and remotely since the la
 - **Keep remote**: replace local version with remote version.
 - **Skip**: leave conflict unchanged until you resolve it another way.
 
-Use a strategy that matches how you work. The replace and latest options can discard changes when timestamps are wrong or clocks differ between devices. The optional [Smart Merge module](../deep-dive/modules/smart-merge.md) adds a text-merge strategy for supported files.
+Use a strategy that matches how you work. The replace and latest options can discard changes when timestamps are wrong or clocks differ between devices. The optional [Smart Merge module](../deep-dive/modules/smart-merge) adds a text-merge strategy for supported files.
 
 ## Features
 
@@ -66,7 +66,7 @@ Enabled by default. Turn it off when realtime sync must always perform a full re
 
 Store remote files in a flat layout with generated names instead of mirroring your vault's folders. Sync Engine uses its records to restore the original local paths. This can substantially speed up syncs and reduce work in storage services that handle large folder trees poorly.
 
-This changes how the remote storage looks. Read the separate [Asymmetric Storage guide](../deep-dive/asymmetric-storage.md) for its design and limitations before enabling it:
+This changes how the remote storage looks. Read the separate [Asymmetric Storage guide](../deep-dive/asymmetric-storage) for its design and limitations before enabling it:
 
 - Remote files will not be readable in their normal folder structure.
 - Every device using the vault must use the same setting.
@@ -212,7 +212,7 @@ This keeps files inside `projects/current` while other project files stay exclud
 
 Add HTTP headers to every request sent to the remote storage service. Some services use headers for a tenant name, API version, or other account-specific option.
 
-Use a plaintext header for a non-sensitive value. Use a secret header for a token or other private value; secret values are stored in Obsidian's keychain instead of in the normal plugin settings. See [Runtime Permissions](./permissions.md#obsidian-secret-storage) for when Sync Engine reads these secrets. Header names must be valid and match what your storage service expects. Empty header rows are ignored when saved.
+Use a plaintext header for a non-sensitive value. Use a secret header for a token or other private value; secret values are stored in Obsidian's keychain instead of in the normal plugin settings. See [Runtime Permissions](./permissions#obsidian-secret-storage) for when Sync Engine reads these secrets. Header names must be valid and match what your storage service expects. Empty header rows are ignored when saved.
 
 Do not add credentials as plaintext headers when a secret header is available. Incorrect headers can make connection checks and syncs fail. Backend modules may have their own credential settings; follow the module's documentation for those.
 

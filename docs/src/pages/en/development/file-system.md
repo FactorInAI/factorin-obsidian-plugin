@@ -1,17 +1,12 @@
-# File System & Wrapper Chain
+# File System
 
-Sync Engine uses a unified file system interface across the plugin. And wrappers are middlewares above this interface.
+Sync Engine uses a unified file system interface across all backends. Wrappers act as middleware above this interface.
 
-## `RootFs`
-
-Every remote backend must implement this interface. Keys use a unified format:
-
-- `/` for the root
-- `note.md` / `folder/note.md` for files
-- `folder/` / `folder/nested/` for folders (always has trailing `/`)
+## Core Data Types
 
 ```ts
 type Binary = Uint8Array<ArrayBuffer>;
+type MaybePromise<T> = T | Promise<T>;
 
 type Progress<T = string> = {
   total: number;
@@ -24,77 +19,59 @@ type FileStat = {
   key: string;
   mtime: number;
   size: number;
-  uid: string;
+  uid: string; // ETag or equivalent; equality means unchanged
 };
-type FolderStat = {
-  isDir: true;
-  key: string;
-};
+type FolderStat = { isDir: true; key: string };
 type Stat = FileStat | FolderStat;
+type StatsMap = Map<string, Stat>;
+
+type RecordStat = { isDir: false; local: string; remote: string } | { isDir: true };
+type RecordStatsMap = Map<string, RecordStat>;
+```
+
+## `RootFs`
+
+Every remote backend must implement this interface. Keys use a unified format: `/` for root, `note.md` / `folder/note.md` for files, `folder/` / `folder/nested/` for folders (trailing `/` required).
+
+```ts
+import type { RootFs } from '@hesprs/sync-engine-sdk';
 
 type RootFs = {
   getUid(): string;
-  read(key: string): MaybePromise<Binary>;
-  readStream(key: string, size?: number): MaybePromise<ReadableStream<Binary>>;
-  write(key: string, value: Binary): MaybePromise<string>; // Returns uid
-  writeStream(key: string, value: ReadableStream<Binary>): MaybePromise<string>; // Returns uid
+  read(key: string, stat: FileStat): MaybePromise<Binary>;
+  readStream(key: string, stat: FileStat): MaybePromise<ReadableStream<Binary>>;
+  write(key: string, value: Binary, stat: FileStat): MaybePromise<string>;
+  writeStream(key: string, value: ReadableStream<Binary>, stat: FileStat): MaybePromise<string>;
   delete(key: string): MaybePromise<void>;
   move(oldKey: string, newKey: string): MaybePromise<void>;
   mkdir(key: string, recursive?: boolean): MaybePromise<void>;
   stat(key: string): MaybePromise<Stat>;
   exists(key: string): MaybePromise<boolean>;
-  list(key: string, progress?: (progress: Progress) => void): MaybePromise<Array<Stat>>;
+  list(key: string, reporter: ListReporter): MaybePromise<Array<Stat>>;
 };
-
-// You can import like this
-import type { RootFs } from '@hesprs/sync-engine-sdk';
 ```
 
-### `getUid(): string`
+### `ListReporter`
 
-Returns a stable unique identifier for this FS instance. Convention: `<type>~<distinguishing-data>~...` using `~` as delimiter.
+The `list` method receives a reporter callback the backend must invoke during traversal. It receives a `Required<Progress>` (all fields present) and returns a `GlobMatchResult` controlling glob inclusion.
 
-Example: `"webdav~https://example.com/dav~username"`
+```ts
+type ListReporter = (progress: Required<Progress>) => MaybePromise<GlobMatchResult>;
+```
 
-### `read(key)`
+### Method Notes
 
-Reads a whole file.
-
-### `readStream(key, size?)`
-
-Returns a `ReadableStream<Binary>` for the file. Since Obsidian `requestUrl` API cannot stream, the typical implementation of `readStream` is using ranged downloading and wrap in a stream. You must keep the average memory consumption during streaming below 16MiB, which is the assumption of the memory control mechanism embedded in Sync Engine core.
-
-### `write(key, value): string`
-
-Writes a file. Returns a **uid** (ETag or equivalent) that uniquely identifies this version of the file.
-
-### `writeStream(key, value): string`
-
-Pipes a `ReadableStream<Binary>` to a remote key. Typical implementation could be multipart uploading to a temporary path, then move to actual location. Returns a `uid` of the final file.
-
-### `delete(key)`
-
-Deletes a file. Should silently succeed if the key does not exist (idempotent).
-
-### `move(oldKey, newKey)`
-
-Renames/moves a file. Implement as copy + delete if the backend doesn't support native move.
-
-### `mkdir(key, recursive?)`
-
-Creates a directory. For backends with no real directories (like S3), create a zero-byte object. If `recursive` is true, create parent directories first.
-
-### `stat(key): Stat`
-
-Returns metadata for a key. If the key doesn't exist, throw an error.
-
-### `exists(key): boolean`
-
-Checks if a key exists (file or folder).
-
-### `list(key, progress?): Array<Stat>`
-
-Recursively lists all children under `key` including all files and folders. Reports progress via the optional callback.
+- **`getUid()`** — Returns a stable unique identifier. Convention: `<type>~<distinguishing-data>~...` using `~` as delimiter. Example: `"webdav~https://example.com/dav~username"`.
+- **`read` / `readStream`** — The `stat` parameter provides the file's `FileStat` so backends can implement conditional requests or range-based streaming. Keep average memory consumption during streaming around 16 MiB.
+- **`write` / `writeStream`** — Returns a **uid** (ETag, MD5 hash, or equivalent) that uniquely identifies this version. `writeStream` should only resolve when the stream is fully consumed.
+- **`delete`** — Should silently succeed if the key does not exist (idempotent).
+- **`move`** — Implement as copy + delete if the backend doesn't support native move.
+- **`mkdir`** — For backends with no real directories (like S3), create a zero-byte object. `recursive` creates parent directories first.
+- **`stat`** — Throws if the key doesn't exist.
+- **`list`** — Recursively lists all children. The `reporter` is required; call it during traversal with progress and trims return according to glob-match results:
+  - `include`： include this file in the `list()` return, don't need to inspect descendants when the target is a folder
+  - `exclude`: remove this item from your return.
+  - `advance`: only appears on folders, means you not only need to include it, it is also required to recursively traverse the direct descendants of this folder.
 
 ### Class Implementation
 
@@ -116,46 +93,28 @@ export class MyFs implements RootFs {
     return `mybackend~${this.options.endpoint}~${this.options.apiKey}`;
   }
 
-  // ... implement all methods
+  // ... implement all methods, using this.request for network calls
 }
 ```
 
-Key points:
+Backends can implement methods beyond `RootFs` for special capabilities (e.g., S3 batch delete). Use `digOriginal` to access them from within wrappers or optimizers.
 
-- `implements RootFs` ensures the class fulfills the interface.
-- `private readonly request: Request` the file system must use the provided request utility to make network requests.
-- Backends can implement beyond `RootFs` interface to include more methods for backends with special capability (e.g., S3 batch delete), then you can use these methods in batch optimizer.
-
-Examples: [Vault](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/fs/vault.ts), [WebDAV](https://github.com/hesprs/sync-engine/tree/main/packages/webdav/src/webdav/fs.ts).
+Examples: [Vault](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/src/fs/vault), [WebDAV](https://github.com/hesprs/sync-engine/tree/main/packages/webdav/src/webdav/fs.ts).
 
 ## Wrapper Chain
 
-Wrappers are middleware that wrap a `type Fs = RootFs | WrappedFs;`, transforming calls as they pass through, and return a `WrappedFs`. The chain is ordered numerically, lower `priority` values are applied first (innermost wrapper).
+Wrappers are middleware that wrap an `Fs` and return a `WrappedFs`. The chain is ordered numerically; lower `priority` values are applied first (innermost wrapper).
 
-**Existing remote wrapper chain**:
+```ts
+type WrappedFs = RootFs & { original: Fs };
+type Fs = WrappedFs | RootFs;
+```
 
-| Priority | Wrapper             | Description                                  |
-| -------- | ------------------- | -------------------------------------------- |
-| 1000     | `MemoryControl`     | Tracks memory, pauses when limit reached     |
-| 2000     | `Optimization`      | Applies `BatchOptimizer` to batch operations |
-| 3000     | `Cancellation`      | Checks `isCancelled` before each operation   |
-| 10000    | `Context`           | Caches stat results in in-memory DB          |
-| 11000    | `AsymmetricStorage` | Enables asymmetric storage mode              |
-
-**Existing local wrapper chain**:
-
-| Priority | Wrapper         |
-| -------- | --------------- |
-| 1000     | `MemoryControl` |
-| 2000     | `Optimization`  |
-| 3000     | `Cancellation`  |
-| 10000    | `Context`       |
+For existing wrappers with priorities, and detailed behavior of each wrapper, see [deep-dive: file system wrappers](../deep-dive/file-system-wrappers).
 
 ### Writing a Wrapper
 
 A wrapper is a function that accepts an `Fs` and returns an `Fs`.
-
-Create a class implementing `type WrappedFs = RootFs & { original: Fs }`. E.g., adding prefixes to keys:
 
 ```ts
 import type { Progress, Fs, WrappedFs } from '@hesprs/sync-engine-sdk';
@@ -170,25 +129,15 @@ class PrefixFs implements WrappedFs {
     return `${this.original.getUid()}~${this.prefix}`;
   }
 
-  read(key: string, size?: number) {
-    return this.original.read(this.prefix + key, size);
+  read(key: string, stat: FileStat) {
+    return this.original.read(this.prefix + key, stat);
   }
 
   // ... delegate all methods, prepending prefix / stripping it from results
-
-  async stat(key: string) {
-    const raw = await this.original.stat(this.prefix + key);
-    return stripPrefix(this.prefix, raw);
-  }
-
-  async list(key: string, progress?: (prog: Progress) => void) {
-    const raw = await this.original.list(this.prefix + key, progress);
-    return raw.map((stat) => stripPrefix(this.prefix, stat)).filter((stat) => stat.key !== '/');
-  }
 }
 
 export default function prefixWrapper(original: Fs, prefix: string): WrappedFs {
-  return new PrefixFs(original, normalizedPrefix);
+  return new PrefixFs(original, prefix);
 }
 ```
 
@@ -196,25 +145,13 @@ Examples: [Optimization Wrapper](https://github.com/hesprs/sync-engine/tree/main
 
 ### Registering a Wrapper
 
-```ts
-import { digOriginal } from '@hesprs/sync-engine-sdk';
-
-// it is the same for `registerLocalFsWrapper`
-this.ctx.registerRemoteFsWrapper({
-  apply: (fs) => {
-    if (digOriginal(fs) instanceof MyFs) return prefixWrapper(fs, this.moduleSettings.prefix);
-  },
-  priority: 4823, // avoid whole hundred and thousands to prevent collision
-});
-```
-
-Returning `undefined` from `apply` declines the wrapper for the current filesystem. If the function always returns a wrapper, it applies to all matching filesystem instances.
+See [registration](./registration#filesystem-wrappers).
 
 ## Batch Optimization
 
-The optimization wrapper (priority 2000) collects atomic FS operations and passes them to a `BatchOptimizer` function. This allows backend-specific optimizations like S3 batch deletion or hierarchical operation reordering.
+The optimization wrapper (priority 2000) collects atomic FS operations and passes them to a `BatchOptimizer`. This allows backend-specific optimizations like S3 batch deletion or hierarchical operation reordering. For how the optimizer integrates with the wrapper chain, see [deep-dive: file system wrappers](../deep-dive/file-system-wrappers#optimization-wrapper).
 
-### Optimizer Input/Output
+### Atom Types
 
 ```ts
 type WriteAtom = {
@@ -244,29 +181,32 @@ type MkdirAtom = {
 };
 type InputAtom = WriteAtom | DeleteAtom | MoveAtom | MkdirAtom;
 
-type CustomAtom = {
-  type: 'custom';
-  execute: () => MaybePromise<void>;
-};
+type CustomAtom = { type: 'custom'; execute: () => MaybePromise<void> };
 type OutputAtom = InputAtom | CustomAtom;
 type OptimizerOutput = Array<OutputAtom>;
 
 type OptimizerInput = {
-  atoms: Array<InputAtom>; // The original atoms
-  fs: Fs; // The FS chain below optimization
-  executeAtom: (atom: OutputAtom) => MaybePromise<void | string>; // Helper to execute an atom according to its reference, and cache the result so multiple execution only invokes `execute()` once
+  atoms: Array<InputAtom>;
+  fs: Fs;
+  executeAtom: (atom: OutputAtom) => Promise<void | string>;
 };
-
 type BatchOptimizer = (input: OptimizerInput) => OptimizerOutput;
 ```
 
-The optimizer receives the full list of atoms and can:
+The optimizer receives the full atom list and can:
 
 - Replace multiple atoms with a single `CustomAtom`
-- Add new atoms
-- Remove atoms
-- Reassign an atom's `execute` by wrapping it to await the `executeAtom()` of all its dependency atoms, use this to resolve the dependency between operations.
+- Add or remove atoms
+- Wrap an atom's `execute` by reassign it to await `executeAtom()` of dependency atoms
 - Resolve an atom directly
+
+`executeAtom` invokes an atom's `execute()` from the parent reference and caches the result universally, so the atom is only executed once using the outermost wrapping.
+
+::: warning
+
+If the optimizer removes atoms from the input array, it **must** call `resolve()` on them (either directly or via custom atoms). Otherwise syncing hangs forever.
+
+:::
 
 ### Example: S3 Batch Delete Optimizer
 
@@ -290,7 +230,7 @@ export default function batchDeleteOptimizer(atoms: Array<InputAtom>, fs: S3Fs):
     type: 'custom' as const,
     execute: async () => {
       await fs.batchDelete(batch.map(({ key }) => key));
-      batch.foreach(({ resolve }) => resolve());
+      batch.forEach(({ resolve }) => resolve());
     },
   }));
 
@@ -298,32 +238,41 @@ export default function batchDeleteOptimizer(atoms: Array<InputAtom>, fs: S3Fs):
 }
 ```
 
-**Important**: If the optimizer removes some atoms from the original atoms array, it **must** call `resolve()` by itself or by its custom atoms. Otherwise the syncing will hang forever.
-
-More complex example: [Hierarchical Optimizer](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/src/fs/hierarchical-optimizer.ts), showcases dependency wrapping.
+More complex example: [Hierarchical Optimizer](https://github.com/hesprs/sync-engine/tree/main/packages/plugin/src/fs/hierarchical-optimizer.ts).
 
 ### Registering an Optimizer
 
-```ts
-import { digOriginal } from '@hesprs/sync-engine-sdk';
-import { S3Fs } from './s3/fs';
-
-// Same for `registerLocalOptimizer`
-this.ctx.registerRemoteOptimizer({
-  priority: 4823,
-  apply: ({ fs, atoms }) => {
-    if (digOriginal(fs) instanceof S3Fs) return batchDeleteOptimizer(input);
-  },
-});
-```
-
-Optimizer entries are evaluated in ascending `priority`. The first `apply` that returns an output is selected; returning `undefined` declines an entry. Entries at the same priority are tried in registration order.
+See [registration](./registration#batch-optimizers).
 
 ## `digOriginal`
 
-When an optimizer needs to call a method on the root FS that isn't part of the `Fs` interface (e.g., `S3Fs.batchDelete()`), use `digOriginal` to unwrap through the `.original` chain:
-
 ```ts
 import { digOriginal } from '@hesprs/sync-engine-sdk';
-const rootFs = digOriginal(wrappedFs);
+
+function digOriginal(wrapped: Fs): RootFs;
 ```
+
+Unwraps nested wrappers to the underlying root filesystem. Use when an optimizer needs to call backend-specific methods not on the `Fs` interface (e.g., `S3Fs.batchDelete()`), combined with `instanceof` check on the returned `RootFs`.
+
+## `MigrationModal`
+
+A runtime export (not a `register*` API) for Obsidian modals that require user confirmation during migrations.
+
+```ts
+import { MigrationModal } from '@hesprs/sync-engine-sdk';
+
+new MigrationModal(ctx, {
+  content: 'Migration required.',
+  apply: async () => {
+    await migrate();
+  },
+  onCancel: () => {
+    console.log('Migration cancelled.');
+  },
+}).open();
+```
+
+The constructor takes two arguments:
+
+- **`ctx`** — requires `app`, `on`, `dispatch`, `translate` (typed to `MigrationModalTranslations`), `requestSync`, `initializeSync`, and `memoryDB`. The full `Context` supplies these.
+- **`options`** — `{ content: string | DocumentFragment; apply: () => MaybePromise<void>; onCancel?: () => void }`.

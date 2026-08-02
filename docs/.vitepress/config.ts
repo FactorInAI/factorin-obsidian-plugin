@@ -86,9 +86,29 @@ const localeConfig = configGenerator<ThemeConfig>((t) => {
 				[`${development}/`]: {
 					items: [
 						{ link: `${development}/develop-a-module`, text: t('developAModule') },
-						{ link: `${development}/file-system`, text: t('fileSystem') },
-						{ link: `${development}/runtime-api`, text: t('runtimeApi') },
-						{ link: `${development}/devops`, text: t('devOps') },
+						{
+							items: [
+								{ link: `${development}/file-system`, text: t('fileSystem') },
+								{ link: `${development}/request`, text: t('request') },
+								{ link: `${development}/sync`, text: t('sync') },
+								{ link: `${development}/registration`, text: t('registration') },
+								{ link: `${development}/events`, text: t('events') },
+								{ link: `${development}/storage`, text: t('storage') },
+								{ link: `${development}/i18n`, text: t('i18n') },
+								{ link: `${development}/miscellaneous`, text: t('miscellaneous') },
+							],
+							text: t('API'),
+						},
+						{
+							items: [
+								{ link: `${development}/distribution`, text: t('distribution') },
+								{
+									link: `${development}/debug-and-testing`,
+									text: t('debugAndTesting'),
+								},
+							],
+							text: t('devOps'),
+						},
 					],
 					text: t('development'),
 				},

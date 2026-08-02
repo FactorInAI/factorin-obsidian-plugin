@@ -2,13 +2,6 @@
 
 Modules lets you unlock infinite extension beyond Sync Engine base features. This documentation covers everything you need to write, build, test, and publish a module.
 
-| File                                        | Contents                                         |
-| ------------------------------------------- | ------------------------------------------------ |
-| [File System](./file-system)                | `Fs` contract, wrapper chain, batch optimization |
-| [Runtime API](./runtime-api.md)             | Full SDK type and function reference             |
-| [devops.md](./devops.md)                    | Build config, lint, test, deployment             |
-| [contributing.md](../usage/contributing.md) | Contribute to the Sync Engine monorepo           |
-
 ## Scaffolding a Module Project
 
 To develop a Sync Engine module, you at least need a JavaScript Runtime and a package manager, for example, `Bun`, or `Node.js` + `npm`/`pnpm`.
@@ -64,7 +57,6 @@ export default defineConfig({
 	dts: false,
 	entry: { 'your-module-name': 'src/index.ts' },
 	minify: true,
-	outDir: 'dist',
 	outExtensions: () => ({ js: '.js' }),
 	outputOptions: { codeSplitting: false },
 	plugins: [obsidianBridge()],
@@ -77,8 +69,10 @@ Finally add following commands to your `package.json`:
 
 ```json
 {
-  "dev": "MODE=dev tsdown",
-  "build": "tsdown"
+  "scripts": {
+    "dev": "MODE=dev tsdown",
+    "build": "tsdown"
+  }
 }
 ```
 
@@ -110,7 +104,7 @@ export default class MyModule {
 Every module:
 
 1. **Default exports** a module class
-2. Accepts a **single constructor parameter** typed with `Context` (the full definition of `Context` can be found in [Runtime API](runtime-api))
+2. Accepts a **single constructor parameter** typed with `Context` (see [Registration](./registration) for the `register*` API and [Miscellaneous](./miscellaneous) for the full member list)
 3. Optionally declare a `readonly moduleSettings` property with default values
 4. Optionally implement `start()` to register capabilities and start activity, this method is executed when the module is loaded
 5. Optionally implement `dispose()` to clean up, which is executed when the module is unloaded
@@ -130,6 +124,35 @@ You can found abundant module examples in Sync Engine monorepo:
 - [Encryption](https://github.com/hesprs/sync-engine/tree/main/packages/encryption): uses settings, i18n, file system, and in-memory database API.
 - [Smart Merge](https://github.com/hesprs/sync-engine/tree/main/packages/smart-merge): uses settings, i18n, file system, IndexedDB, and conflict resolution API.
 - [WebDAV](ttps://github.com/hesprs/sync-engine/tree/main/packages/webdav): great example of how to add a backend to Sync Engine.
+
+## Build A Feedback Loop
+
+We recommend creating a symbolic link from the Sync Engine `modules/` folder to your module `dist/` folder:
+
+```sh
+ln -s /path/to/your/vault/.obsidian/plugins/sync-engine/modules /path/to/your/project/dist
+```
+
+Remember we have the following in Tsdown config and `package.json`:
+
+```TypeScript
+const dev = process.env.MODE === 'dev';
+export default defineConfig({
+	clean: !dev,
+});
+```
+
+```json
+{
+  "dev": "MODE=dev tsdown"
+}
+```
+
+So simply run `bun dev`, and your module will be rebuilt inside the right folder without clearing other modules.
+
+After rebuilding, you need to reload the module in module management UI to apply latest changes. Or you can use the [Hot Reload](https://github.com/pjeby/hot-reload) plugin to reload Sync Engine on each build, so your module will also be reloaded.
+
+To reliably reload Sync Engine modules without triggering its integrity protection, you need to manually disable integrity verification in the module editor interface in [module management panel](../deep-dive/module-management-panel). Make sure you only disable the verification of the module you are developing, see [Security](../usage/security) for security implications.
 
 ## Load CSS in a Module
 
@@ -153,9 +176,9 @@ export default class MyModule {
 
   start(): void {
     cleanup.push(
-	  this.ctx.registerCss(css),
-	  // ... other registrations
-	)
+	    this.ctx.registerCss(css),
+	    // ... other registrations
+	  )
   }
 
   dispose(): void {
@@ -165,3 +188,7 @@ export default class MyModule {
 ```
 
 `import css from 'path/to.css?inline';` is a feature supported by Tsdown and Vite to inline the CSS string directly in the final JavaScript bundle.
+
+## Contribute to Sync Engine
+
+Sync Engine welcomes any type of module ideas and contribution. Active contributors helps Sync Engine thrive. Refer to [contributing](../usage/contributing) for contributing requirements.

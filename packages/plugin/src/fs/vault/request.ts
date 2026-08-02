@@ -13,8 +13,8 @@ type VaultRequestParam =
 	| { method: 'MOVE'; key: string; headers: { destination: string } }
 	| { method: 'MKDIR'; key: string }
 	| { method: 'EXISTS'; key: string }
-	| { method: 'STAT'; key: string }
-	| { method: 'LIST'; key: string };
+	| { method: 'STAT'; key: string; headers?: { noCache?: boolean } }
+	| { method: 'LIST'; key: string; headers?: { noCache?: boolean } };
 
 type VaultRequestResponseMap = {
 	GET: Binary;
@@ -87,7 +87,7 @@ export default function createVaultRequest(app: App): VaultRequest {
 		}
 		if (method === 'STAT') {
 			if (key === '/') return { ctime: 0, mtime: 0, size: 0, type: 'folder' } as never;
-			if (canUseCache()) {
+			if (canUseCache() && !params.headers?.noCache) {
 				const file = vault.getAbstractFileByPath(path);
 				if (file instanceof TFile) return { ...file.stat, type: 'file' } as never;
 				else if (file instanceof TFolder)
@@ -99,7 +99,7 @@ export default function createVaultRequest(app: App): VaultRequest {
 		}
 		if (method === 'LIST') {
 			const children: ListedFiles = { files: [], folders: [] };
-			if (canUseCache() && key !== '/') {
+			if (canUseCache() && !params.headers?.noCache && key !== '/') {
 				const folder = vault.getAbstractFileByPath(path);
 				if (folder instanceof TFolder) {
 					folder.children.forEach((child) =>

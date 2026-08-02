@@ -10,11 +10,11 @@ Sync Engine also assumes users are rational about your own security, and allows 
 
 Modules are executable code. An enabled module can receive broad Obsidian and Sync Engine access, including vault files and network requests. This is required by the extensible design, but it means you should treat modules like plugins and only enable ones you trust.
 
-Without client-side encryption, the configured backend receives the files you sync. The backend and network should therefore be treated as places where your data may be exposed or changed. The [Encryption module](../deep-dive/modules/encryption.md) lets the client encrypt file contents and names before upload. It does not hide every detail: the backend can still learn information such as file sizes, modification times, and the number of files, and it may still delete or roll back remote data.
+Without client-side encryption, the configured backend receives the files you sync. The backend and network should therefore be treated as places where your data may be exposed or changed. The [Encryption module](../deep-dive/modules/encryption) lets the client encrypt file contents and names before upload. It does not hide every detail: the backend can still learn information such as file sizes, modification times, and the number of files, and it may still delete or roll back remote data.
 
 ## What Sync Engine Does
 
-- Only configured backends and module sources receive requests. Sync Engine has no telemetry. See [Permissions](./permissions.md) for request timing and scope.
+- Only configured backends and module sources receive requests. Sync Engine has no telemetry. See [Permissions](./permissions) for request timing and scope.
 - New modules are disabled by default. Sync Engine records your approval separately from the module file and checks the module's integrity before loading it, unless you explicitly turn that check off. See [extensibility contract](../deep-dive/extensibility) for the exact boundaries.
 - Automatic updates only apply to an already installed module from the same source. A newly discovered module without any download record triggers an explicit warning of potential malice.
 - Official modules only read secrets that their documented function requires. Secrets are stored through Obsidian's secret storage rather than in ordinary settings.
