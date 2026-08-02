@@ -471,10 +471,8 @@ export default class Factorin {
 
 	readonly dispose = () => {
 		this.cleanup.splice(0).forEach((fn) => fn());
-		if (this.reauthRetryTimer) {
-			clearTimeout(this.reauthRetryTimer);
-			this.reauthRetryTimer = undefined;
-		}
+		this.cancelReauthRetry?.();
+		this.cancelReauthRetry = undefined;
 		this.startupReauth = undefined;
 		this.connection = undefined;
 	};

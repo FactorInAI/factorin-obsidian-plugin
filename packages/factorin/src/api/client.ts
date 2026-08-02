@@ -39,7 +39,9 @@ type WireBootstrap = Omit<FactorinBootstrap, 'accounts' | 'config' | 'token'> & 
  * (Overview §6.3) branches on: this error means disconnect; anything else is
  * transient and keeps the last-known-good mount.
  */
-export class FactorinAuthError extends Error {}
+export class FactorinAuthError extends Error {
+	override readonly name = 'FactorinAuthError';
+}
 
 /**
  * Fetch the bootstrap: the user, the token's granted permissions, and the
