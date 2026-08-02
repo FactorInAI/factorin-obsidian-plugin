@@ -53,7 +53,10 @@ export type FactorinSettingTranslate = Translate<FactorinTranslations>;
  * is only *read* here.
  */
 export type FactorinSettingHost = {
-	/** Bootstrap fetched by this session's connect; `undefined` after a reload. */
+	/**
+	 * Bootstrap fetched by this session's connect; `undefined` after a reload
+	 * until the §6.3 startup re-auth restores it.
+	 */
 	connection: FactorinBootstrap | undefined;
 	/** Fetch the bootstrap for `token`, apply the default account, persist. */
 	connect: (token: string) => Promise<void>;
@@ -188,8 +191,9 @@ function renderAccountPicker(
 /**
  * "Connected as {name} · {slug} ({drive} access)" / "Not connected". The
  * access suffix needs the token's permissions, which only exist in memory —
- * after a reload (until the §6.3 startup re-auth lands) the line degrades to
- * the permission-less form rather than guessing.
+ * between a reload and the §6.3 startup re-auth completing (or while the API
+ * is unreachable) the line degrades to the permission-less form rather than
+ * guessing.
  */
 function statusText(host: FactorinSettingHost): string {
 	const { connection, moduleSettings, permissions, translate } = host;

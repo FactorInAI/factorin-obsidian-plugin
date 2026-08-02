@@ -1,9 +1,10 @@
+import { Notice } from 'obsidian';
 import type { FactorinAccount, FactorinBootstrap } from './api/types';
 import type { FactorinBackendContext, FactorinBackendSettings } from './backend';
 import type { FactorinServerConfig } from './config';
 import type { FactorinContextTranslate, FactorinSettingTranslate } from './setting';
 import type { FactorinPullOnlyContext } from './sync/pull-only';
-import { fetchBootstrap, pickDefaultAccount } from './api/client';
+import { FactorinAuthError, fetchBootstrap, pickDefaultAccount } from './api/client';
 import { registerFactorinBackend } from './backend';
 import { FACTORIN_CONFIG_FALLBACKS, SUPPRESSED_UPSTREAM_SETTING_PRIORITIES } from './config';
 import { en, zh } from './i18n';
@@ -123,6 +124,16 @@ export const FACTORIN_TOKEN_KEY = 'factorin-api-token';
 export const FACTORIN_SETTING_PRIORITY = 749;
 
 /**
+ * Retry policy for a startup re-auth that failed *transiently* (network down,
+ * 5xx — anything but the server rejecting the token). The mount keeps working
+ * on cached config meanwhile (Drive auth is per-request), so the retry only
+ * exists to eventually restore `permissions`; a short bounded series is enough,
+ * and giving up just leaves the pre-§6.3 behavior until the next reload.
+ */
+const REAUTH_RETRY_DELAY = 30_000;
+const REAUTH_MAX_ATTEMPTS = 3;
+
+/**
  * The Factor.In module.
  *
  * Authored against the same contract as an upstream module package
@@ -134,7 +145,9 @@ export const FACTORIN_SETTING_PRIORITY = 749;
  * It registers its i18n resources, the Factor.In icon, the single first-party
  * `factorin` remote FS (see `src/backend/`), the pull-only decider (see
  * `src/sync/pull-only.ts`), and the API-token settings section (see
- * `src/setting.ts`). The workflow UI arrives in a later milestone.
+ * `src/setting.ts`); when a token is stored it also silently re-authenticates
+ * at startup (§6.3, see `reauthenticate`). The workflow UI arrives in a later
+ * milestone.
  */
 export default class Factorin {
 	/** Unregister callbacks accumulated by `start()`, drained by `dispose()`. */
@@ -144,9 +157,20 @@ export default class Factorin {
 	 * The bootstrap fetched by this session's connect — the in-memory half of the
 	 * connection (Overview document §6.2): the account list behind the settings
 	 * tab's picker and the token's permissions behind {@link permissions}. Gone
-	 * after a reload by design; the persisted half is `moduleSettings`.
+	 * after a reload by design; the persisted half is `moduleSettings`, and the
+	 * startup re-auth (§6.3, see {@link reauthenticate}) refetches this from the
+	 * stored token.
 	 */
 	private connection?: FactorinBootstrap;
+
+	/**
+	 * Cancels the scheduled transient-failure retry of {@link reauthenticate} —
+	 * set while one is pending, invoked by `dispose()`. A closure over the timer
+	 * handle rather than the handle itself: the repo's usual `window.setTimeout`
+	 * is not available under `bun test`, and the bare global's *return* type
+	 * differs between the DOM and Bun typings this package compiles against.
+	 */
+	private cancelReauthRetry?: () => void;
 
 	/*
 	 * `ctx` is held, not just read, because every later registration (`registerRemoteFs`,
@@ -207,8 +231,9 @@ export default class Factorin {
 	 * The connected token's grants, straight off this session's bootstrap —
 	 * cached in memory only, never persisted (Overview document §6.2). `drive`
 	 * decides the sync direction at connect time; `workflows` gates the §8 UI.
-	 * `undefined` until a connect succeeds (including after every reload, until
-	 * the §6.3 startup re-auth lands).
+	 * `undefined` until a connect succeeds — after a reload that is the startup
+	 * re-auth (§6.3), so the gap lasts one `/me` round trip rather than until
+	 * the user reconnects by hand.
 	 */
 	get permissions() {
 		return this.connection?.token.permissions;
@@ -238,6 +263,73 @@ export default class Factorin {
 		const token = this.ctx.app.secretStorage.getSecret(this.moduleSettings.tokenKey);
 		if (token === null) throw new Error('Please connect your Factor.In account!');
 		await this.mount(account, token);
+	};
+
+	/**
+	 * The startup re-auth in flight (Overview document §6.3), kicked by `start()`
+	 * when a token is stored but {@link permissions} are not in memory — which is
+	 * every restart, since the bootstrap is never persisted. Exposed so tests can
+	 * await the settled state; `undefined` when `start()` found nothing to do.
+	 */
+	startupReauth?: Promise<void>;
+
+	/**
+	 * Silently rebuild this session's bootstrap from the stored token — the reload
+	 * half of the connect flow (Overview document §6.3). Runs through `mount()`, so
+	 * a permission change (write ↔ read) re-picks the decider and a server-side
+	 * policy change re-applies via `applyServerConfig`, exactly as a fresh connect
+	 * would. Prefers the account the user last mounted over `pickDefaultAccount` —
+	 * silently switching accounts on restart would be a data-visible surprise —
+	 * falling back to the default only when that slug is gone from the bootstrap.
+	 *
+	 * Timing: internal modules `start()` before the scheduler's startup sync fires
+	 * (`Scheduler.start()` arms it behind a `startupSync.value` ≥ 2s timeout, and
+	 * this module starts last in `internalModules`), so the `/me` request is in
+	 * flight before the first sync and normally wins the race. When it doesn't —
+	 * or the API is unreachable — the sync proceeds on the last-known-good mount,
+	 * which stays valid because Drive auth is enforced server-side per request.
+	 *
+	 * Failure paths, neither of which may wedge sync:
+	 * - Token rejected (401/403) → the `disconnect()` teardown plus a Notice
+	 *   pointing at settings; the vault reads "not connected", as a revoked token
+	 *   should.
+	 * - Anything else (network, 5xx) → treated as transient: keep the cached
+	 *   mount and retry a bounded number of times (see {@link REAUTH_RETRY_DELAY}).
+	 */
+	private readonly reauthenticate = async (attempt = 1): Promise<void> => {
+		/*
+		 * `|| FACTORIN_TOKEN_KEY`: the key is a fixed string, so a vault whose
+		 * cached Drive config was wiped (but whose secret survived) still finds
+		 * its token and reconnects instead of demanding a fresh paste.
+		 */
+		const token = this.ctx.app.secretStorage.getSecret(
+			this.moduleSettings.tokenKey || FACTORIN_TOKEN_KEY,
+		);
+		if (!token) return;
+		try {
+			const bootstrap = await fetchBootstrap(token);
+			this.connection = bootstrap;
+			const account =
+				bootstrap.accounts.find(
+					(candidate) => candidate.slug === this.moduleSettings.accountSlug,
+				) ?? pickDefaultAccount(bootstrap.accounts);
+			await this.mount(account, token);
+		} catch (error) {
+			if (error instanceof FactorinAuthError) {
+				await this.disconnect();
+				const translate = this.ctx.translate as FactorinSettingTranslate;
+				new Notice(translate('factorinTokenRejected'));
+				this.ctx.rerenderSettingTab();
+				return;
+			}
+			if (attempt < REAUTH_MAX_ATTEMPTS) {
+				const timer = setTimeout(() => {
+					this.cancelReauthRetry = undefined;
+					this.startupReauth = this.reauthenticate(attempt + 1);
+				}, REAUTH_RETRY_DELAY);
+				this.cancelReauthRetry = () => clearTimeout(timer);
+			}
+		}
 	};
 
 	/**
@@ -334,6 +426,13 @@ export default class Factorin {
 		const translate = ctx.translate as FactorinSettingTranslate;
 		registerFactorinIcon();
 		this.hydrate();
+		/*
+		 * §6.3 startup re-auth: permissions never survive a restart (they live on
+		 * the in-memory bootstrap), so any stored token warrants a refetch — not
+		 * only the empty-`driveUrl` case. Fire-and-forget; see `reauthenticate`
+		 * for the ordering against the scheduler's startup sync.
+		 */
+		if (!this.permissions) this.startupReauth = this.reauthenticate();
 		this.cleanup.push(
 			...registerFactorinBackend(ctx, this.moduleSettings),
 			registerPullOnlyDecider(ctx, () => translate('factorinPullOnly')),
@@ -372,6 +471,11 @@ export default class Factorin {
 
 	readonly dispose = () => {
 		this.cleanup.splice(0).forEach((fn) => fn());
+		if (this.reauthRetryTimer) {
+			clearTimeout(this.reauthRetryTimer);
+			this.reauthRetryTimer = undefined;
+		}
+		this.startupReauth = undefined;
 		this.connection = undefined;
 	};
 }
