@@ -128,13 +128,13 @@ describe('the startup re-auth (§6.3)', () => {
 
 	test('re-auth re-applies the server-driven sync policy, like a fresh connect', async () => {
 		replyWith({
-			json: { ...payload(), sync: { realtimeSync: { enabled: false, value: 9000 } } },
+			json: { ...payload(), sync: { realtime_sync_interval_ms: 9000 } },
 			status: 200,
 		});
 		const { module } = createReloadedModule(CONNECTED_STORE);
 		module.start();
 		await module.startupReauth;
-		expect(module.settings.realtimeSync).toEqual({ enabled: false, value: 9000 });
+		expect(module.settings.realtimeSync).toEqual({ enabled: true, value: 9000 });
 	});
 
 	test('a revoked token tears the connection down and points back at settings', async () => {

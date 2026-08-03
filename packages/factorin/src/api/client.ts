@@ -34,11 +34,22 @@ type WireBootstrap = Omit<FactorinBootstrap, 'accounts' | 'config' | 'token'> & 
 };
 
 /**
+ * The server judged the token itself invalid (401/403) — as opposed to the API
+ * being unreachable or broken. The distinction is what the startup re-auth
+ * (Overview §6.3) branches on: this error means disconnect; anything else is
+ * transient and keeps the last-known-good mount.
+ */
+export class FactorinAuthError extends Error {
+	override readonly name = 'FactorinAuthError';
+}
+
+/**
  * Fetch the bootstrap: the user, the token's granted permissions, and the
  * accounts (with Drive URLs) the token can reach — `GET /me`.
  *
- * Throws with a user-facing message on failure; the settings tab surfaces it
- * verbatim in a Notice, so keep the strings self-explanatory.
+ * Throws with a user-facing message on failure ({@link FactorinAuthError} when
+ * the token is the problem); the settings tab surfaces it verbatim in a Notice,
+ * so keep the strings self-explanatory.
  */
 export async function fetchBootstrap(token: string): Promise<FactorinBootstrap> {
 	const response = await requestUrl({
@@ -47,7 +58,9 @@ export async function fetchBootstrap(token: string): Promise<FactorinBootstrap> 
 		url: `${FACTORIN_API_BASE}/me`,
 	});
 	if (response.status === 401 || response.status === 403)
-		throw new Error('Factor.In rejected the token. Check it was copied whole and not revoked.');
+		throw new FactorinAuthError(
+			'Factor.In rejected the token. Check it was copied whole and not revoked.',
+		);
 	if (response.status !== 200) throw new Error(`Factor.In API error: ${response.status}`);
 	return normalizeBootstrap(response.json as WireBootstrap);
 }
