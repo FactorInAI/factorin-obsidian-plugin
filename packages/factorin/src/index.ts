@@ -304,6 +304,38 @@ export default class Factorin {
 	};
 
 	/**
+	 * Startup re-auth (Overview document §6.3). If a connection was persisted, re-fetch
+	 * `/me` with the stored token and re-mount the current account. Runs fire-and-forget
+	 * from `start()`, so every launch refreshes what the persisted half alone cannot keep
+	 * fresh: the **server-driven `sync` settings** (rewritten to the server value, else the
+	 * current fallback — this is why a bumped fallback or a new server policy reaches an
+	 * already-connected vault on reload), the token's **permissions/decider**, and the
+	 * account's **Drive URL**.
+	 *
+	 * Best-effort: an offline device or a revoked token is swallowed — the persisted mount
+	 * stays and sync keeps working against it; the failure surfaces on the next real
+	 * request, not here.
+	 */
+	readonly reauth = async () => {
+		const { ctx, moduleSettings } = this;
+		if (!moduleSettings.tokenKey || !moduleSettings.driveUrl) return;
+		const token = ctx.app.secretStorage.getSecret(moduleSettings.tokenKey);
+		if (token === null) return;
+		try {
+			const bootstrap = await fetchBootstrap(token);
+			this.connection = bootstrap;
+			const account =
+				bootstrap.accounts.find(
+					(candidate) => candidate.slug === moduleSettings.accountSlug,
+				) ?? pickDefaultAccount(bootstrap.accounts);
+			await this.mount(account, token);
+			ctx.rerenderSettingTab();
+		} catch {
+			/* Offline or the token was revoked — keep the persisted mount. */
+		}
+	};
+
+	/**
 	 * Rebuild `moduleSettings` from the root store's `factorin*` keys. Runs at
 	 * `start()` — after the kernel has injected `settings` — so a connection made
 	 * in an earlier session survives the reload. Empty persisted fields (a fresh
@@ -368,6 +400,8 @@ export default class Factorin {
 				ctx.registerSetting({ apply: () => {}, priority }),
 			),
 		);
+		// Fire-and-forget so it never blocks plugin load; a no-op unless connected.
+		void this.reauth();
 	};
 
 	readonly dispose = () => {

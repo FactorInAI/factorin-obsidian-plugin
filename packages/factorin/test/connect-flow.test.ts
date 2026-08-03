@@ -30,6 +30,18 @@ function createModule() {
 	return { ctx, module };
 }
 
+/** A module with a connection already in `moduleSettings` + `secretStorage`. */
+function persistedModule() {
+	const { ctx, module } = createModule();
+	Object.assign(module.moduleSettings, {
+		accountSlug: 'jon-doe',
+		driveUrl: 'https://drive.factorin.com/jon-doe/',
+		tokenKey: FACTORIN_TOKEN_KEY,
+	});
+	ctx.secrets.set(FACTORIN_TOKEN_KEY, 'fi_persisted');
+	return { ctx, module };
+}
+
 describe('the connect flow', () => {
 	beforeEach(() => {
 		requestUrlCalls.length = 0;
@@ -176,5 +188,48 @@ describe('the connect flow', () => {
 		expect(module.settings.factorinDriveUrl).toBe('');
 		expect(module.settings.factorinTokenKey).toBe('');
 		expect(module.permissions).toBeUndefined();
+	});
+
+	test('reauth() re-fetches /me and refreshes config, decider, and connection', async () => {
+		const { module } = persistedModule();
+		replyWith({ json: payload({ drive: 'read' }), status: 200 });
+		await module.reauth();
+		expect(requestUrlCalls).toHaveLength(1);
+		expect(module.permissions).toBeDefined();
+		// Permissions/decider refreshed from the current grants…
+		expect(module.settings.decider).toBe(FACTORIN_PULL_ONLY_DECIDER);
+		// …and the sync settings rewritten (no `sync` in the payload → current fallback).
+		expect(module.settings.realtimeSync).toEqual(FACTORIN_CONFIG_FALLBACKS.realtimeSync);
+	});
+
+	test('reauth() is a no-op when no connection was persisted', async () => {
+		const { ctx, module } = createModule();
+		await module.reauth();
+		expect(requestUrlCalls).toEqual([]);
+		expect(ctx.saves).toBe(0);
+		expect(module.permissions).toBeUndefined();
+	});
+
+	test('reauth() keeps the persisted mount when /me fails (offline or revoked)', async () => {
+		const { module } = persistedModule();
+		replyWith({ status: 401 });
+		await module.reauth();
+		expect(module.moduleSettings.driveUrl).toBe('https://drive.factorin.com/jon-doe/');
+		expect(module.permissions).toBeUndefined();
+	});
+
+	test('start() kicks off a re-auth', () => {
+		const { module } = createModule();
+		let called = false;
+		(module as { reauth: () => Promise<void> }).reauth = async () => {
+			called = true;
+		};
+		module.start();
+		expect(called).toBe(true);
+	});
+
+	test('start() makes no network call on a fresh install', () => {
+		createModule().module.start();
+		expect(requestUrlCalls).toEqual([]);
 	});
 });
