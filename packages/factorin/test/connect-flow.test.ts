@@ -133,23 +133,29 @@ describe('the connect flow', () => {
 		expect(module.moduleSettings.accountSlug).toBe('jon-doe');
 	});
 
-	test('connect() overlays the /me server config over the fallbacks', async () => {
+	test('connect() maps the /me sync block onto the toggles, else falls back', async () => {
 		const { module } = createModule();
 		replyWith({
 			json: {
 				...payload(),
 				sync: {
-					maxFileSize: { enabled: true, value: 999 },
-					realtimeSync: { enabled: true, value: 3000 },
+					max_file_size_bytes: 999,
+					min_request_interval_ms: 0,
+					realtime_sync_interval_ms: 3000,
+					// oxlint-disable-next-line unicorn/no-null -- the wire sends JSON null for "off"
+					startup_sync_delay_ms: null,
 				},
 			},
 			status: 200,
 		});
 		await module.connect('fi_x');
-		// Server-provided fields win…
+		// A number turns the setting on with that value.
 		expect(module.settings.maxFileSize).toEqual({ enabled: true, value: 999 });
 		expect(module.settings.realtimeSync).toEqual({ enabled: true, value: 3000 });
-		// …and fields the server omits fall back to the pinned default.
+		// Null is an explicit off; a 0ms throttle means no throttle.
+		expect(module.settings.startupSync).toMatchObject({ enabled: false });
+		expect(module.settings.minRequestInterval).toEqual({ enabled: false, value: 0 });
+		// A field the server omits falls back to the pinned default.
 		expect(module.settings.scheduledSync).toEqual(FACTORIN_CONFIG_FALLBACKS.scheduledSync);
 	});
 
@@ -159,8 +165,10 @@ describe('the connect flow', () => {
 		expect(ctx.secrets.get(FACTORIN_TOKEN_KEY)).toBe('fi_live_token');
 
 		await module.disconnect();
-		// secretStorage has no delete, so the token is overwritten empty; the mount
-		// is cleared back to the fresh-install shape and the session bootstrap dropped.
+		/*
+		 * `secretStorage` has no delete, so the token is overwritten empty; the mount
+		 * is cleared back to the fresh-install shape and the session bootstrap dropped.
+		 */
 		expect(ctx.secrets.get(FACTORIN_TOKEN_KEY)).toBe('');
 		expect(module.moduleSettings.driveUrl).toBe('');
 		expect(module.moduleSettings.accountSlug).toBe('');

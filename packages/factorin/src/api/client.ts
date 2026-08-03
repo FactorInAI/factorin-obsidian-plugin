@@ -81,29 +81,43 @@ function normalizeBootstrap(raw: WireBootstrap): FactorinBootstrap {
 }
 
 /**
- * Pick the well-formed server-driven settings out of the `/me` `sync` block,
- * keyed exactly as {@link FACTORIN_CONFIG_FALLBACKS}. Anything missing or malformed
- * is dropped rather than trusted — the caller falls back to the pinned default, so
- * an older deploy (no `sync` block) or a stray field can never write junk into settings.
+ * The `/me` `sync` block's wire field → the internal setting it drives. The API speaks
+ * a clean, semantic shape — one nullable number per setting, units in the name — so it
+ * never leaks the plugin's `{ enabled, value }` representation; see
+ * `docs/ME-API-CONTRACT.md` in the Rails repo.
+ */
+const SYNC_FIELDS = {
+	max_concurrent_requests: 'maxRequestConcurrency',
+	max_file_size_bytes: 'maxFileSize',
+	min_request_interval_ms: 'minRequestInterval',
+	realtime_sync_interval_ms: 'realtimeSync',
+	scheduled_sync_interval_ms: 'scheduledSync',
+	startup_sync_delay_ms: 'startupSync',
+} satisfies Record<string, keyof typeof FACTORIN_CONFIG_FALLBACKS>;
+
+/**
+ * Map the `/me` `sync` block onto the plugin's internal toggles. Per the contract:
+ *
+ * - a field the server **omits** is dropped → the caller falls back to the pinned
+ *   default (which for realtime/startup is *on*), so `{}` or an older deploy is a no-op;
+ * - `null` is an explicit **off** → `{ enabled: false }`;
+ * - a non-negative **number** turns the setting on with that value (`min_request_interval_ms:
+ *   0` is "no throttle", i.e. off);
+ * - anything else (wrong type, negative) is dropped → fallback, so junk can never land in settings.
  */
 function normalizeConfig(raw: unknown): FactorinServerConfig {
 	if (!raw || typeof raw !== 'object') return {};
 	const source = raw as Record<string, unknown>;
 	const result: FactorinServerConfig = {};
-	for (const key of Object.keys(FACTORIN_CONFIG_FALLBACKS) as Array<
-		keyof typeof FACTORIN_CONFIG_FALLBACKS
+	for (const [field, key] of Object.entries(SYNC_FIELDS) as Array<
+		[keyof typeof SYNC_FIELDS, keyof typeof FACTORIN_CONFIG_FALLBACKS]
 	>) {
-		const value = source[key];
-		if (
-			value &&
-			typeof value === 'object' &&
-			typeof (value as { enabled?: unknown }).enabled === 'boolean' &&
-			typeof (value as { value?: unknown }).value === 'number'
-		)
-			result[key] = {
-				enabled: (value as { enabled: boolean }).enabled,
-				value: (value as { value: number }).value,
-			};
+		if (!(field in source)) continue;
+		const value = source[field];
+		if (value === null)
+			result[key] = { enabled: false, value: FACTORIN_CONFIG_FALLBACKS[key].value };
+		else if (typeof value === 'number' && Number.isFinite(value) && value >= 0)
+			result[key] = { enabled: key === 'minRequestInterval' ? value > 0 : true, value };
 	}
 	return result;
 }
