@@ -33,6 +33,7 @@ export type FactorinTranslations = {
 	factorinSyncNow: string;
 	factorinSyncNowDescription: string;
 	factorinTokenMissing: string;
+	factorinTokenRejected: string;
 };
 
 export const en: FactorinTranslations = {
@@ -62,6 +63,8 @@ export const en: FactorinTranslations = {
 	factorinSyncNow: 'Sync now',
 	factorinSyncNowDescription: 'Sync this vault with Factor.In immediately.',
 	factorinTokenMissing: 'Paste your Factor.In API token first.',
+	factorinTokenRejected:
+		'Factor.In no longer accepts the saved token. Open the Factor.In settings to reconnect.',
 };
 
 export const zh: FactorinTranslations = {
@@ -89,4 +92,5 @@ export const zh: FactorinTranslations = {
 	factorinSyncNow: '立即同步',
 	factorinSyncNowDescription: '立即将此 vault 与 Factor.In 同步。',
 	factorinTokenMissing: '请先粘贴您的 Factor.In API 令牌。',
+	factorinTokenRejected: 'Factor.In 已不再接受保存的令牌。请打开 Factor.In 设置重新连接。',
 };

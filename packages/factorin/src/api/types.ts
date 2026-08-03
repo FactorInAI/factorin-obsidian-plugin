@@ -45,7 +45,7 @@ export type FactorinAccount = {
 /**
  * The bootstrap: everything `GET /me` tells us about a token — who it belongs
  * to, what it may do, and which accounts it unlocks. Fetched once per connect
- * (and, later, on startup re-auth per Overview §6.3); never persisted whole.
+ * and once per startup re-auth (Overview §6.3); never persisted whole.
  */
 export type FactorinBootstrap = {
 	accounts: Array<FactorinAccount>;
